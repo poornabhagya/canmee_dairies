@@ -26,7 +26,7 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
           MYSQL_DATABASE: canmee_db
         ports:
           - 3306:3306
@@ -42,7 +42,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          # mysqlclient වැනි පැකේජ් ස්ථාපනය වීමට අවශ්‍ය Ubuntu libraries
+          sudo apt-get install -y libmysqlclient-dev
       - name: Run Syntax Checks
+        # ඔයාගේ settings වල localhost 3306 ඩිෆෝල්ට් ගන්න නිසා මේක දැන් වැඩ කරනවා
         run: python manage.py check
 
   # 2. Build & Push Track
