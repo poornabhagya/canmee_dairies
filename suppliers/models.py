@@ -396,7 +396,7 @@ class FarmerGoodsStock(models.Model):
         ordering = ["product__name"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(quantity__gte=0),
+                condition=models.Q(quantity__gte=0),
                 name="farmergoodsstock_quantity_gte_0",
             ),
         ]
