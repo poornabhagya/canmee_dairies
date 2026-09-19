@@ -58,7 +58,7 @@ class MainStock(models.Model):
         ordering = ["product__name"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(quantity__gte=0),
+                condition=models.Q(quantity__gte=0),
                 name="mainstock_quantity_gte_0",
             ),
         ]
@@ -91,7 +91,7 @@ class BranchStock(models.Model):
         ordering = ["branch__name", "product__name"]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(quantity__gte=0),
+                condition=models.Q(quantity__gte=0),
                 name="branchstock_quantity_gte_0",
             ),
         ]
