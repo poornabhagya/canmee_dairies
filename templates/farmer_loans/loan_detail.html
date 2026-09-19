@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}Loan #{{ loan.pk }} · Canmee Dairies{% endblock %}
+{% block page_heading %}Loan #{{ loan.pk }}{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Farmer Loan #{{ loan.pk }}</h1>
+    <p class="page-subtitle">{{ loan.get_status_display }} · {{ loan.farmer }} · {{ loan.branch.name }}</p>
+  </div>
+  <div class="page-actions d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'farmer-loan-list' %}"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+    {% if loan.can_edit and perms.farmer_loans.change_farmerloan %}
+    <a href="{% url 'farmer-loan-edit' loan.pk %}" class="btn btn-outline-primary">Edit</a>
+    {% if loan.status == "draft" %}
+    <form method="post" action="{% url 'farmer-loan-submit' loan.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Submit for approval</button>
+    </form>
+    {% endif %}
+    {% endif %}
+    {% if loan.status == "pending_approval" and perms.farmer_loans.change_farmerloan %}
+    <form method="post" action="{% url 'farmer-loan-approve' loan.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success">Approve</button>
+    </form>
+    <form method="post" action="{% url 'farmer-loan-reject' loan.pk %}" class="d-inline">
+      {% csrf_token %}
+      <input type="text" name="rejection_reason" class="form-control d-inline-block me-1" style="width: 260px;" placeholder="Reject reason (optional)">
+      <button type="submit" class="btn btn-outline-danger">Reject</button>
+    </form>
+    {% endif %}
+    {% if loan.can_delete and perms.farmer_loans.change_farmerloan %}
+    <a href="{% url 'farmer-loan-delete' loan.pk %}" class="btn btn-outline-danger js-swal-delete-post" data-swal-title="Delete loan #{{ loan.pk }}?" data-swal-text="This cannot be undone. The deletion will be recorded in the audit log.">Delete</a>
+    {% elif user.is_superuser and loan.status == "approved" and perms.farmer_loans.change_farmerloan %}
+    <a href="{% url 'farmer-loan-delete' loan.pk %}" class="btn btn-outline-danger js-swal-delete-post" data-swal-title="Delete approved loan #{{ loan.pk }}?" data-swal-text="This approved loan and its repayment schedule will be permanently removed. This cannot be undone.">Delete</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="mb-3">Farmer Details</h6>
+        <p class="mb-2"><strong>Branch:</strong> {{ loan.branch.name }}</p>
+        <p class="mb-2"><strong>Farmer:</strong> {{ loan.farmer }}</p>
+        <p class="mb-2"><strong>Farm registration no:</strong> {{ loan.farm_registration_number|default:"—" }}</p>
+        <p class="mb-2"><strong>Avg monthly milk production:</strong> {{ loan.average_monthly_milk_production|default:"—" }}</p>
+        <p class="mb-0"><strong>Avg monthly milk income:</strong> {{ loan.average_monthly_milk_income|money }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="mb-3">Loan Details</h6>
+        <p class="mb-2"><strong>Loan amount:</strong> {{ loan.loan_amount|money }}</p>
+        <p class="mb-2"><strong>Loan date:</strong> {{ loan.loan_date }}</p>
+        <p class="mb-2"><strong>First repayment date:</strong> {{ loan.first_repayment_date }}</p>
+        <p class="mb-2"><strong>Instalment method:</strong> {{ loan.get_installment_method_display }}</p>
+        <p class="mb-2"><strong>Number of instalments:</strong> {{ loan.installment_count }}</p>
+        {% if loan.requested_installment_amount %}
+        <p class="mb-2"><strong>Request instalment:</strong> {{ loan.requested_installment_amount|money }}</p>
+        {% endif %}
+        {% if loan.is_existing_loan %}
+        <p class="mb-2"><strong>Existing loan:</strong> Yes</p>
+        <p class="mb-2"><strong>Already paid (recorded):</strong> {{ loan.recorded_paid_total|money }}</p>
+        {% endif %}
+        <p class="mb-2"><strong>Reason:</strong> {{ loan.reason }}</p>
+        {% if loan.submitted_at %}
+        <p class="mb-2"><strong>Submitted at:</strong> {{ loan.submitted_at }}</p>
+        {% endif %}
+        {% if loan.status == "approved" %}
+        <p class="mb-2"><strong>Approved at:</strong> {{ loan.approved_at|default:"—" }}</p>
+        <p class="mb-0"><strong>Approved by:</strong> {{ loan.approved_by|default:"—" }}</p>
+        {% elif loan.status == "rejected" %}
+        <p class="mb-2"><strong>Rejected at:</strong> {{ loan.rejected_at|default:"—" }}</p>
+        <p class="mb-2"><strong>Rejected by:</strong> {{ loan.rejected_by|default:"—" }}</p>
+        <p class="mb-0"><strong>Rejection reason:</strong> {{ loan.rejection_reason|default:"—" }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <h6 class="mb-0">Repayment Schedule ({% if loan.installment_method == "monthly" %}monthly{% else %}15th &amp; month-end{% endif %})</h6>
+      {% if can_update_schedule_paid %}
+      <span class="small text-muted">Update paid amounts per instalment below.</span>
+      {% endif %}
+    </div>
+    {% if loan.repayment_schedules.exists %}
+    {% if can_update_schedule_paid %}
+    <form method="post" action="{% url 'farmer-loan-schedule-paid' loan.pk %}" id="loan-schedule-paid-form">
+      {% csrf_token %}
+      {{ schedule_paid_formset.management_form }}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Installment</th>
+              <th>Due date</th>
+              <th>Amount</th>
+              <th style="min-width: 9rem;">Paid amount</th>
+              <th>Status</th>
+              {% if perms.reports.record_manual_settlement %}<th class="text-end">Manual</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for form in schedule_paid_formset %}
+            {% with row=form.instance %}
+            <tr>
+              <td>{{ row.installment_number }}{{ form.id }}</td>
+              <td>{{ row.due_date }}</td>
+              <td>{{ row.installment_amount|money }}</td>
+              <td>{{ form.paid_amount }}{{ form.paid_amount.errors }}</td>
+              <td>{% if row.is_paid %}<span{% if row.paid_on %} title="Paid {{ row.paid_on|date:'Y-m-d' }}{% if row.payment_note %} — {{ row.payment_note }}{% endif %}"{% endif %}>Paid</span>{% else %}Pending{% endif %}</td>
+              {% if perms.reports.record_manual_settlement %}
+              <td class="text-end">{% include "reports/_loan_instalment_manual_settle_action.html" with instalment=row %}</td>
+              {% endif %}
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if schedule_paid_formset.non_form_errors %}
+      <div class="alert alert-danger">{{ schedule_paid_formset.non_form_errors }}</div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Save paid instalments</button>
+    </form>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Installment</th>
+            <th>Due date</th>
+            <th>Amount</th>
+            <th>Paid amount</th>
+            <th>Status</th>
+            {% if perms.reports.record_manual_settlement %}<th class="text-end">Manual</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in loan.repayment_schedules.all %}
+          <tr>
+            <td>{{ row.installment_number }}</td>
+            <td>{{ row.due_date }}</td>
+            <td>{{ row.installment_amount|money }}</td>
+            <td>{{ row.paid_amount|money }}</td>
+            <td>{% if row.is_paid %}<span{% if row.paid_on %} title="Paid {{ row.paid_on|date:'Y-m-d' }}{% if row.payment_note %} — {{ row.payment_note }}{% endif %}"{% endif %}>Paid</span>{% else %}Pending{% endif %}</td>
+            {% if perms.reports.record_manual_settlement %}
+            <td class="text-end">{% include "reports/_loan_instalment_manual_settle_action.html" with instalment=row %}</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-muted mb-0">Schedule will be generated when the draft is submitted for approval.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-body">
+    <h6 class="mb-3">Audit log</h6>
+    {% if loan.action_logs.all %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Action</th>
+            <th>By</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in loan.action_logs.all %}
+          <tr>
+            <td class="text-nowrap">{{ entry.performed_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ entry.get_action_display }}</td>
+            <td>{{ entry.performed_by }}</td>
+            <td>{{ entry.notes|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No actions recorded yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

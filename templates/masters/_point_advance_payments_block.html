@@ -1,0 +1,122 @@
+{% load format_extras %}
+{% if can_view_point_advances %}
+<div class="farmer-financial-block{% if aside %} farmer-financial-block--aside{% endif %}">
+  <div class="farmer-financial-block__title">Point advances</div>
+  {% if statement_print %}
+  <div>
+    <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th class="text-end">Amount</th>
+          <th class="text-end">Paid</th>
+          <th class="text-end">Balance</th>
+          <th>Paid on</th>
+          {% if not aside %}<th>Note</th>{% endif %}
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for advance in point_advances %}
+        <tr class="{% if advance.is_recovered %}farmer-financial-row--settled{% endif %}">
+          <td class="text-nowrap">{{ advance.date|date:"Y-m-d" }}</td>
+          <td class="text-end">{{ advance.amount|money }}</td>
+          <td class="text-end">{{ advance.recovered_amount|money }}</td>
+          <td class="text-end">{{ advance.remaining_amount|money }}</td>
+          <td class="text-nowrap">{% if advance.recovered_at %}{{ advance.recovered_at|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+          {% if not aside %}<td>{{ advance.note|default:"—" }}</td>{% endif %}
+          {% include "reports/_payslip_recovery_status.html" with is_recovered=advance.is_recovered recovered_at=advance.recovered_at remaining_amount=advance.remaining_amount original_amount=advance.amount %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{% if aside %}6{% else %}7{% endif %}" class="text-center text-muted py-3">No point advances recorded.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% elif aside %}
+  {% if point_advances %}
+  <div class="point-advance-stack">
+    {% for advance in point_advances %}
+    <article class="point-advance-card{% if advance.is_recovered %} is-settled{% endif %}">
+      <div class="point-advance-card__head">
+        <div>
+          <div class="point-advance-card__date">{{ advance.date|date:"Y-m-d" }}</div>
+          {% include "reports/_point_advance_paid_on_action.html" with advance=advance %}
+        </div>
+        <div class="point-advance-card__meta">
+          {% if advance.is_recovered %}
+          <span class="badge text-bg-success-subtle text-success-emphasis">Recovered</span>
+          {% elif advance.remaining_amount and advance.remaining_amount < advance.amount %}
+          <span class="badge text-bg-warning-subtle text-warning-emphasis">Partial</span>
+          {% else %}
+          <span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+          {% endif %}
+          {% include "reports/_point_advance_manual_settle_action.html" with advance=advance compact=1 %}
+        </div>
+      </div>
+      <div class="point-advance-card__stats">
+        <div>
+          <span class="point-advance-card__label">Amount</span>
+          <span class="point-advance-card__value">{{ advance.amount|money }}</span>
+        </div>
+        <div>
+          <span class="point-advance-card__label">Paid</span>
+          <span class="point-advance-card__value">{{ advance.recovered_amount|money }}</span>
+        </div>
+        <div>
+          <span class="point-advance-card__label">Balance</span>
+          <span class="point-advance-card__value{% if advance.remaining_amount > 0 %} is-open{% endif %}">{{ advance.remaining_amount|money }}</span>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="small text-muted mb-0">No point advances recorded.</p>
+  {% endif %}
+  {% else %}
+  <table
+    class="table table-hover datatable datatable-smart smart-dt-table mb-0 farmer-financial-table w-100"
+    data-empty-table="No point advances recorded."
+    data-page-length="10"
+    data-smart-order="0,desc"
+    data-print-title="Point advances"
+  >
+    <thead>
+      <tr>
+        <th class="all">Date</th>
+        <th class="all text-end">Amount</th>
+        <th class="all text-end">Paid</th>
+        <th class="all text-end">Balance</th>
+        <th class="min-tablet-l">Paid on</th>
+        <th class="min-tablet-l">Note</th>
+        <th class="all">Status</th>
+        <th class="min-desktop">Recorded by</th>
+        <th class="all text-end no-export">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for advance in point_advances %}
+      <tr class="{% if advance.is_recovered %}farmer-financial-row--settled{% endif %}">
+        <td class="all text-nowrap" data-order="{{ advance.date|date:'Y-m-d' }}">{{ advance.date|date:"Y-m-d" }}</td>
+        <td class="all text-end" data-order="{{ advance.amount }}">{{ advance.amount|money }}</td>
+        <td class="all text-end" data-order="{{ advance.recovered_amount }}">{{ advance.recovered_amount|money }}</td>
+        <td class="all text-end" data-order="{{ advance.remaining_amount }}">{{ advance.remaining_amount|money }}</td>
+        <td class="min-tablet-l text-nowrap" data-order="{% if advance.recovered_at %}{{ advance.recovered_at|date:'Y-m-d' }}{% endif %}">{% include "reports/_point_advance_paid_on_action.html" with advance=advance as_date_only=1 %}</td>
+        <td class="min-tablet-l">{{ advance.note|default:"—" }}</td>
+        {% include "reports/_payslip_recovery_status.html" with is_recovered=advance.is_recovered recovered_at=advance.recovered_at remaining_amount=advance.remaining_amount original_amount=advance.amount %}
+        <td class="min-desktop">{{ advance.created_by }}</td>
+        <td class="all text-end">
+          <span class="farmer-row-actions">
+            {% include "reports/_point_advance_manual_settle_action.html" with advance=advance %}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endif %}

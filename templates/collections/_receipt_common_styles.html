@@ -1,0 +1,524 @@
+<style>
+  * { box-sizing: border-box; }
+  body.receipt-body {
+    font-family: "Noto Sans Sinhala", "Iskoola Pota", "Nirmala UI", sans-serif;
+    margin: 0;
+    padding: 1rem;
+    color: #111;
+    background: #f8fafc;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .receipt-shell {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  body.receipt-print-mode-summary .receipt-shell,
+  body.receipt-print-mode-point .receipt-shell {
+    max-width: 100mm;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    overflow: visible;
+  }
+  body.receipt-print-mode-point .receipt-shell .point-receipt-block {
+    width: 100mm;
+    max-width: 100mm;
+    min-width: 100mm;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    box-sizing: border-box;
+  }
+  .company {
+    text-align: center;
+    border-bottom: 2px dashed #94a3b8;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .company h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .company .phone {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .meta-two {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+  .center-name-row {
+    margin-bottom: 0.85rem;
+    font-size: 0.95rem;
+    word-break: break-word;
+  }
+  table.receipt-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .receipt-grid th, .receipt-grid td {
+    border: 1px solid #334155;
+    padding: 0.4rem 0.35rem;
+    vertical-align: middle;
+  }
+  .receipt-grid th {
+    background: #f1f5f9;
+    font-weight: 600;
+    text-align: center;
+  }
+  .receipt-grid td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .receipt-text-14 {
+    font-size: 14px;
+  }
+  .receipt-text-12 {
+    font-size: 12px;
+  }
+  .receipt-slip .receipt-text-14,
+  .route-summary-section .receipt-text-14 {
+    font-size: 14px;
+  }
+  .receipt-slip .receipt-text-12,
+  .route-summary-section .receipt-text-12 {
+    font-size: 12px;
+  }
+  .receipt-slip .company h1.receipt-text-14,
+  .route-summary-section .company h1.receipt-text-14 {
+    font-size: 14px;
+  }
+  .receipt-qty-cell {
+    text-align: right;
+    vertical-align: middle;
+  }
+  .receipt-qty-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.12rem;
+    margin-left: auto;
+    text-align: right;
+    max-width: 100%;
+  }
+  .receipt-qty-row {
+    display: grid;
+    grid-template-columns: minmax(2.75rem, 1fr) 1.35em;
+    align-items: baseline;
+    column-gap: 0.3em;
+    width: 100%;
+  }
+  .receipt-qty-fig {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    min-width: 0;
+  }
+  .receipt-qty-unit {
+    text-align: left;
+    white-space: nowrap;
+  }
+  .route-summary-section {
+    background: #fff;
+    padding: 1.25rem 1.5rem 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    margin-bottom: 2rem;
+  }
+  /* Match per-point receipt slip spacing */
+  .route-summary-section.receipt-slip .company {
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .route-summary-section.receipt-slip .meta-two {
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+  .route-summary-section.receipt-slip .center-name-row {
+    margin-bottom: 0.85rem;
+    line-height: 1.25;
+  }
+  .route-summary-section h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  /* Same grid rules as point receipt (receipt-grid) + route column */
+  .route-summary-section table.route-summary-grid.receipt-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .route-summary-section table.route-summary-grid.receipt-grid th,
+  .route-summary-section table.route-summary-grid.receipt-grid td {
+    border: 1px solid #334155;
+    padding: 0.4rem 0.35rem;
+    vertical-align: middle;
+  }
+  .route-summary-section table.route-summary-grid.receipt-grid th {
+    background: #f1f5f9;
+    font-weight: 600;
+    text-align: center;
+  }
+  .route-summary-section table.route-summary-grid.receipt-grid td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .route-summary-section table.route-summary-grid.receipt-grid td.point {
+    text-align: left;
+    max-width: 12rem;
+  }
+  .route-summary-section table.route-summary-grid.receipt-grid tfoot td {
+    font-weight: 700;
+    background: #f8fafc;
+  }
+  .point-receipt-block {
+    background: #fff;
+    padding: 1.25rem 1.5rem 1.25rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    margin-bottom: 1.5rem;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .point-receipt-block:last-of-type {
+    margin-bottom: 0;
+  }
+  /* Milk slip + farmer goods on one card (point receipt & route slips +goods) */
+  .point-receipt-unified .point-receipt-issue-goods {
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+  .point-receipt-unified .issue-goods-heading {
+    margin-top: 0.65rem;
+    padding-top: 0.55rem;
+    border-top: 2px dashed #94a3b8;
+    font-weight: 700;
+  }
+  .point-receipt-unified .issue-goods-batch {
+    margin-top: 0.45rem;
+  }
+  .point-receipt-unified .issue-ref-row {
+    margin-bottom: 0.35rem;
+  }
+  /* Screen: full slip visible; print uses fixed heights (see @media print) */
+  body.receipt-print-mode-receipts {
+    --receipt-page-h: 277mm;
+    --receipt-gap: 1.5mm;
+    --receipt-slip-h: calc((var(--receipt-page-h) - 5 * var(--receipt-gap)) / 6);
+  }
+  body.receipt-print-mode-receipts .receipt-shell {
+    max-width: 100%;
+    overflow: visible;
+  }
+  body.receipt-print-mode-receipts .receipt-print-sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--receipt-gap);
+    min-height: auto;
+    margin: 0 auto 2rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block {
+    width: 100mm;
+    max-width: 100mm;
+    min-width: 100mm;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    flex-shrink: 0;
+  }
+  body.receipt-print-mode-receipts .receipt-slip .company,
+  body.receipt-print-mode-point .receipt-slip .company {
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.35rem;
+    flex-shrink: 0;
+  }
+  body.receipt-print-mode-receipts .receipt-slip .company h1,
+  body.receipt-print-mode-point .receipt-slip .company h1 {
+    line-height: 1.15;
+    margin: 0 0 0.15rem;
+  }
+  body.receipt-print-mode-receipts .receipt-slip .company .phone,
+  body.receipt-print-mode-point .receipt-slip .company .phone {
+    line-height: 1.2;
+    margin: 0;
+  }
+  body.receipt-print-mode-receipts .receipt-slip .meta-two,
+  body.receipt-print-mode-point .receipt-slip .meta-two {
+    margin-bottom: 0.3rem;
+    line-height: 1.2;
+  }
+  body.receipt-print-mode-receipts .receipt-slip .center-name-row,
+  body.receipt-print-mode-point .receipt-slip .center-name-row {
+    margin-bottom: 0.35rem;
+    line-height: 1.25;
+  }
+  body.receipt-print-mode-receipts .receipt-slip table.receipt-grid,
+  body.receipt-print-mode-point .receipt-slip table.receipt-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  body.receipt-print-mode-receipts .receipt-slip .receipt-grid th,
+  body.receipt-print-mode-receipts .receipt-slip .receipt-grid td,
+  body.receipt-print-mode-point .receipt-slip .receipt-grid th,
+  body.receipt-print-mode-point .receipt-slip .receipt-grid td {
+    padding: 0.2rem 0.15rem;
+    line-height: 1.2;
+  }
+  .section-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: #334155;
+  }
+  .actions {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    font-family: inherit;
+  }
+  .btn-print { background: #059669; color: #fff; }
+  .btn-print:hover { background: #047857; }
+  .btn-back { background: #e2e8f0; color: #334155; }
+  .footer-note {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+  @media (max-width: 768px) {
+    body.receipt-body {
+      padding: 1.15rem 0.85rem 5.75rem;
+      padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    }
+    .receipt-shell {
+      padding-top: 0.25rem;
+      padding-bottom: 0.5rem;
+    }
+    .receipt-grid th,
+    .receipt-grid td {
+      padding: 0.45rem 0.35rem;
+    }
+    .company {
+      padding-top: 0.25rem;
+      padding-bottom: 0.85rem;
+      margin-bottom: 0.85rem;
+    }
+    .actions {
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+  }
+  @media print {
+    body.receipt-print-mode-receipts {
+      --receipt-page-h: 277mm;
+      --receipt-gap: 1.5mm;
+      --receipt-slip-h: calc((var(--receipt-page-h) - 5 * var(--receipt-gap)) / 6);
+    }
+    body.receipt-body { background: #fff; padding: 0; }
+    .no-print { display: none !important; }
+    .route-summary-section,
+    .point-receipt-block {
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    /* Summary alone: no forced blank page after the table */
+    body.receipt-print-mode-summary .route-summary-section {
+      page-break-after: auto;
+    }
+    /* Per-point slips: 6 × fixed height + gaps = one printable column per page */
+    body.receipt-print-mode-receipts .receipt-shell {
+      max-width: none;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5mm;
+      min-height: 277mm;
+      height: auto;
+      width: 100%;
+      margin: 0 auto 0;
+      page-break-after: always;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      box-sizing: border-box;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet:last-of-type {
+      page-break-after: auto;
+    }
+    .receipt-text-14 { font-size: 14px !important; }
+    .receipt-text-12 { font-size: 12px !important; }
+    body.receipt-print-mode-summary .route-summary-section .company h1,
+    body.receipt-print-mode-summary .route-summary-section .meta-two .receipt-text-14,
+    body.receipt-print-mode-summary .route-summary-section .center-name-row .receipt-text-14,
+    body.receipt-print-mode-summary .route-summary-section .route-summary-grid tbody td,
+    body.receipt-print-mode-summary .route-summary-section .route-summary-grid tfoot td {
+      font-size: 14px !important;
+    }
+    body.receipt-print-mode-summary .route-summary-section .company .phone,
+    body.receipt-print-mode-summary .route-summary-section .route-summary-grid th {
+      font-size: 12px !important;
+    }
+    body.receipt-print-mode-summary .receipt-shell,
+    body.receipt-print-mode-point .receipt-shell {
+      max-width: 100mm !important;
+      width: 100mm !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+    /* Single point receipt: full slip height, same 100mm width as route slips */
+    body.receipt-print-mode-point .receipt-shell .point-receipt-block {
+      width: 100mm !important;
+      max-width: 100mm !important;
+      min-width: 100mm !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 0 auto !important;
+      padding: 1.5mm 2.5mm 2mm !important;
+      overflow: visible !important;
+      display: flex !important;
+      flex-direction: column !important;
+      page-break-inside: avoid;
+      line-height: 1.12;
+    }
+    body.receipt-print-mode-point .point-receipt-block .company {
+      padding-bottom: 1mm !important;
+      margin-bottom: 1mm !important;
+      border-bottom-width: 1px !important;
+      border-bottom-style: dashed !important;
+      flex-shrink: 0;
+    }
+    body.receipt-print-mode-point .point-receipt-block .company h1 {
+      line-height: 1.1 !important;
+      margin: 0 0 0.5mm !important;
+    }
+    body.receipt-print-mode-point .point-receipt-block .company .phone {
+      line-height: 1.12 !important;
+      margin: 0 !important;
+    }
+    body.receipt-print-mode-point .point-receipt-block .meta-two {
+      margin-bottom: 1mm !important;
+      line-height: 1.12 !important;
+      gap: 0.5mm !important;
+    }
+    body.receipt-print-mode-point .point-receipt-block .center-name-row {
+      margin-bottom: 1mm !important;
+      line-height: 1.12 !important;
+    }
+    body.receipt-print-mode-point .point-receipt-block table.receipt-grid {
+      width: 100%;
+    }
+    body.receipt-print-mode-point .point-receipt-block .receipt-grid th,
+    body.receipt-print-mode-point .point-receipt-block .receipt-grid td {
+      padding: 0.5mm 1mm !important;
+      line-height: 1.08 !important;
+      vertical-align: middle;
+    }
+    body.receipt-print-mode-point .point-receipt-block .receipt-qty-row {
+      line-height: 1.08 !important;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block {
+      width: 100mm !important;
+      max-width: 100mm !important;
+      min-width: 100mm !important;
+      height: var(--receipt-slip-h) !important;
+      min-height: var(--receipt-slip-h) !important;
+      max-height: var(--receipt-slip-h) !important;
+      margin: 0 !important;
+      padding: 1.5mm 2.5mm 2mm !important;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      page-break-inside: avoid;
+      line-height: 1.12;
+      flex-shrink: 0;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .company {
+      padding-bottom: 1mm;
+      margin-bottom: 1mm;
+      border-bottom-width: 1px;
+      border-bottom-style: dashed;
+      flex-shrink: 0;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .company h1 {
+      line-height: 1.1 !important;
+      margin: 0 0 0.5mm !important;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .company .phone {
+      line-height: 1.12 !important;
+      margin: 0 !important;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .meta-two {
+      margin-bottom: 1mm !important;
+      line-height: 1.12 !important;
+      gap: 0.5mm !important;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .center-name-row {
+      margin-bottom: 1mm !important;
+      line-height: 1.12 !important;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block table.receipt-grid {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .receipt-grid th,
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .receipt-grid td {
+      padding: 0.5mm 1mm !important;
+      line-height: 1.08 !important;
+      vertical-align: middle;
+    }
+    body.receipt-print-mode-receipts .receipt-print-sheet .point-receipt-block .receipt-qty-row {
+      line-height: 1.08 !important;
+    }
+    body.receipt-print-mode-receipts.receipt-with-goods .receipt-print-sheet .point-receipt-block.point-receipt-unified {
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    body.receipt-print-mode-point .point-receipt-unified.point-receipt-block {
+      page-break-inside: avoid;
+    }
+    @page { margin: 12mm; }
+  }
+</style>

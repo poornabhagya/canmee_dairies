@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Point reconcile report · Canmee Dairies{% endblock %}
+{% block page_heading %}Point reconcile report{% endblock %}
+{% block extra_css %}
+<style>
+  .reconcile-report-filter .form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+  }
+  .reconcile-report-branch-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .reconcile-report-branch-card__header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+  }
+  .reconcile-report-table th,
+  .reconcile-report-table td {
+    font-size: 0.8125rem;
+    vertical-align: middle;
+  }
+  .reconcile-report-table thead th {
+    white-space: nowrap;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    background: #fff;
+  }
+  .reconcile-row--matched td { background-color: #f0fdf4; }
+  .reconcile-row--mismatch td,
+  .reconcile-row--missing_point td,
+  .reconcile-row--missing_farmers td { background-color: #fffbeb; }
+  .reconcile-diff--nonzero { font-weight: 600; color: #b45309; }
+  .reconcile-status-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .reconcile-report-grand {
+    border-top: 2px solid #cbd5e1;
+    background: #f8fafc;
+  }
+  @media print {
+    .reconcile-report-no-print { display: none !important; }
+    .reconcile-report-branch-card { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card mb-3 reconcile-report-no-print">
+  <div class="card-body reconcile-report-filter">
+    <form method="get" class="row g-3 align-items-end js-no-enter-submit branch-multi-filter-form">
+      <div class="col-12 col-md-4 col-lg-3">
+        <label class="form-label" for="reconcile-report-start">From</label>
+        <input type="text" id="reconcile-report-start" class="form-control js-datepicker" name="start" value="{{ start|date:'Y-m-d' }}" autocomplete="off">
+      </div>
+      <div class="col-12 col-md-4 col-lg-3">
+        <label class="form-label" for="reconcile-report-end">To</label>
+        <input type="text" id="reconcile-report-end" class="form-control js-datepicker" name="end" value="{{ end|date:'Y-m-d' }}" autocomplete="off">
+      </div>
+      <div class="col-12 col-lg-5">
+        <div class="branch-multi-select" data-max-visible-chips="2">
+          <div class="branch-multi-select__head">
+            <label class="form-label" for="reconcile-report-branches">Branches</label>
+            <span class="branch-multi-select__count" id="reconcile-branch-count" aria-live="polite"></span>
+          </div>
+          <div class="branch-multi-select__toolbar">
+            <button type="button" class="btn btn-link p-0 js-branch-select-all">Select all</button>
+            <span class="text-muted" aria-hidden="true">·</span>
+            <button type="button" class="btn btn-link p-0 js-branch-clear-all">Clear</button>
+          </div>
+          <select id="reconcile-report-branches" name="branches" class="form-select js-branch-multi-select" multiple size="1">
+            {% for b in branches %}
+            <option value="{{ b.id }}" {% if b.id|stringformat:'d' in selected_branches %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="col-12 col-md-4 col-lg-2">
+        <label class="form-label" for="reconcile-report-status">Status</label>
+        <select name="reconcile_status" id="reconcile-report-status" class="form-select">
+          <option value="" {% if not reconcile_status %}selected{% endif %}>All</option>
+          <option value="issues" {% if reconcile_status == 'issues' %}selected{% endif %}>Issues only</option>
+          <option value="matched" {% if reconcile_status == 'matched' %}selected{% endif %}>Matched</option>
+          <option value="mismatch" {% if reconcile_status == 'mismatch' %}selected{% endif %}>Mismatch</option>
+          <option value="missing_point" {% if reconcile_status == 'missing_point' %}selected{% endif %}>Missing point</option>
+          <option value="missing_farmers" {% if reconcile_status == 'missing_farmers' %}selected{% endif %}>Missing farmers</option>
+        </select>
+      </div>
+      <div class="col-auto d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Show report</button>
+        <a href="{% url 'point-reconcile-report' %}" class="btn btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3 reconcile-report-no-print">
+  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+    <i class="bi bi-printer me-1"></i>Print
+  </button>
+  <a
+    class="btn btn-outline-secondary btn-sm"
+    href="{% url 'point-reconcile-report-export-excel' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}{% if reconcile_status %}&amp;reconcile_status={{ reconcile_status }}{% endif %}"
+  ><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+  <a
+    class="btn btn-outline-secondary btn-sm"
+    href="{% url 'point-reconcile-report-export-pdf' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}{% if reconcile_status %}&amp;reconcile_status={{ reconcile_status }}{% endif %}"
+  ><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+  <a class="btn btn-outline-primary btn-sm ms-auto" href="{% url 'milk-collection-list' %}?tab=reconcile&amp;date_from={{ start|date:'Y-m-d' }}&amp;date_to={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}">
+    Open reconcile tab
+  </a>
+</div>
+
+<p class="text-muted small mb-3">
+  Period: <strong>{{ start|date:"Y-m-d" }}</strong> to <strong>{{ end|date:"Y-m-d" }}</strong>.
+  Reconcile kg uses saved Point/Farmer choices for the Collection Point Payment Sheet.
+</p>
+
+{% if branch_sections %}
+  {% for section in branch_sections %}
+  <div class="reconcile-report-branch-card">
+    <div class="reconcile-report-branch-card__header">
+      {% if section.branch %}
+      {{ section.branch.code }} — {{ section.branch.name }}
+      {% else %}
+      {{ section.branch_label }}
+      {% endif %}
+      {% if section.totals.issue_count %}
+      <span class="badge text-bg-warning-subtle text-warning-emphasis ms-2">{{ section.totals.issue_count }} issue(s)</span>
+      {% else %}
+      <span class="badge text-bg-success-subtle text-success ms-2">All matched</span>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 reconcile-report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Route</th>
+            <th>Point</th>
+            <th class="text-end">Point kg</th>
+            <th class="text-end">Farmer kg</th>
+            <th class="text-end">Diff</th>
+            <th>Reconcile</th>
+            <th class="text-end">Rec. kg</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in section.rows %}
+          <tr class="reconcile-row--{{ row.status }}">
+            <td class="text-nowrap">{{ row.date|date:"Y-m-d" }}</td>
+            <td>{{ row.route_label }}</td>
+            <td>{{ row.point_label }}</td>
+            <td class="text-end">{{ row.point_kg }}</td>
+            <td class="text-end">{{ row.farmer_kg }}</td>
+            <td class="text-end{% if row.diff_kg != 0 %} reconcile-diff--nonzero{% endif %}">{{ row.diff_kg }}</td>
+            <td>{{ row.reconcile_source|capfirst }}</td>
+            <td class="text-end fw-semibold">{{ row.reconcile_kg }}</td>
+            <td>
+              {% if row.status == 'matched' %}
+              <span class="badge text-bg-success-subtle text-success reconcile-status-badge">Matched</span>
+              {% elif row.status == 'missing_point' %}
+              <span class="badge text-bg-danger-subtle text-danger reconcile-status-badge">Missing point</span>
+              {% elif row.status == 'missing_farmers' %}
+              <span class="badge text-bg-warning-subtle text-warning-emphasis reconcile-status-badge">Missing farmers</span>
+              {% else %}
+              <span class="badge text-bg-warning-subtle text-warning-emphasis reconcile-status-badge">Mismatch</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="table-secondary">
+            <th colspan="3">Branch total ({{ section.totals.count }} rows)</th>
+            <th class="text-end">{{ section.totals.point_kg }}</th>
+            <th class="text-end">{{ section.totals.farmer_kg }}</th>
+            <th class="text-end{% if section.totals.diff_kg != 0 %} reconcile-diff--nonzero{% endif %}">{{ section.totals.diff_kg }}</th>
+            <th></th>
+            <th class="text-end">{{ section.totals.reconcile_kg }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="card reconcile-report-grand">
+    <div class="card-body py-3">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4 fw-semibold">Grand total ({{ grand_totals.count }} rows)</div>
+        <div class="col-md-2 text-md-end"><span class="text-muted small d-block">Point kg</span>{{ grand_totals.point_kg }}</div>
+        <div class="col-md-2 text-md-end"><span class="text-muted small d-block">Farmer kg</span>{{ grand_totals.farmer_kg }}</div>
+        <div class="col-md-2 text-md-end"><span class="text-muted small d-block">Diff kg</span>{{ grand_totals.diff_kg }}</div>
+        <div class="col-md-2 text-md-end"><span class="text-muted small d-block">Reconcile kg</span>{{ grand_totals.reconcile_kg }}</div>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="card">
+    <div class="card-body text-center text-muted py-5">
+      No reconcile rows for the selected branches and period.
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/branch-multi-select.js' %}"></script>
+{% endblock %}

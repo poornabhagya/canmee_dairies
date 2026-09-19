@@ -1,0 +1,1565 @@
+{% extends "base.html" %}
+{% block title %}Milk collection · Canmee Dairies{% endblock %}
+{% block page_heading %}Milk collection{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_inline_qty_styles.html" %}
+<style>
+  .milk-collection-card {
+    margin-top: 0.75rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .milk-collection-card .card-header {
+    padding: 0.9rem 1rem 0;
+  }
+  .milk-collection-card .card-body {
+    padding: 0.85rem 1rem 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .milk-collection-card .card-body.table-wrap {
+    overflow-x: hidden;
+  }
+  .milk-collection-card .card-body.table-wrap:has(.point-reconcile-table) {
+    overflow-x: auto;
+  }
+  .milk-collection-card.milk-collection-card--reconcile .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-wrap,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-wrap .dataTables_wrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .milk-collection-card .dataTables_wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 0.25rem 0.5rem;
+  }
+  .milk-collection-card .dataTables_filter,
+  .milk-collection-card .dt-buttons,
+  .milk-collection-card .dataTables_length,
+  .milk-collection-card .dataTables_info,
+  .milk-collection-card .dataTables_paginate {
+    margin-bottom: 0.35rem;
+  }
+  .milk-collection-card .dataTables_filter input {
+    max-width: 220px;
+  }
+  .route-period-actions {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.25rem 0.85rem;
+  }
+  .route-period-actions .field-wrap {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .route-period-actions .form-control,
+  .route-period-actions .form-select {
+    min-width: 150px;
+    max-width: 190px;
+    height: 38px;
+    min-height: 38px;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+  .route-period-actions .route-period-date-group .form-control,
+  .route-period-actions .route-period-date-group .input-group-text {
+    height: 38px;
+    min-height: 38px;
+  }
+  .route-period-actions__prints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: flex-end;
+  }
+  .route-period-actions__prints .smart-badge:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .route-period-date-group .input-group-text {
+    background: #fff;
+    border-left: 0;
+    cursor: pointer;
+  }
+  .route-period-date-group .form-control {
+    border-right: 0;
+  }
+  .route-period-date-group .flatpickr-input[readonly] {
+    background-color: #fff;
+  }
+  .route-period-range-group {
+    min-width: 250px;
+  }
+  .milk-collection-card.milk-collection-card--route .card-body.table-wrap,
+  .milk-collection-card.milk-collection-card--point .card-body.table-wrap,
+  .milk-collection-card.milk-collection-card--farmer .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .milk-collection-card.milk-collection-card--route .table-wrap,
+  .milk-collection-card.milk-collection-card--route .dataTables_wrapper,
+  .milk-collection-card.milk-collection-card--route div.dt-container,
+  .milk-collection-card.milk-collection-card--route div.dt-scroll,
+  .milk-collection-card.milk-collection-card--route div.dt-scroll-body,
+  .milk-collection-card.milk-collection-card--point .table-wrap,
+  .milk-collection-card.milk-collection-card--point .dataTables_wrapper,
+  .milk-collection-card.milk-collection-card--point div.dt-container,
+  .milk-collection-card.milk-collection-card--point div.dt-scroll,
+  .milk-collection-card.milk-collection-card--point div.dt-scroll-body,
+  .milk-collection-card.milk-collection-card--farmer .table-wrap,
+  .milk-collection-card.milk-collection-card--farmer .dataTables_wrapper,
+  .milk-collection-card.milk-collection-card--farmer div.dt-container,
+  .milk-collection-card.milk-collection-card--farmer div.dt-scroll,
+  .milk-collection-card.milk-collection-card--farmer div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .milk-collection-card.milk-collection-card--route .dataTables_wrapper,
+  .milk-collection-card.milk-collection-card--point .dataTables_wrapper,
+  .milk-collection-card.milk-collection-card--farmer .dataTables_wrapper,
+  .milk-collection-card.milk-collection-card--reconcile .dataTables_wrapper {
+    padding: 0;
+    box-sizing: border-box;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table,
+  .milk-collection-card.milk-collection-card--point .point-entries-table,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table {
+    width: 100% !important;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table thead th,
+  .milk-collection-card.milk-collection-card--point .point-entries-table thead th,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table thead th,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    word-break: normal;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table tbody td,
+  .milk-collection-card.milk-collection-card--point .point-entries-table tbody td,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table tbody td,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tbody td {
+    white-space: normal;
+    word-break: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table tbody td.route-date-col,
+  .milk-collection-card.milk-collection-card--point .point-entries-table tbody td.point-date-col,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table tbody td.list-date-col,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tbody td.reconcile-date-col {
+    white-space: nowrap;
+    width: 1%;
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table tbody td.dt-num,
+  .milk-collection-card.milk-collection-card--point .point-entries-table tbody td.dt-num,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table tbody td.dt-num,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tbody td.dt-num,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tbody td.reconcile-kg-cell {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table tbody tr:hover,
+  .milk-collection-card.milk-collection-card--point .point-entries-table tbody tr:hover,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table tbody tr:hover,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table tfoot th,
+  .milk-collection-card.milk-collection-card--point .point-entries-table tfoot th,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table tfoot th,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 0.55rem 0.4rem;
+    white-space: nowrap;
+  }
+  .milk-collection-card.milk-collection-card--route .route-totals-table tfoot th.dt-foot-total,
+  .milk-collection-card.milk-collection-card--point .point-entries-table tfoot th.dt-foot-total,
+  .milk-collection-card.milk-collection-card--farmer .farmer-entries-table tfoot th.dt-foot-total,
+  .milk-collection-card.milk-collection-card--reconcile .point-reconcile-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .milk-collection-card.milk-collection-card--route div.dt-smart-toolbar,
+  .milk-collection-card.milk-collection-card--point div.dt-smart-toolbar,
+  .milk-collection-card.milk-collection-card--farmer div.dt-smart-toolbar,
+  .milk-collection-card.milk-collection-card--reconcile div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .milk-collection-card.milk-collection-card--route .dt-smart-toolbar .col-12 {
+    flex-wrap: nowrap !important;
+    align-items: center;
+  }
+  .milk-collection-card.milk-collection-card--point .dt-smart-toolbar .col-12,
+  .milk-collection-card.milk-collection-card--farmer .dt-smart-toolbar .col-12,
+  .milk-collection-card.milk-collection-card--reconcile .dt-smart-toolbar .col-12 {
+    flex-wrap: wrap !important;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .milk-collection-card.milk-collection-card--route .dt-smart-filters-wrap,
+  .milk-collection-card.milk-collection-card--point .dt-smart-filters-wrap,
+  .milk-collection-card.milk-collection-card--farmer .dt-smart-filters-wrap,
+  .milk-collection-card.milk-collection-card--reconcile .dt-smart-filters-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: visible;
+  }
+  .milk-collection-card.milk-collection-card--route .dt-smart-actions,
+  .milk-collection-card.milk-collection-card--point .dt-smart-actions,
+  .milk-collection-card.milk-collection-card--farmer .dt-smart-actions,
+  .milk-collection-card.milk-collection-card--reconcile .dt-smart-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+  .milk-collection-card.milk-collection-card--route div.dt-container .dt-search,
+  .milk-collection-card.milk-collection-card--point div.dt-container .dt-search,
+  .milk-collection-card.milk-collection-card--farmer div.dt-container .dt-search,
+  .milk-collection-card.milk-collection-card--reconcile div.dt-container .dt-search {
+    margin: 0;
+  }
+  .milk-collection-card.milk-collection-card--route div.dt-container .dt-search label,
+  .milk-collection-card.milk-collection-card--point div.dt-container .dt-search label,
+  .milk-collection-card.milk-collection-card--farmer div.dt-container .dt-search label,
+  .milk-collection-card.milk-collection-card--reconcile div.dt-container .dt-search label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .milk-collection-card.milk-collection-card--route div.dt-container .dt-search input,
+  .milk-collection-card.milk-collection-card--point div.dt-container .dt-search input,
+  .milk-collection-card.milk-collection-card--farmer div.dt-container .dt-search input,
+  .milk-collection-card.milk-collection-card--reconcile div.dt-container .dt-search input {
+    min-width: min(220px, 42vw);
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.38rem 0.85rem 0.38rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    box-shadow: none;
+  }
+  .milk-collection-card.milk-collection-card--route div.dt-container .dt-search input:focus,
+  .milk-collection-card.milk-collection-card--point div.dt-container .dt-search input:focus,
+  .milk-collection-card.milk-collection-card--farmer div.dt-container .dt-search input:focus,
+  .milk-collection-card.milk-collection-card--reconcile div.dt-container .dt-search input:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.1);
+  }
+  .milk-point-superuser-toolbar {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.15rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid #eef2f7;
+  }
+  .milk-point-superuser-toolbar .form-select {
+    width: auto;
+    min-width: 8.5rem;
+    max-width: 11rem;
+    height: auto;
+    min-height: 0;
+    padding: 0.28rem 1.75rem 0.28rem 0.75rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    color: #475569;
+  }
+  .milk-point-superuser-toolbar .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  @media (max-width: 992px) {
+    .milk-collection-card:not(.milk-collection-card--route):not(.milk-collection-card--point):not(.milk-collection-card--farmer):not(.milk-collection-card--reconcile) .card-body {
+      overflow-x: auto;
+    }
+    .milk-collection-card:not(.milk-collection-card--route):not(.milk-collection-card--point):not(.milk-collection-card--farmer):not(.milk-collection-card--reconcile) .card-body.table-wrap {
+      overflow-x: auto;
+    }
+  }
+  .custom-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid #94a3b8;
+    border-radius: 0.3rem;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .custom-check:hover { border-color: #059669; }
+  .custom-check:checked { border-color: #059669; background: #059669; }
+  .custom-check:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.28rem;
+    top: 0.08rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .delete-selected-btn[hidden] { display: none !important; }
+  #milk-transfer-submit[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .milk-collection-filters-row {
+    padding-top: 0.75rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .milk-collection-branch-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .milk-collection-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .milk-collection-card.milk-collection-card--route .dt-smart-filters-wrap .milk-collection-filter-form {
+    flex-wrap: nowrap;
+  }
+  .milk-collection-card.milk-collection-card--point .dt-smart-filters-wrap .milk-collection-filter-form,
+  .milk-collection-card.milk-collection-card--farmer .dt-smart-filters-wrap .milk-collection-filter-form,
+  .milk-collection-card.milk-collection-card--reconcile .dt-smart-filters-wrap .milk-collection-filter-form {
+    flex-wrap: wrap;
+  }
+  .milk-collection-card.milk-collection-card--point #milkCollectionDtFilters,
+  .milk-collection-card.milk-collection-card--farmer #milkCollectionDtFilters,
+  .milk-collection-card.milk-collection-card--reconcile #milkCollectionDtFilters {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+  }
+  .milk-collection-card.milk-collection-card--point .dt-smart-filters-wrap,
+  .milk-collection-card.milk-collection-card--farmer .dt-smart-filters-wrap,
+  .milk-collection-card.milk-collection-card--reconcile .dt-smart-filters-wrap {
+    flex: 1 1 320px;
+    min-width: 0;
+  }
+  .milk-collection-card.milk-collection-card--point .dt-smart-actions,
+  .milk-collection-card.milk-collection-card--farmer .dt-smart-actions,
+  .milk-collection-card.milk-collection-card--reconcile .dt-smart-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    position: relative;
+    z-index: 3;
+  }
+  .milk-collection-card.milk-collection-card--point div.dt-container,
+  .milk-collection-card.milk-collection-card--farmer div.dt-container,
+  .milk-collection-card.milk-collection-card--reconcile div.dt-container {
+    overflow: visible;
+  }
+  .milk-collection-card.milk-collection-card--point .milk-collection-actions-dropdown .dropdown-menu,
+  .milk-collection-card.milk-collection-card--farmer .milk-collection-actions-dropdown .dropdown-menu {
+    z-index: 1080;
+  }
+  .point-entries-table .smart-badge--print-summary,
+  .farmer-entries-table .smart-badge--print-summary,
+  .route-totals-table .smart-badge--print-summary {
+    border-color: #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+  }
+  .point-entries-table .smart-badge--print-summary:hover,
+  .point-entries-table .smart-badge--print-summary:focus,
+  .farmer-entries-table .smart-badge--print-summary:hover,
+  .farmer-entries-table .smart-badge--print-summary:focus,
+  .route-totals-table .smart-badge--print-summary:hover,
+  .route-totals-table .smart-badge--print-summary:focus {
+    border-color: #a5b4fc;
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+  .point-entries-table .smart-badge--print-receipts,
+  .farmer-entries-table .smart-badge--print-receipts,
+  .route-totals-table .smart-badge--print-receipts {
+    border-color: #6ee7b7;
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .point-entries-table .smart-badge--print-receipts:hover,
+  .point-entries-table .smart-badge--print-receipts:focus,
+  .farmer-entries-table .smart-badge--print-receipts:hover,
+  .farmer-entries-table .smart-badge--print-receipts:focus,
+  .route-totals-table .smart-badge--print-receipts:hover,
+  .route-totals-table .smart-badge--print-receipts:focus {
+    border-color: #34d399;
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .point-entries-table .smart-badge--print-goods,
+  .route-totals-table .smart-badge--print-goods {
+    border-color: #fcd34d;
+    background: #fffbeb;
+    color: #b45309;
+  }
+  .point-entries-table .smart-badge--print-goods:hover,
+  .point-entries-table .smart-badge--print-goods:focus,
+  .route-totals-table .smart-badge--print-goods:hover,
+  .route-totals-table .smart-badge--print-goods:focus {
+    border-color: #fbbf24;
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .milk-collection-filter-form .smart-dt-branch-filter {
+    width: auto;
+    min-width: 7.5rem;
+    max-width: 10rem;
+  }
+  .milk-collection-filter-form .milk-filter-date-wrap {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+  .milk-collection-filter-form .milk-filter-date-wrap .input-group {
+    flex-wrap: nowrap;
+    width: auto;
+  }
+  .milk-collection-filter-form .milk-filter-date-wrap .form-control,
+  .milk-collection-filter-form .milk-filter-date-wrap .fp-range-alt-input,
+  .milk-collection-filter-form .milk-filter-date-wrap input.js-datepicker-range-iso {
+    width: 12rem;
+    max-width: 12rem;
+    height: auto;
+    min-height: 0;
+    padding: 0.28rem 0.5rem;
+    font-size: 0.76rem;
+    border-radius: 0 999px 999px 0;
+    border-color: #e2e8f0;
+  }
+  .milk-collection-filter-form .milk-filter-date-wrap .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.76rem;
+  }
+  .milk-collection-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .server-list-pagination .pagination .page-link {
+    min-width: 2rem;
+    text-align: center;
+  }
+  .milk-collection-payment-col {
+    white-space: nowrap;
+    width: 1%;
+  }
+  tr.milk-collection-row--paid td {
+    background-color: #f0fdf4;
+  }
+  tr.milk-collection-row--unpaid td {
+    background-color: #fffbeb;
+  }
+  .reconcile-row--matched td {
+    background-color: #f0fdf4;
+  }
+  .reconcile-row--mismatch td,
+  .reconcile-row--missing_point td,
+  .reconcile-row--missing_farmers td {
+    background-color: #fffbeb;
+  }
+  .reconcile-diff--nonzero {
+    font-weight: 600;
+    color: #b45309;
+  }
+  .reconcile-status-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .point-reconcile-table .smart-badge--primary,
+  .farmer-entries-table .smart-badge--primary,
+  .point-entries-table .smart-badge--primary {
+    border-color: rgba(37, 99, 235, 0.25);
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+  }
+  .point-reconcile-table .smart-badge--primary:hover,
+  .point-reconcile-table .smart-badge--primary:focus,
+  .farmer-entries-table .smart-badge--primary:hover,
+  .farmer-entries-table .smart-badge--primary:focus,
+  .point-entries-table .smart-badge--primary:hover,
+  .point-entries-table .smart-badge--primary:focus {
+    border-color: rgba(37, 99, 235, 0.45);
+    background: rgba(37, 99, 235, 0.14);
+    color: #1e40af;
+  }
+  button.smart-badge--primary {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+  }
+  .point-reconcile-table tr.child td {
+    padding: 0.65rem 0.75rem;
+    background: #f8fafc;
+    border-top: 0;
+  }
+  .point-reconcile-table tr.child ul.dtr-details > li {
+    border-bottom-color: #e2e8f0;
+  }
+  .reconcile-choice-group .btn {
+    min-width: 0;
+    width: 2.85rem;
+    font-size: 0.68rem;
+    padding: 0.12rem 0.2rem;
+  }
+  .reconcile-choice-group .btn-check:checked + .btn-outline-secondary {
+    background-color: #0d9488;
+    border-color: #0d9488;
+    color: #fff;
+  }
+  .reconcile-kg-cell {
+    font-weight: 600;
+  }
+  .milk-collection-card tbody tr:hover.milk-collection-row--paid td,
+  .milk-collection-card tbody tr:hover.milk-collection-row--unpaid td {
+    filter: brightness(0.98);
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-3">
+    {% if perms.collections.view_milkcollection %}
+    <form method="get" action="{% url 'milk-collection-point-summary-receipt' %}" target="_blank" class="route-period-actions pt-0 pb-0" id="milk-summary-print-form">
+      <div class="field-wrap">
+        <label class="form-label small text-muted mb-1" for="milk-summary-route">Route</label>
+        <select name="route" class="form-select no-global-select2" id="milk-summary-route">
+          <option value="">Select route</option>
+          {% for ro in point_summary_routes %}
+          <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == point_summary_route %}selected{% endif %}>{{ ro.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label class="form-label small text-muted mb-1" for="milk-summary-branch">Branch</label>
+        <select name="branch" class="form-select no-global-select2" id="milk-summary-branch">
+          <option value="">Select branch</option>
+          {% for br in summary_branches %}
+          <option value="{{ br.id }}" {% if br.id|stringformat:'d' == point_summary_branch %}selected{% endif %}>{{ br.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label class="form-label small text-muted mb-1">Date range</label>
+        <div class="input-group route-period-date-group route-period-range-group">
+          <input
+            type="text"
+            class="form-control js-route-period-range"
+            value="{% if point_summary_from and point_summary_to %}{{ point_summary_from }} to {{ point_summary_to }}{% endif %}"
+            placeholder="Select date range"
+            autocomplete="off"
+            readonly
+          >
+          <input type="hidden" name="from" value="{{ point_summary_from }}">
+          <input type="hidden" name="to" value="{{ point_summary_to }}">
+          <span class="input-group-text js-open-route-range"><i class="bi bi-calendar3"></i></span>
+        </div>
+      </div>
+      <div class="route-period-actions__prints">
+        <button type="submit" class="smart-badge smart-badge--success" data-requires="route" disabled>Point Summary</button>
+        <button type="submit" class="smart-badge smart-badge--primary" formaction="{% url 'milk-collection-route-summary-receipt' %}" data-requires="route" disabled>Route Summary</button>
+        <button type="submit" class="smart-badge smart-badge--secondary" formaction="{% url 'milk-collection-branch-summary-receipt' %}" data-requires="branch" disabled>Branch Summary</button>
+        <button type="submit" class="smart-badge smart-badge--dark" formaction="{% url 'milk-collection-day-summary-receipt' %}" data-requires="branch-day" disabled>Day Summary</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-table milk-collection-card smart-list-card{% if tab == 'route' %} milk-collection-card--route{% elif tab == 'point' %} milk-collection-card--point{% elif tab == 'farmer' %} milk-collection-card--farmer{% elif tab == 'reconcile' %} milk-collection-card--reconcile{% endif %}">
+  <div class="card-header bg-transparent border-bottom-0 pb-0 pt-3 px-3">
+    <ul class="nav nav-tabs milk-collection-tabs border-0 gap-1 flex-wrap" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'route' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}{% if milk_filter_query %}?{{ milk_filter_query }}&{% else %}?{% endif %}tab=route"
+          role="tab"
+        >Route</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'point' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}{% if milk_filter_query %}?{{ milk_filter_query }}&{% else %}?{% endif %}tab=point"
+          role="tab"
+        >Collection point</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'farmer' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}{% if milk_filter_query %}?{{ milk_filter_query }}&{% else %}?{% endif %}tab=farmer"
+          role="tab"
+        >Farmer</a>
+      </li>
+      {% if can_view_reconcile %}
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'reconcile' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}{% if milk_filter_query %}?{{ milk_filter_query }}&{% else %}?{% endif %}tab=reconcile"
+          role="tab"
+        >Point reconcile</a>
+      </li>
+      {% endif %}
+    </ul>
+    {% if tab == 'point' or tab == 'farmer' or tab == 'reconcile' %}
+    <div class="milk-collection-branch-filter-row" role="toolbar" aria-label="Branch filter">
+      {% include "collections/_milk_collection_branch_filter_field.html" with filter_form_id="milk-collection-filter-form" %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-body table-wrap">
+    {% if tab == 'route' %}
+    {% with q=request.GET.q %}
+    <div id="milkCollectionDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter milk collections">
+      {% include "collections/_milk_collection_filter_form.html" %}
+    </div>
+    {% endwith %}
+    <table class="table table-hover datatable datatable-smart smart-dt-table route-totals-table mb-0 w-100" data-page-length="25" data-empty-table="No collection point totals for this search." data-filters-target="milkCollectionDtFilters" data-smart-order="0,desc">
+      <thead>
+        <tr>
+          <th class="min-tablet-l">Date</th>
+          <th class="all">Branch</th>
+          <th class="min-tablet-l">Route</th>
+          <th class="min-tablet-l text-end">Kg</th>
+          <th class="min-tablet-l text-end">Liters</th>
+          <th class="all text-end text-nowrap">Print</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in route_rows %}
+        <tr>
+          <td class="route-date-col min-tablet-l" data-order="{{ row.date|date:'Y-m-d' }}">{{ row.date|date:"Y-m-d" }}</td>
+          <td class="all">{{ row.branch_name|default:"—" }}</td>
+          <td class="min-tablet-l"><span class="smart-dt-name-text">{{ row.route_name|default:"—" }}</span></td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ row.total_kg|default:'0' }}">{{ row.total_kg }}</td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ row.total_liters|default:'0' }}">{{ row.total_liters }}</td>
+          <td class="all text-end text-nowrap">
+            {% if perms.collections.view_milkcollection %}
+            <div class="smart-badge-row" role="group" aria-label="Print options">
+              <a
+                href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=summary"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="smart-badge smart-badge--print-summary"
+              >Summary</a>
+              <a
+                href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=receipts"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="smart-badge smart-badge--print-receipts"
+              >Receipts</a>
+              <a
+                href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=receipts&include_goods=1"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="smart-badge smart-badge--print-goods"
+                title="Per-point slips including farmer goods issued to each center this date"
+              >+Goods</a>
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "includes/_kg_liters_table_footer.html" with totals=route_table_totals label_colspan=3 %}
+    </table>
+
+    {% elif tab == 'reconcile' %}
+    {% csrf_token %}
+    {% with q=request.GET.q %}
+    <div id="milkCollectionDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter reconciliation rows">
+      {% include "collections/_milk_collection_filter_form.html" with branch_filter_in_header=True %}
+    </div>
+    {% endwith %}
+    <div class="point-reconcile-wrap">
+    <table class="table table-hover datatable datatable-smart smart-dt-table point-reconcile-table mb-0 w-100" data-page-length="25" data-empty-table="No reconciliation rows for this search." data-filters-target="milkCollectionDtFilters" data-smart-order="0,desc">
+      <thead>
+        <tr>
+          <th class="all reconcile-date-col">Date</th>
+          <th class="min-tablet-l">Branch</th>
+          <th class="min-tablet-l">Route</th>
+          <th class="all">Point</th>
+          <th class="min-tablet-l text-end">Pt kg</th>
+          <th class="min-tablet-l text-end">Fm kg</th>
+          <th class="min-tablet-l text-end">Diff</th>
+          <th class="all">Reconcile</th>
+          <th class="all text-end">Rec. kg</th>
+          <th class="min-tablet-l">Status</th>
+          <th class="min-desktop all text-end text-nowrap">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in reconcile_rows %}
+        <tr class="reconcile-row--{{ row.status }}" data-reconcile-row="{{ row.collection_point_id }}-{{ row.date|date:'Ymd' }}">
+          <td class="reconcile-date-col all" data-order="{{ row.date|date:'Y-m-d' }}">{{ row.date|date:"Y-m-d" }}</td>
+          <td class="min-tablet-l">{{ row.branch_name }}</td>
+          <td class="min-tablet-l"><span class="smart-dt-name-text">{{ row.route_label }}</span></td>
+          <td class="all"><span class="smart-dt-name-text">{{ row.point_label }}</span></td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ row.point_kg|default:'0' }}">{{ row.point_kg }}</td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ row.farmer_kg|default:'0' }}">{{ row.farmer_kg }}</td>
+          <td class="min-tablet-l dt-num text-end{% if row.diff_kg != 0 %} reconcile-diff--nonzero{% endif %}" data-order="{{ row.diff_kg|default:'0' }}">{{ row.diff_kg }}</td>
+          <td>
+            {% if can_set_reconcile_choice %}
+            <div class="btn-group btn-group-sm reconcile-choice-group" role="group" aria-label="Reconcile source">
+              <input
+                type="radio"
+                class="btn-check js-reconcile-choice"
+                name="reconcile_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                id="reconcile_point_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                value="point"
+                data-date="{{ row.date|date:'Y-m-d' }}"
+                data-route="{{ row.route_id }}"
+                data-collection-point="{{ row.collection_point_id }}"
+                data-redirect-query="{{ request.GET.urlencode }}"
+                {% if row.reconcile_source == 'point' %}checked{% endif %}
+              >
+              <label class="btn btn-outline-secondary" for="reconcile_point_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}">Point</label>
+              <input
+                type="radio"
+                class="btn-check js-reconcile-choice"
+                name="reconcile_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                id="reconcile_farmer_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                value="farmer"
+                data-date="{{ row.date|date:'Y-m-d' }}"
+                data-route="{{ row.route_id }}"
+                data-collection-point="{{ row.collection_point_id }}"
+                data-redirect-query="{{ request.GET.urlencode }}"
+                {% if row.reconcile_source == 'farmer' %}checked{% endif %}
+              >
+              <label class="btn btn-outline-secondary" for="reconcile_farmer_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}">Farmer</label>
+            </div>
+            {% else %}
+            {{ row.reconcile_source|capfirst }}
+            {% endif %}
+          </td>
+          <td class="text-end reconcile-kg-cell dt-num">{{ row.reconcile_kg }}</td>
+          <td>
+            {% if row.status == 'matched' %}
+            <span class="badge text-bg-success-subtle text-success reconcile-status-badge">Matched</span>
+            {% elif row.status == 'missing_point' %}
+            <span class="badge text-bg-danger-subtle text-danger reconcile-status-badge">Missing point</span>
+            {% elif row.status == 'missing_farmers' %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis reconcile-status-badge">Missing farmers</span>
+            {% else %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis reconcile-status-badge">Mismatch</span>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if can_sync_point_totals and row.status != 'matched' %}
+            <form method="post" action="{% url 'milk-collection-reconcile-sync' %}" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="date" value="{{ row.date|date:'Y-m-d' }}">
+              <input type="hidden" name="route" value="{{ row.route_id }}">
+              <input type="hidden" name="collection_point" value="{{ row.collection_point_id }}">
+              <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+              <button
+                type="submit"
+                class="smart-badge smart-badge--primary js-swal-submit-trigger"
+                title="Overwrite the collection point total with the farmer total for this date. The previous point kg is saved so a superuser can reverse."
+                data-bs-toggle="tooltip"
+                data-bs-title="Overwrite the collection point total with the farmer total for this date. The previous point kg is saved so a superuser can reverse."
+                data-swal-title="Sync point from farmers?"
+                data-swal-text="Set the collection point kg to the farmer total ({{ row.farmer_kg }} kg) for this date and route. The current point kg will be saved so a superuser can reverse."
+              >Sync</button>
+            </form>
+            {% endif %}
+            {% if user.is_superuser and row.can_reverse_sync %}
+            <form method="post" action="{% url 'milk-collection-reconcile-reverse-sync' %}" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="date" value="{{ row.date|date:'Y-m-d' }}">
+              <input type="hidden" name="route" value="{{ row.route_id }}">
+              <input type="hidden" name="collection_point" value="{{ row.collection_point_id }}">
+              <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+              <button
+                type="submit"
+                class="smart-badge smart-badge--print-summary js-swal-submit-trigger"
+                title="Restore the point kg from before the last Sync ({{ row.sync_previous_kg }} kg)."
+                data-bs-toggle="tooltip"
+                data-bs-title="Restore the point kg from before the last Sync ({{ row.sync_previous_kg }} kg)."
+                data-swal-title="Reverse sync?"
+                data-swal-text="Restore the collection point kg to {{ row.sync_previous_kg }} kg (value before the last Sync)."
+              >Reverse</button>
+            </form>
+            {% endif %}
+            {% if not can_sync_point_totals or row.status == 'matched' %}
+              {% if not user.is_superuser or not row.can_reverse_sync %}—{% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if reconcile_table_totals %}
+      <tfoot>
+        <tr>
+          <th colspan="4" class="text-end">Totals</th>
+          <th class="text-end dt-foot-total">{{ reconcile_table_totals.point_kg }}</th>
+          <th class="text-end dt-foot-total">{{ reconcile_table_totals.farmer_kg }}</th>
+          <th class="text-end dt-foot-total{% if reconcile_table_totals.diff_kg != 0 %} reconcile-diff--nonzero{% endif %}">{{ reconcile_table_totals.diff_kg }}</th>
+          <th></th>
+          <th class="text-end dt-foot-total">{{ reconcile_table_totals.reconcile_kg }}</th>
+          <th colspan="2"></th>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+    </div>
+
+    {% elif tab == 'point' %}
+    {% with q=request.GET.q %}
+    <div id="milkCollectionDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter and manage milk collections">
+      {% include "collections/_milk_collection_filter_form.html" with branch_filter_in_header=True %}
+      {% if user.is_superuser %}
+      <div class="milk-point-superuser-toolbar" id="milk-point-superuser-toolbar">
+        <button type="submit" form="milk-collection-bulk-form" class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger" name="bulk_action" value="delete_selected" hidden data-swal-title="Delete selected records?" data-swal-text="All checked milk collection rows on this page will be removed.">Delete selected</button>
+        <button type="submit" form="milk-collection-bulk-form" class="btn btn-sm btn-danger js-swal-submit-trigger" name="bulk_action" value="delete_all" data-swal-title="Delete all filtered milk collection records?" data-swal-text="This removes every row matching your current filters (superuser only).">Delete all</button>
+        <select id="milk-transfer-branch" class="form-select form-select-sm no-global-select2" aria-label="Transfer to branch">
+          <option value="">Transfer branch</option>
+          {% for b in transfer_branches %}
+          <option value="{{ b.pk }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <select id="milk-transfer-point" class="form-select form-select-sm no-global-select2" aria-label="Collection point">
+          <option value="">Transfer point</option>
+          {% for p in transfer_points %}
+          <option value="{{ p.pk }}" data-branch-id="{{ p.route.branch_id }}">{{ p.number }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="milk-transfer-submit" disabled>Transfer selected</button>
+      </div>
+      {% endif %}
+    </div>
+    {% endwith %}
+    <form method="post" id="milk-collection-bulk-form" class="js-swal-submit-guard milk-collection-bulk-form">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+    <table class="table table-hover datatable datatable-smart datatable-server-paged smart-dt-table point-entries-table mb-0 w-100" data-page-length="25" data-empty-table="No collection point entries for this search." data-filters-target="milkCollectionDtFilters" data-smart-order="{% if user.is_superuser %}1{% else %}0{% endif %},desc">
+      <thead>
+        <tr>
+          {% if user.is_superuser %}
+          <th class="all"><input type="checkbox" class="form-check-input custom-check js-select-all-rows" aria-label="Select all rows"></th>
+          {% endif %}
+          <th class="min-tablet-l">Date</th>
+          <th class="all">Branch</th>
+          <th class="min-tablet-l">Route</th>
+          <th class="min-tablet-l">Point</th>
+          <th class="min-tablet-l text-end">Kg</th>
+          <th class="min-tablet-l text-end">Liters</th>
+          {% if can_view_payment_status %}<th class="min-tablet-l">Payment</th>{% endif %}
+          {% if can_view_collection_user %}<th class="min-tablet-l">User</th>{% endif %}
+          <th class="all text-end text-nowrap">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr{% if can_view_payment_status %} class="{% if o.is_paid %}milk-collection-row--paid{% else %}milk-collection-row--unpaid{% endif %}"{% endif %}>
+          {% if user.is_superuser %}
+          <td class="all"><input type="checkbox" class="form-check-input custom-check js-row-select" name="selected_ids" value="{{ o.pk }}" aria-label="Select row"></td>
+          {% endif %}
+          <td class="point-date-col min-tablet-l" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"Y-m-d" }}</td>
+          <td class="all">{% if o.branch_id and o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td class="min-tablet-l"><span class="smart-dt-name-text">{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</span></td>
+          <td class="min-tablet-l">
+            {% if o.source == 'point' and o.collection_point_id and o.collection_point %}
+              <span class="smart-dt-name-text">{{ o.collection_point.number }} — {{ o.collection_point.name }}</span>
+            {% elif o.source == 'farmer' and o.farmer_id and o.farmer %}
+              {{ o.farmer.common_name|default:o.farmer.full_name }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          {% include "includes/_inline_qty_cell.html" with field="kg" value=o.kg record_id=o.pk url_name="milk-collection-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" min-tablet-l dt-num" %}
+          {% include "includes/_inline_qty_cell.html" with field="liters" value=o.liters record_id=o.pk url_name="milk-collection-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" min-tablet-l dt-num" %}
+          {% if can_view_payment_status %}{% include "collections/_milk_collection_payment_cell.html" %}{% endif %}
+          {% if can_view_collection_user %}<td class="min-tablet-l">{{ o.created_by }}</td>{% endif %}
+          <td class="all text-end text-nowrap">
+            {% if can_use_point_row_menu %}
+            {% include "collections/_milk_collection_point_list_actions_dropdown.html" with o=o %}
+            {% else %}
+            {% include "collections/_milk_collection_point_list_actions_badges.html" with o=o %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "includes/_kg_liters_table_footer.html" with totals=list_table_totals label_colspan=point_list_label_colspan trailing_colspan=point_list_trailing_colspan %}
+    </table>
+    <input type="hidden" name="one_id" id="milk-one-id" value="">
+    </form>
+
+    {% else %}
+    {% with q=request.GET.q %}
+    <div id="milkCollectionDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter and manage milk collections">
+      {% include "collections/_milk_collection_filter_form.html" with branch_filter_in_header=True %}
+      {% if user.is_superuser %}
+      <div class="milk-point-superuser-toolbar" id="milk-farmer-superuser-toolbar">
+        <button type="submit" form="milk-collection-farmer-bulk-form" class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger" name="bulk_action" value="delete_selected" hidden data-swal-title="Delete selected records?" data-swal-text="All checked milk collection rows on this page will be removed.">Delete selected</button>
+        <button type="submit" form="milk-collection-farmer-bulk-form" class="btn btn-sm btn-danger js-swal-submit-trigger" name="bulk_action" value="delete_all" data-swal-title="Delete all filtered milk collection records?" data-swal-text="This removes every row matching your current filters (superuser only).">Delete all</button>
+      </div>
+      {% endif %}
+    </div>
+    {% endwith %}
+    <form method="post" id="milk-collection-farmer-bulk-form" class="js-swal-submit-guard milk-collection-bulk-form">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+    <table class="table table-hover datatable datatable-smart datatable-server-paged smart-dt-table farmer-entries-table mb-0 w-100" data-page-length="25" data-empty-table="No farmer entries for this search." data-filters-target="milkCollectionDtFilters" data-smart-order="{% if user.is_superuser %}1{% else %}0{% endif %},desc">
+      <thead>
+        <tr>
+          {% if user.is_superuser %}
+          <th class="all"><input type="checkbox" class="form-check-input custom-check js-select-all-rows" aria-label="Select all rows"></th>
+          {% endif %}
+          <th class="min-tablet-l">Date</th>
+          <th class="all">Branch</th>
+          <th class="min-tablet-l">Route</th>
+          <th class="min-tablet-l">Farmer</th>
+          <th class="min-tablet-l text-end">Kg</th>
+          <th class="min-tablet-l text-end">Liters</th>
+          {% if can_view_payment_status %}<th class="min-tablet-l">Payment</th>{% endif %}
+          {% if can_view_collection_user %}<th class="min-tablet-l">User</th>{% endif %}
+          <th class="all text-end text-nowrap">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr{% if can_view_payment_status %} class="{% if o.is_paid %}milk-collection-row--paid{% else %}milk-collection-row--unpaid{% endif %}"{% endif %}>
+          {% if user.is_superuser %}
+          <td class="all"><input type="checkbox" class="form-check-input custom-check js-row-select" name="selected_ids" value="{{ o.pk }}" aria-label="Select row"></td>
+          {% endif %}
+          <td class="list-date-col min-tablet-l" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"Y-m-d" }}</td>
+          <td class="all">{% if o.branch_id and o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td class="min-tablet-l"><span class="smart-dt-name-text">{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</span></td>
+          <td class="min-tablet-l">
+            {% if o.source == 'farmer' and o.farmer_id and o.farmer %}
+              <span class="smart-dt-name-text">{{ o.farmer.common_name|default:o.farmer.full_name }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          {% include "includes/_inline_qty_cell.html" with field="kg" value=o.kg record_id=o.pk url_name="milk-collection-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" min-tablet-l dt-num" %}
+          {% include "includes/_inline_qty_cell.html" with field="liters" value=o.liters record_id=o.pk url_name="milk-collection-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" min-tablet-l dt-num" %}
+          {% if can_view_payment_status %}{% include "collections/_milk_collection_payment_cell.html" %}{% endif %}
+          {% if can_view_collection_user %}<td class="min-tablet-l">{{ o.created_by }}</td>{% endif %}
+          <td class="all text-end text-nowrap">
+            {% if can_use_point_row_menu %}
+            {% include "collections/_milk_collection_farmer_list_actions_dropdown.html" with o=o %}
+            {% else %}
+            {% include "collections/_milk_collection_farmer_list_actions_badges.html" with o=o %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "includes/_kg_liters_table_footer.html" with totals=list_table_totals label_colspan=point_list_label_colspan trailing_colspan=point_list_trailing_colspan %}
+    </table>
+    <input type="hidden" name="one_id" id="milk-one-id-farmer" value="">
+    </form>
+    {% endif %}
+
+  </div>
+  {% if tab != 'route' %}
+  {% include "includes/_server_list_pagination.html" %}
+  {% endif %}
+</div>
+{% if tab != 'route' and user.is_superuser %}
+{% include "includes/_inline_qty_editor.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if tab != 'route' and user.is_superuser %}
+{% include "includes/_inline_qty_script.html" %}
+{% endif %}
+{% if tab == 'point' and user.is_superuser %}
+<script>
+(function () {
+  var bulkForm = document.querySelector(".milk-collection-bulk-form");
+  var transferBtn = document.getElementById("milk-transfer-submit");
+  var branchSel = document.getElementById("milk-transfer-branch");
+  var pointSel = document.getElementById("milk-transfer-point");
+  if (!bulkForm || !transferBtn || !pointSel) return;
+
+  var csrfInput = bulkForm.querySelector('input[name="csrfmiddlewaretoken"]');
+  var csrfToken = csrfInput ? csrfInput.value : "";
+  var redirectQuery = bulkForm.querySelector('input[name="redirect_query"]');
+  var tabInput = bulkForm.querySelector('input[name="tab"]');
+
+  function selectedIds() {
+    return Array.prototype.map.call(
+      bulkForm.querySelectorAll(".js-row-select:checked"),
+      function (cb) { return cb.value; }
+    );
+  }
+
+  function filterTransferPoints() {
+    var branchId = branchSel ? (branchSel.value || "") : "";
+    Array.prototype.forEach.call(pointSel.options, function (opt) {
+      if (!opt.value) return;
+      var optBranch = opt.getAttribute("data-branch-id") || "";
+      var show = !branchId || optBranch === branchId;
+      opt.hidden = !show;
+      opt.disabled = !show;
+    });
+    if (pointSel.selectedOptions.length && pointSel.selectedOptions[0].disabled) {
+      pointSel.value = "";
+    }
+  }
+
+  function syncTransferButton() {
+    var hasRows = selectedIds().length > 0;
+    var hasTarget = !!pointSel.value;
+    transferBtn.disabled = !(hasRows && hasTarget);
+  }
+
+  if (branchSel) {
+    branchSel.addEventListener("change", function () {
+      filterTransferPoints();
+      syncTransferButton();
+    });
+  }
+  pointSel.addEventListener("change", syncTransferButton);
+
+  bulkForm.querySelectorAll(".js-row-select, .js-select-all-rows").forEach(function (el) {
+    el.addEventListener("change", syncTransferButton);
+  });
+
+  filterTransferPoints();
+  syncTransferButton();
+
+  transferBtn.addEventListener("click", function () {
+    var ids = selectedIds();
+    var targetId = pointSel.value;
+    if (!ids.length || !targetId) return;
+
+    var targetLabel = pointSel.options[pointSel.selectedIndex].textContent.trim();
+    var confirmText = "Move " + ids.length + " collection point row(s) to " + targetLabel + "?";
+    var proceed = function () {
+      var body = new FormData();
+      body.append("csrfmiddlewaretoken", csrfToken);
+      body.append("target_collection_point", targetId);
+      if (redirectQuery) body.append("redirect_query", redirectQuery.value);
+      if (tabInput) body.append("tab", tabInput.value);
+      ids.forEach(function (id) { body.append("selected_ids", id); });
+
+      transferBtn.disabled = true;
+      fetch("{% url 'milk-collection-transfer-point' %}", {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (resp) {
+          if (resp.redirected) {
+            window.location.href = resp.url;
+            return;
+          }
+          if (!resp.ok) throw new Error("Transfer failed.");
+          window.location.reload();
+        })
+        .catch(function () {
+          if (typeof window.appAlert === "function") {
+            window.appAlert("Could not transfer selected collections.", {
+              icon: "error",
+              title: "Transfer failed",
+            });
+          } else {
+            window.alert("Could not transfer selected collections.");
+          }
+          syncTransferButton();
+        });
+    };
+
+    if (typeof window.appConfirm === "function") {
+      window
+        .appConfirm(confirmText, {
+          title: "Transfer collections?",
+          confirmText: "Transfer",
+          cancelText: "Cancel",
+          icon: "question",
+        })
+        .then(function (ok) {
+          if (ok) proceed();
+        });
+    } else if (typeof Swal !== "undefined") {
+      Swal.fire({
+        title: "Transfer collections?",
+        text: confirmText,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Transfer",
+        confirmButtonColor: "#059669",
+      }).then(function (res) {
+        if (res.isConfirmed) proceed();
+      });
+    } else if (window.confirm(confirmText)) {
+      proceed();
+    }
+  });
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  var wrappers = document.querySelectorAll("form");
+  wrappers.forEach(function (form) {
+    var master = form.querySelector(".js-select-all-rows");
+    var rows = form.querySelectorAll(".js-row-select");
+    var deleteBtn = form.querySelector(".delete-selected-btn");
+    if (!master) return;
+    function syncBulkDeleteVisibility() {
+      if (!deleteBtn) return;
+      var anyChecked = false;
+      rows.forEach(function (cb) { if (cb.checked) anyChecked = true; });
+      deleteBtn.hidden = !anyChecked;
+    }
+    master.addEventListener("change", function () {
+      rows.forEach(function (cb) {
+        cb.checked = master.checked;
+      });
+      syncBulkDeleteVisibility();
+    });
+    rows.forEach(function (cb) {
+      cb.addEventListener("change", syncBulkDeleteVisibility);
+    });
+    syncBulkDeleteVisibility();
+  });
+
+  document.querySelectorAll(".js-route-period-range").forEach(function (input) {
+    if (typeof flatpickr === "undefined" || input._flatpickr) return;
+    var group = input.closest(".route-period-date-group");
+    if (!group) return;
+    var fromInput = group.querySelector('input[name="from"]');
+    var toInput = group.querySelector('input[name="to"]');
+    if (!fromInput || !toInput) return;
+    var defaultDate = [];
+    if (fromInput.value) defaultDate.push(fromInput.value);
+    if (toInput.value) defaultDate.push(toInput.value);
+
+    flatpickr(input, {
+      mode: "range",
+      dateFormat: "Y-m-d",
+      allowInput: false,
+      disableMobile: true,
+      defaultDate: defaultDate.length ? defaultDate : undefined,
+      onChange: function (selectedDates, dateStr, instance) {
+        if (selectedDates.length === 2) {
+          fromInput.value = instance.formatDate(selectedDates[0], "Y-m-d");
+          toInput.value = instance.formatDate(selectedDates[1], "Y-m-d");
+          input.setCustomValidity("");
+        } else {
+          fromInput.value = "";
+          toInput.value = "";
+          input.setCustomValidity("Select a date range.");
+        }
+        if (typeof window.updateSummaryPrintButtons === "function") {
+          window.updateSummaryPrintButtons();
+        }
+      },
+      onClose: function () {
+        if (!fromInput.value || !toInput.value) {
+          input.setCustomValidity("Select a date range.");
+        } else {
+          input.setCustomValidity("");
+        }
+        if (typeof window.updateSummaryPrintButtons === "function") {
+          window.updateSummaryPrintButtons();
+        }
+      },
+    });
+  });
+
+  function updateSummaryPrintButtons() {
+    var form = document.getElementById("milk-summary-print-form");
+    if (!form) return;
+    var routeSel = form.querySelector('[name="route"]');
+    var branchSel = form.querySelector('[name="branch"]');
+    var fromInput = form.querySelector('input[name="from"]');
+    var toInput = form.querySelector('input[name="to"]');
+    var hasRange = !!(fromInput && toInput && fromInput.value && toInput.value);
+    var hasRoute = !!(routeSel && routeSel.value);
+    var hasBranch = !!(branchSel && branchSel.value);
+    form.querySelectorAll('[data-requires="route"]').forEach(function (btn) {
+      btn.disabled = !(hasRange && hasRoute);
+    });
+    form.querySelectorAll('[data-requires="branch"]').forEach(function (btn) {
+      btn.disabled = !(hasRange && hasBranch);
+    });
+    var fromOnly = !!(fromInput && fromInput.value);
+    form.querySelectorAll('[data-requires="branch-day"]').forEach(function (btn) {
+      btn.disabled = !(fromOnly && hasBranch);
+    });
+  }
+  window.updateSummaryPrintButtons = updateSummaryPrintButtons;
+
+  var summaryForm = document.getElementById("milk-summary-print-form");
+  if (summaryForm) {
+    var summaryRoute = summaryForm.querySelector('[name="route"]');
+    var summaryBranch = summaryForm.querySelector('[name="branch"]');
+    if (summaryRoute) {
+      summaryRoute.addEventListener("change", function () {
+        var opt = summaryRoute.options[summaryRoute.selectedIndex];
+        var branchId = opt ? opt.getAttribute("data-branch-id") : "";
+        if (branchId && summaryBranch) {
+          summaryBranch.value = branchId;
+        }
+        updateSummaryPrintButtons();
+      });
+    }
+    if (summaryBranch) {
+      summaryBranch.addEventListener("change", function () {
+        if (summaryRoute && summaryRoute.value && summaryBranch.value) {
+          var opt = summaryRoute.options[summaryRoute.selectedIndex];
+          var routeBranchId = opt ? opt.getAttribute("data-branch-id") : "";
+          if (routeBranchId && routeBranchId !== summaryBranch.value) {
+            summaryRoute.value = "";
+          }
+        }
+        updateSummaryPrintButtons();
+      });
+    }
+    updateSummaryPrintButtons();
+  }
+
+  document.querySelectorAll("form.route-period-actions").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      var rangeInput = form.querySelector(".js-route-period-range");
+      var fromInput = form.querySelector('input[name="from"]');
+      var toInput = form.querySelector('input[name="to"]');
+      if (!rangeInput || !fromInput || !toInput) return;
+
+      var submitter = e.submitter;
+      var requires = submitter ? submitter.getAttribute("data-requires") : "";
+      if (requires === "branch-day") {
+        if (!fromInput.value) {
+          e.preventDefault();
+          rangeInput.setCustomValidity("Select a date (start of range is used).");
+          rangeInput.reportValidity();
+          if (rangeInput._flatpickr) rangeInput._flatpickr.open();
+          return;
+        }
+        rangeInput.setCustomValidity("");
+      } else if (!fromInput.value || !toInput.value) {
+        e.preventDefault();
+        rangeInput.setCustomValidity("Date range is required.");
+        rangeInput.reportValidity();
+        if (rangeInput._flatpickr) rangeInput._flatpickr.open();
+        return;
+      } else {
+        rangeInput.setCustomValidity("");
+      }
+
+      var routeSel = form.querySelector('[name="route"]');
+      var branchSel = form.querySelector('[name="branch"]');
+      if (routeSel) routeSel.setCustomValidity("");
+      if (branchSel) branchSel.setCustomValidity("");
+      if (requires === "route") {
+        if (!routeSel || !routeSel.value) {
+          e.preventDefault();
+          if (routeSel) {
+            routeSel.setCustomValidity("Select a route.");
+            routeSel.reportValidity();
+          }
+          return;
+        }
+      } else if (requires === "branch") {
+        if (!branchSel || !branchSel.value) {
+          e.preventDefault();
+          if (branchSel) {
+            branchSel.setCustomValidity("Select a branch.");
+            branchSel.reportValidity();
+          }
+          return;
+        }
+      } else if (requires === "branch-day") {
+        if (!branchSel || !branchSel.value) {
+          e.preventDefault();
+          if (branchSel) {
+            branchSel.setCustomValidity("Select a branch.");
+            branchSel.reportValidity();
+          }
+          return;
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll(".route-period-date-group .js-open-route-range").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var group = btn.closest(".route-period-date-group");
+      if (!group) return;
+      var input = group.querySelector("input.js-route-period-range");
+      if (!input) return;
+      input.focus();
+      if (input._flatpickr) input._flatpickr.open();
+    });
+  });
+
+  document.querySelectorAll(".js-server-page-length").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      var params = new URLSearchParams(window.location.search);
+      params.set("per_page", sel.value);
+      if (sel.value === "all") {
+        params.delete("page");
+      } else {
+        params.set("page", "1");
+      }
+      window.location.search = params.toString();
+    });
+  });
+
+  var reconcileChoiceUrl = "{% url 'milk-collection-reconcile-choice' %}";
+  var csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  var csrfToken = csrfInput ? csrfInput.value : "";
+
+  if (window.bootstrap && bootstrap.Tooltip) {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+      bootstrap.Tooltip.getOrCreateInstance(el);
+    });
+  }
+
+  document.querySelectorAll(".js-reconcile-choice").forEach(function (input) {
+    input.addEventListener("change", function () {
+      if (!input.checked) return;
+      var tr = input.closest("tr");
+      var kgCell = tr ? tr.querySelector(".reconcile-kg-cell") : null;
+      var body = new FormData();
+      body.append("csrfmiddlewaretoken", csrfToken);
+      body.append("date", input.dataset.date || "");
+      body.append("route", input.dataset.route || "");
+      body.append("collection_point", input.dataset.collectionPoint || "");
+      body.append("source", input.value);
+      body.append("redirect_query", input.dataset.redirectQuery || "");
+      fetch(reconcileChoiceUrl, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        body: body,
+        credentials: "same-origin",
+      })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            if (typeof window.appAlert === "function") {
+              window.appAlert(data.error || "Could not save reconcile choice.", {
+                icon: "error",
+                title: "Could not save",
+              });
+            } else {
+              window.alert(data.error || "Could not save reconcile choice.");
+            }
+            return;
+          }
+          if (kgCell && data.row && data.row.reconcile_kg != null) {
+            kgCell.textContent = data.row.reconcile_kg;
+          }
+        })
+        .catch(function () {
+          if (typeof window.appAlert === "function") {
+            window.appAlert("Could not save reconcile choice.", {
+              icon: "error",
+              title: "Could not save",
+            });
+          } else {
+            window.alert("Could not save reconcile choice.");
+          }
+        });
+    });
+  });
+
+  (function () {
+    var filterForm = document.getElementById("milk-collection-filter-form");
+    if (!filterForm) return;
+    var branchSel = document.getElementById("milk-list-branch");
+    var routeSel = filterForm.querySelector("#milk-list-route");
+    var pointSel = filterForm.querySelector("#milk-list-point");
+    var suppressSubmit = false;
+
+    function submitMilkFilters() {
+      if (suppressSubmit) return;
+      var pageInput = filterForm.querySelector('input[name="page"]');
+      if (pageInput) pageInput.remove();
+      filterForm.requestSubmit();
+    }
+
+    function selectedBranchId() {
+      return branchSel ? String(branchSel.value || "") : "";
+    }
+
+    function syncRoutePointOptions() {
+      var branchId = selectedBranchId();
+      var routeId = routeSel ? String(routeSel.value || "") : "";
+      if (routeSel) {
+        Array.prototype.forEach.call(routeSel.options, function (opt) {
+          if (!opt.value) return;
+          var bid = String(opt.getAttribute("data-branch-id") || "");
+          var show = !branchId || bid === branchId;
+          opt.hidden = !show;
+          opt.disabled = !show;
+        });
+        if (routeSel.selectedOptions.length && routeSel.selectedOptions[0].hidden) {
+          routeSel.value = "";
+          routeId = "";
+        }
+      }
+      if (pointSel) {
+        Array.prototype.forEach.call(pointSel.options, function (opt) {
+          if (!opt.value) return;
+          var bid = String(opt.getAttribute("data-branch-id") || "");
+          var rid = String(opt.getAttribute("data-route-id") || "");
+          var branchOk = !branchId || bid === branchId;
+          var routeOk = !routeId || rid === routeId;
+          var show = branchOk && routeOk;
+          opt.hidden = !show;
+          opt.disabled = !show;
+        });
+        if (pointSel.selectedOptions.length && pointSel.selectedOptions[0].hidden) {
+          pointSel.value = "";
+        }
+      }
+    }
+
+    function onRouteChange() {
+      if (pointSel && pointSel.value) {
+        var pointOpt = pointSel.selectedOptions[0];
+        var pointRoute = pointOpt ? String(pointOpt.getAttribute("data-route-id") || "") : "";
+        var routeId = routeSel ? String(routeSel.value || "") : "";
+        if (routeId && pointRoute && pointRoute !== routeId) {
+          pointSel.value = "";
+        }
+      }
+      syncRoutePointOptions();
+      submitMilkFilters();
+    }
+
+    if (branchSel) {
+      branchSel.addEventListener("change", function () {
+        if (routeSel) routeSel.value = "";
+        if (pointSel) pointSel.value = "";
+        syncRoutePointOptions();
+        submitMilkFilters();
+      });
+    }
+    if (routeSel) {
+      routeSel.addEventListener("change", onRouteChange);
+    }
+    if (pointSel) {
+      pointSel.addEventListener("change", submitMilkFilters);
+    }
+    filterForm.querySelectorAll("#milk-reconcile-status, #milk-list-payment-status").forEach(function (sel) {
+      sel.addEventListener("change", submitMilkFilters);
+    });
+
+    var rangeInput = filterForm.querySelector("#milk-list-date-range");
+    if (rangeInput) {
+      window.setTimeout(function () {
+        var fp = rangeInput._flatpickrInstance || rangeInput._flatpickr;
+        if (!fp) return;
+        var fromEl = filterForm.querySelector('input[name="date_from"]');
+        var toEl = filterForm.querySelector('input[name="date_to"]');
+        var dateSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+        var prevOnChange = fp.config.onChange;
+        fp.set("onChange", function (selectedDates, dateStr, instance) {
+          if (typeof prevOnChange === "function") {
+            prevOnChange(selectedDates, dateStr, instance);
+          } else if (Array.isArray(prevOnChange)) {
+            prevOnChange.forEach(function (fn) { fn(selectedDates, dateStr, instance); });
+          }
+          var nextSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+          if (nextSnapshot !== dateSnapshot && (selectedDates.length === 2 || selectedDates.length === 0)) {
+            dateSnapshot = nextSnapshot;
+            submitMilkFilters();
+          }
+        });
+      }, 200);
+    }
+
+    syncRoutePointOptions();
+    suppressSubmit = false;
+  })();
+
+  var milkFilterForm = document.getElementById("milk-collection-filter-form");
+  if (milkFilterForm) {
+    document.querySelectorAll(".milk-collection-tabs .nav-link[href]").forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        var target = new URL(link.href, window.location.origin);
+        var tab = target.searchParams.get("tab");
+        var params = new URLSearchParams(window.location.search);
+        var fd = new FormData(milkFilterForm);
+        var touched = {};
+        fd.forEach(function (value, key) {
+          if (key === "tab") return;
+          if (!touched[key]) {
+            params.delete(key);
+            touched[key] = true;
+          }
+          params.append(key, value);
+        });
+        if (tab) params.set("tab", tab);
+        window.location.search = "?" + params.toString();
+      });
+    });
+  }
+
+})();
+</script>
+{% endblock %}

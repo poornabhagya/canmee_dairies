@@ -1,0 +1,184 @@
+<div class="card farmer-detail-card point-detail-card cp-loan-page-card smart-list-card company-profile-card" id="company-bank-accounts">
+  <div class="card-body">
+    <article class="cp-loan-statement">
+      <header class="cp-loan-statement__head">
+        <div>
+          <span class="cp-loan-statement__kicker">Banking</span>
+          <h2 class="cp-loan-statement__title">Company bank accounts</h2>
+          <p class="cp-loan-statement__meta">Debit accounts for CEFT bank payment files. One account can be primary.</p>
+        </div>
+        {% if perms.masters.change_companyprofile or request.user.is_superuser %}
+        <div class="cp-loan-statement__head-actions">
+          <div class="cp-loan-statement__exports">
+            <button type="button" class="btn btn-outline-secondary btn-sm js-company-bank-add">
+              <i class="bi bi-plus-lg me-1"></i>Add account
+            </button>
+          </div>
+        </div>
+        {% endif %}
+      </header>
+      {% if company.bank_accounts.all %}
+      <div class="cp-loan-statement__body">
+        <table class="table align-middle mb-0 w-100 smart-dt-table point-bank-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Account number</th>
+              <th>Bank</th>
+              <th>Bank code</th>
+              <th>Branch</th>
+              <th class="text-center">Primary</th>
+              <th class="text-center">Active</th>
+              {% if perms.masters.change_companyprofile or request.user.is_superuser %}
+              <th class="text-end"><span class="visually-hidden">Actions</span></th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for account in company.bank_accounts.all %}
+            <tr>
+              <td>{{ account.account_name }}</td>
+              <td class="font-monospace">{{ account.account_number }}</td>
+              <td>{{ account.bank_name }}</td>
+              <td class="font-monospace">{{ account.bank_code|default:"—" }}</td>
+              <td>{{ account.bank_branch|default:"—" }}{% if account.branch_code %} <span class="text-muted font-monospace">({{ account.branch_code }})</span>{% endif %}</td>
+              <td class="text-center">
+                {% if perms.masters.change_companyprofile or request.user.is_superuser %}
+                <form method="post" action="{% url 'company-bank-account-primary' account.pk %}" class="point-bank-primary-form">
+                  {% csrf_token %}
+                  <label class="point-bank-primary" title="{% if account.is_primary %}Primary debit account{% else %}Make primary{% endif %}">
+                    <input
+                      type="checkbox"
+                      class="form-check-input custom-check"
+                      {% if account.is_primary %}checked disabled{% endif %}
+                      {% if not account.is_primary %}onchange="this.form.submit()"{% endif %}
+                    >
+                  </label>
+                </form>
+                {% elif account.is_primary %}
+                <span class="smart-badge smart-badge--success">Primary</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if account.is_active %}
+                <span class="smart-badge smart-badge--success">Active</span>
+                {% else %}
+                <span class="text-muted">Off</span>
+                {% endif %}
+              </td>
+              {% if perms.masters.change_companyprofile or request.user.is_superuser %}
+              <td class="text-end">
+                <span class="farmer-row-actions">
+                  <button
+                    type="button"
+                    class="icon-action-btn js-company-bank-edit"
+                    title="Edit account"
+                    data-id="{{ account.pk }}"
+                    data-account-name="{{ account.account_name }}"
+                    data-account-number="{{ account.account_number }}"
+                    data-bank-name="{{ account.bank_name }}"
+                    data-bank-code="{{ account.bank_code }}"
+                    data-bank-branch="{{ account.bank_branch }}"
+                    data-branch-code="{{ account.branch_code }}"
+                    data-is-primary="{% if account.is_primary %}1{% else %}0{% endif %}"
+                    data-is-active="{% if account.is_active %}1{% else %}0{% endif %}"
+                  ><i class="bi bi-pen-fill" aria-hidden="true"></i></button>
+                  <a
+                    class="icon-action-btn icon-action-danger js-swal-delete-post"
+                    href="{% url 'company-bank-account-delete' account.pk %}"
+                    title="Remove account"
+                    data-swal-title="Remove this company bank account?"
+                    data-swal-text="{{ account.account_name }} · {{ account.account_number }}"
+                  ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+                </span>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="cp-loan-statement__empty">No company bank accounts yet. Add the debit account used for CEFT uploads.</p>
+      {% endif %}
+    </article>
+  </div>
+</div>
+
+{% if perms.masters.change_companyprofile or request.user.is_superuser %}
+<div class="modal fade smart-modal" id="companyBankAccountModal" tabindex="-1" aria-labelledby="companyBankAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'company-bank-accounts-update' %}" id="company-bank-account-form">
+        {% csrf_token %}
+        <input type="hidden" name="account_id" id="id_company_bank_account_id" value="{% if bank_account_form.instance.pk %}{{ bank_account_form.instance.pk }}{% endif %}">
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-bank"></i></span>
+            <div>
+              <h5 class="modal-title" id="companyBankAccountModalLabel">{% if bank_account_form.instance.pk %}Edit company bank account{% else %}Add company bank account{% endif %}</h5>
+              <p class="modal-subtitle">This account number is written as Debit Account No on bank payment files.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% if bank_account_form.non_field_errors %}
+          <div class="text-danger small mb-2">{{ bank_account_form.non_field_errors }}</div>
+          {% endif %}
+          <div class="smart-form-sections">
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-credit-card-2-front" aria-hidden="true"></i>Debit account</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field span-2">
+                  <label class="form-label" for="{{ bank_account_form.account_name.id_for_label }}">Account name</label>
+                  {{ bank_account_form.account_name }}
+                  {% if bank_account_form.account_name.errors %}<div class="invalid-feedback d-block">{{ bank_account_form.account_name.errors }}</div>{% endif %}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ bank_account_form.account_number.id_for_label }}">Account number</label>
+                  {{ bank_account_form.account_number }}
+                  {% if bank_account_form.account_number.errors %}<div class="invalid-feedback d-block">{{ bank_account_form.account_number.errors }}</div>{% endif %}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ bank_account_form.bank_name.id_for_label }}">Bank</label>
+                  {{ bank_account_form.bank_name }}
+                  {% if bank_account_form.bank_name.errors %}<div class="invalid-feedback d-block">{{ bank_account_form.bank_name.errors }}</div>{% endif %}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ bank_account_form.bank_code.id_for_label }}">Bank code</label>
+                  {{ bank_account_form.bank_code }}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ bank_account_form.bank_branch.id_for_label }}">Branch</label>
+                  {{ bank_account_form.bank_branch }}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ bank_account_form.branch_code.id_for_label }}">Branch code</label>
+                  {{ bank_account_form.branch_code }}
+                </div>
+                <div class="smart-field">
+                  <label class="point-bank-primary" for="{{ bank_account_form.is_primary.id_for_label }}">
+                    {{ bank_account_form.is_primary }}
+                    <span>Primary debit account</span>
+                  </label>
+                </div>
+                <div class="smart-field">
+                  <label class="point-bank-primary" for="{{ bank_account_form.is_active.id_for_label }}">
+                    {{ bank_account_form.is_active }}
+                    <span>Active</span>
+                  </label>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}

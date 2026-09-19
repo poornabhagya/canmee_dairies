@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block page_heading %}{% if object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}</h1>
+    <p class="page-subtitle">Choose a <strong>collection point</strong>; the <strong>route</strong> is set automatically. Add other details below.</p>
+  </div>
+</div>
+{{ farmer_points_route_json|json_script:"farmer-points-route-data" }}
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card js-master-form-enter-next" style="max-width: 36rem;">
+      {% csrf_token %}
+      {% if request.GET.return_point %}
+      <input type="hidden" name="return_point" value="{{ request.GET.return_point }}">
+      {% endif %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        {% if field.is_hidden %}
+          {{ field }}
+        {% elif field.name == 'route' %}
+        {% else %}
+        <div class="mb-3">
+          {{ field.errors }}
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.name == 'full_name' %}
+            <p class="form-text text-muted small mb-0">Initial preview: <span id="auto-initial-preview">—</span></p>
+          {% endif %}
+          {% if field.help_text %}
+            <p class="form-text text-muted small mb-0">{{ field.help_text }}</p>
+          {% endif %}
+        </div>
+        {% if field.name == 'collection_point' %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Route</label>
+            <div class="form-text small mb-0">Route: <span id="farmer-route-display">—</span></div>
+          </div>
+        {% endif %}
+        {% endif %}
+      {% endfor %}
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Save</button>
+      <a href="javascript:history.back()" class="btn btn-outline-secondary mt-2 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var scriptEl = document.getElementById('farmer-points-route-data');
+  var pointRows = [];
+  try {
+    pointRows = scriptEl ? JSON.parse(scriptEl.textContent || "[]") : [];
+  } catch (e) {
+    pointRows = [];
+  }
+  var branchSel = document.getElementById('id_branch');
+  var pointSel = document.getElementById('id_collection_point');
+  var routePreview = document.getElementById('farmer-route-display');
+  var fullName = document.getElementById('id_full_name');
+  var commonName = document.getElementById('id_common_name');
+  var initial = document.getElementById('id_initial');
+  var initialPreview = document.getElementById('auto-initial-preview');
+
+  function buildInitial(name) {
+    var parts = (name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '';
+    if (parts.length === 1) return parts[0];
+    var prefix = parts.slice(0, -1).map(function (p) { return p.charAt(0).toUpperCase(); }).join('.');
+    return prefix + '.' + parts[parts.length - 1];
+  }
+
+  function capitalizeWords(value) {
+    return (value || "")
+      .replace(/\s+/g, " ")
+      .trimStart()
+      .replace(/\b([a-zA-Z])([a-zA-Z]*)/g, function (_, first, rest) {
+        return first.toUpperCase() + rest.toLowerCase();
+      });
+  }
+
+  function titleCaseInput(el) {
+    if (!el) return;
+    var current = el.value || "";
+    var converted = capitalizeWords(current);
+    if (converted !== current) {
+      var hadTrailingSpace = /\s$/.test(current);
+      el.value = hadTrailingSpace ? converted + " " : converted;
+    }
+  }
+
+  function refillPointOptions() {
+    if (!pointSel) return;
+    var current = pointSel.value;
+    var branchId = branchSel ? branchSel.value : '';
+    var html = ['<option value="">---------</option>'];
+    pointRows.forEach(function (r) {
+      if (branchId && String(r.branch_id || '') !== String(branchId)) return;
+      html.push('<option value="' + r.id + '">' + r.label + '</option>');
+    });
+    pointSel.innerHTML = html.join('');
+    if (current) pointSel.value = current;
+  }
+
+  function syncRouteDisplay() {
+    if (!routePreview || !pointSel) return;
+    var v = pointSel.value;
+    var row = pointRows.find(function (r) { return String(r.id) === String(v); });
+    routePreview.textContent = row && row.route_display ? row.route_display : '—';
+  }
+
+  function syncInitial() {
+    if (!fullName || !initial) return;
+    var autoValue = buildInitial(fullName.value || '');
+    if (!initial.value.trim()) initial.value = autoValue;
+    if (initialPreview) initialPreview.textContent = initial.value || autoValue || '—';
+  }
+
+  if (branchSel) {
+    branchSel.addEventListener('change', function () {
+      refillPointOptions();
+      syncRouteDisplay();
+    });
+  }
+  if (pointSel) {
+    pointSel.addEventListener('change', syncRouteDisplay);
+    refillPointOptions();
+    syncRouteDisplay();
+  }
+  if (fullName) {
+    fullName.addEventListener('input', function () {
+      titleCaseInput(fullName);
+      syncInitial();
+    });
+    syncInitial();
+  }
+  if (commonName) {
+    commonName.addEventListener('input', function () { titleCaseInput(commonName); });
+  }
+  if (initial) initial.addEventListener('input', syncInitial);
+})();
+(function () {
+  var form = document.querySelector('form.js-master-form-enter-next');
+  if (!form) return;
+
+  function listFocusables() {
+    var sel =
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]),' +
+      'select, textarea';
+    var nodes = form.querySelectorAll(sel);
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.disabled) continue;
+      if (el.closest('[hidden]')) continue;
+      out.push(el);
+    }
+    return out;
+  }
+
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    var target = e.target;
+    if (!form.contains(target)) return;
+
+    if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
+    if (target.tagName === 'TEXTAREA') return;
+
+    var focusables = listFocusables();
+    var idx = focusables.indexOf(target);
+    if (idx === -1) return;
+
+    var next = focusables[idx + 1];
+    if (!next) return;
+
+    e.preventDefault();
+    next.focus();
+    if (next.tagName === 'SELECT' || next.tagName === 'TEXTAREA') return;
+    if (typeof next.select === 'function' && next.type !== 'email' && next.type !== 'date') {
+      try {
+        next.select();
+      } catch (err) {}
+    }
+  });
+})();
+</script>
+{% endblock %}

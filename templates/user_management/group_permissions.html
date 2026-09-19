@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Role permissions · Canmee Dairies{% endblock %}
+{% block page_heading %}Role permissions{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Permissions for “{{ object.name }}”</h1>
+    <p class="page-subtitle">Grouped by Django app. Use select all, per-app toggles, or the app picker to jump.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'user_management:group-list' %}">Back to roles</a>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" id="group-permissions-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {{ form.permissions.errors }}
+
+      <div class="perm-toolbar d-flex flex-wrap align-items-center gap-2 mb-3">
+        <span class="fw-semibold text-muted small me-1">Bulk</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="permSelectAll" aria-label="Select all permissions">
+          <i class="bi bi-check2-square me-1"></i>Select all
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="permDeselectAll" aria-label="Deselect all permissions">
+          <i class="bi bi-x-lg me-1"></i>Deselect all
+        </button>
+        <span class="vr d-none d-md-block mx-1"></span>
+        <label class="small text-muted mb-0" for="permJumpApp">Go to app</label>
+        <select class="form-select form-select-sm perm-jump-select" id="permJumpApp" aria-label="Scroll to app section">
+          <option value="">— Choose app —</option>
+          {% for section in permissions_by_app %}
+          <option value="perm-app-{{ section.app_label|slugify }}">{{ section.app_title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="perm-apps-stack">
+        {% for section in permissions_by_app %}
+        <div class="perm-app card mb-3" id="perm-app-{{ section.app_label|slugify }}" data-app-label="{{ section.app_label }}">
+          <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <strong class="mb-0">{{ section.app_title }}</strong>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge text-bg-light small">{{ section.permissions|length }} permissions</span>
+              <div class="form-check mb-0">
+                <input
+                  type="checkbox"
+                  class="form-check-input perm-app-master"
+                  id="perm-master-{{ section.app_label|slugify }}"
+                  data-app-slug="{{ section.app_label|slugify }}"
+                  aria-label="Select or deselect all permissions in {{ section.app_title }}"
+                >
+                <label class="form-check-label small" for="perm-master-{{ section.app_label|slugify }}">Select app</label>
+              </div>
+            </div>
+          </div>
+          <div class="card-body py-2 perm-app-body">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-1">
+              {% for p in section.permissions %}
+              <div class="col">
+                <div class="form-check perm-item-wrap">
+                  <input
+                    type="checkbox"
+                    name="permissions"
+                    value="{{ p.id }}"
+                    class="form-check-input perm-item"
+                    data-app-slug="{{ section.app_label|slugify }}"
+                    id="perm-{{ p.id }}"
+                    {% if p.id in selected_permission_ids %}checked{% endif %}
+                  >
+                  <label class="form-check-label small" for="perm-{{ p.id }}">{{ p.name }}</label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted mb-0">No permissions found.</p>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Save permissions</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById('group-permissions-form');
+  if (!form) return;
+
+  function allItems() {
+    return form.querySelectorAll('.perm-item');
+  }
+
+  function itemsForApp(slug) {
+    return form.querySelectorAll('.perm-item[data-app-slug="' + slug + '"]');
+  }
+
+  function syncMaster(slug) {
+    var master = form.querySelector('.perm-app-master[data-app-slug="' + slug + '"]');
+    if (!master) return;
+    var nodes = itemsForApp(slug);
+    var total = nodes.length;
+    var checked = 0;
+    nodes.forEach(function (el) { if (el.checked) checked++; });
+    master.checked = total > 0 && checked === total;
+    master.indeterminate = checked > 0 && checked < total;
+  }
+
+  function syncAllMasters() {
+    form.querySelectorAll('.perm-app-master').forEach(function (m) {
+      syncMaster(m.getAttribute('data-app-slug'));
+    });
+  }
+
+  form.querySelectorAll('.perm-app-master').forEach(function (master) {
+    master.addEventListener('change', function () {
+      var slug = master.getAttribute('data-app-slug');
+      var on = master.checked;
+      itemsForApp(slug).forEach(function (cb) { cb.checked = on; });
+      master.indeterminate = false;
+    });
+  });
+
+  form.querySelectorAll('.perm-item').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      syncMaster(cb.getAttribute('data-app-slug'));
+    });
+  });
+
+  var btnAll = document.getElementById('permSelectAll');
+  var btnNone = document.getElementById('permDeselectAll');
+  if (btnAll) {
+    btnAll.addEventListener('click', function () {
+      allItems().forEach(function (cb) { cb.checked = true; });
+      form.querySelectorAll('.perm-app-master').forEach(function (m) {
+        m.checked = true;
+        m.indeterminate = false;
+      });
+    });
+  }
+  if (btnNone) {
+    btnNone.addEventListener('click', function () {
+      allItems().forEach(function (cb) { cb.checked = false; });
+      form.querySelectorAll('.perm-app-master').forEach(function (m) {
+        m.checked = false;
+        m.indeterminate = false;
+      });
+    });
+  }
+
+  var jump = document.getElementById('permJumpApp');
+  if (jump) {
+    jump.addEventListener('change', function () {
+      var id = jump.value;
+      if (!id) return;
+      var el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      jump.selectedIndex = 0;
+    });
+  }
+
+  syncAllMasters();
+})();
+</script>
+{% endblock %}

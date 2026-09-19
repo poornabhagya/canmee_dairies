@@ -1,0 +1,34 @@
+{# Inner body for one center slip (wrapped by point-receipt-block elsewhere). #}
+<header class="company">
+  <h1 class="receipt-text-14">කැන්මී ඩේරීස් පුද්ගලික සමාගම</h1>
+  <p class="phone receipt-text-12">දු. අංකය : 071 5435019</p>
+</header>
+<div class="meta-two">
+  <span><span class="receipt-text-12"><strong>දිනය :</strong></span> <span class="receipt-text-14">{{ collection_date|date:"Y-m-d" }}</span></span>
+  <span><span class="receipt-text-12"><strong>අංකය :</strong></span> <span class="receipt-text-14">{{ line.point_number }}</span></span>
+</div>
+<div class="center-name-row">
+  <span class="receipt-text-12"><strong>මධ්‍යස්ථානයේ නම :</strong></span> <span class="receipt-text-14">{{ line.point_name }}</span>
+</div>
+<table class="receipt-grid">
+  <thead>
+    <tr>
+      <th class="receipt-text-12">කිරි ප්‍රමාණය L/Kg</th>
+      <th class="receipt-text-12">මේදය</th>
+      <th class="receipt-text-12">මේද නොවන ඝන ද්‍රව්‍ය</th>
+      <th class="receipt-text-12">කිරි L/Kg මිල</th>
+      <th class="receipt-text-12">වෙනත්</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="num receipt-text-14 receipt-qty-cell">
+        {% include 'collections/_receipt_qty_stack.html' with kg=line.kg liters=line.liters %}
+      </td>
+      <td class="num receipt-text-14">{% if line.fat is not None %}{{ line.fat|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td class="num receipt-text-14">{% if line.snf is not None %}{{ line.snf|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td class="num receipt-text-14">{% if line.price is not None %}{{ line.price|money }}{% else %}—{% endif %}</td>
+      <td class="num receipt-text-14">{% if line.other is not None %}{{ line.other|money }}{% else %}—{% endif %}</td>
+    </tr>
+  </tbody>
+</table>

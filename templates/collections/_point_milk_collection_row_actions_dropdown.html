@@ -1,0 +1,45 @@
+{% if perms.collections.view_milkcollectionadjustment or perms.collections.change_milkcollection or perms.collections.delete_milkcollection %}
+<div class="dropdown d-inline-block">
+  <button
+    class="btn btn-sm btn-outline-secondary dropdown-toggle milk-collection-actions-trigger"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+  >
+    <i class="bi bi-three-dots-vertical"></i><span class="visually-hidden">Actions</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end milk-collection-actions-menu">
+    <li>
+      <a
+        class="dropdown-item"
+        href="{% url 'milk-collection-point-receipt' %}?date={{ collection.date|date:'Y-m-d' }}&amp;point={{ point.pk }}"
+        target="_blank"
+        rel="noopener"
+      ><i class="bi bi-receipt me-2"></i>Receipt</a>
+    </li>
+    {% if perms.collections.view_milkcollectionadjustment %}
+    <li>
+      <a class="dropdown-item" href="{% url 'milk-collection-adjustments' collection.pk %}"><i class="bi bi-clock-history me-2"></i>History</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.change_milkcollection %}
+    <li>
+      <a class="dropdown-item" href="{% url 'milk-collection-edit' collection.pk %}"><i class="bi bi-pencil-square me-2"></i>Edit</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.delete_milkcollection %}
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <a
+        href="{% url 'route-collection-quick-delete' point.route.pk collection.pk %}"
+        class="dropdown-item text-danger js-swal-delete-post"
+        data-swal-title="Delete this milk collection record?"
+        data-swal-text="This cannot be undone."
+      ><i class="bi bi-trash3 me-2"></i>Delete</a>
+    </li>
+    {% endif %}
+  </ul>
+</div>
+{% else %}
+—
+{% endif %}

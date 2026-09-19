@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Delete user · Canmee Dairies{% endblock %}
+{% block page_heading %}Delete user{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Delete user</h1>
+    <p class="page-subtitle">This cannot be undone.</p>
+  </div>
+</div>
+<div class="card" style="max-width: 32rem;">
+  <div class="card-body">
+    <p>Remove account <strong>{{ target_user.get_username }}</strong>?</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete user</button>
+      <a href="{% url 'user_management:user-list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

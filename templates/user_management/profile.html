@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% load user_tags %}
+{% block title %}My profile · Canmee Dairies{% endblock %}
+{% block page_heading %}My profile{% endblock %}
+{% block extra_css %}
+<style>
+  .profile-hero {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 1.5rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #fff 55%, #f8fafc 100%);
+    border: 1px solid #dbe3ef;
+    margin-bottom: 1.25rem;
+  }
+  .profile-hero__avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .profile-hero__avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    display: block;
+  }
+  .profile-hero__placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #059669, #34d399);
+    color: #fff;
+    font-size: 2.25rem;
+    font-weight: 700;
+    border: 4px solid #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  }
+  .profile-hero__meta {
+    flex: 1;
+    min-width: 220px;
+  }
+  .profile-hero__name {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0 0 0.2rem;
+    color: #0f172a;
+  }
+  .profile-hero__username {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0 0 0.5rem;
+  }
+  .profile-hero__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.65rem;
+  }
+  .profile-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+  }
+  .profile-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .profile-avatar-file-input {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+  }
+  .profile-section-card {
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+    height: 100%;
+  }
+  .profile-section-card .card-header {
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .profile-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #047857;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+  .profile-role-empty {
+    color: #94a3b8;
+    font-size: 0.875rem;
+  }
+  .profile-security-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .profile-security-link:hover {
+    border-color: #a7f3d0;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);
+    color: inherit;
+  }
+  .profile-security-link__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0fdf4;
+    color: #059669;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <div>
+    <h1 class="page-title">My profile</h1>
+    <p class="page-subtitle">Manage your photo, contact details, and account settings.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'password_change' %}"><i class="bi bi-key me-1"></i>Change password</a>
+  </div>
+</div>
+
+<div class="profile-hero">
+  <div class="profile-hero__avatar-wrap">
+    <div id="profile-avatar-preview">
+      {% if user|avatar_url %}
+      <img src="{{ user|avatar_url }}" alt="" class="profile-hero__avatar" id="profile-avatar-img" width="120" height="120" onerror="this.hidden=true; document.getElementById('profile-avatar-fallback').hidden=false;">
+      <div class="profile-hero__placeholder" id="profile-avatar-fallback" hidden>{{ user|user_initials }}</div>
+      {% else %}
+      <div class="profile-hero__placeholder" id="profile-avatar-placeholder">{{ user|user_initials }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="profile-hero__meta">
+    <h2 class="profile-hero__name">
+      {% if user.first_name or user.last_name %}
+        {{ user.first_name }} {{ user.last_name }}
+      {% else %}
+        {{ user.get_username }}
+      {% endif %}
+    </h2>
+    <p class="profile-hero__username">@{{ user.get_username }}{% if user.email %} · {{ user.email }}{% endif %}</p>
+    <div class="profile-hero__chips">
+      <span class="profile-chip"><i class="bi bi-calendar3"></i> Joined {{ user.date_joined|date:"M Y" }}</span>
+      {% if user.last_login %}
+      <span class="profile-chip"><i class="bi bi-clock-history"></i> Last sign-in {{ user.last_login|date:"d M Y, H:i" }}</span>
+      {% endif %}
+      <span class="profile-chip"><i class="bi bi-shield-check"></i> {{ user_groups|length }} role{{ user_groups|length|pluralize }}</span>
+    </div>
+  </div>
+  <div class="profile-hero__actions">
+    <label class="btn btn-primary btn-sm mb-0" for="{{ profile_form.avatar.id_for_label }}">
+      <i class="bi bi-camera me-1"></i>Change photo
+    </label>
+    {% if profile.avatar %}
+    <button type="submit" form="profile-remove-avatar-form" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-trash me-1"></i>Remove
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<form method="post" id="profile-remove-avatar-form" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" name="p-clear_avatar" value="1">
+</form>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card profile-section-card">
+      <div class="card-header">Account details</div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" novalidate id="profile-main-form">
+          {% csrf_token %}
+          {{ profile_form.avatar.errors }}
+          {{ profile_form.avatar }}
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ user_form.first_name.id_for_label }}">First name</label>
+              {{ user_form.first_name.errors }}
+              {{ user_form.first_name }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ user_form.last_name.id_for_label }}">Last name</label>
+              {{ user_form.last_name.errors }}
+              {{ user_form.last_name }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ user_form.username.id_for_label }}">Username</label>
+              {{ user_form.username.errors }}
+              {{ user_form.username }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ user_form.email.id_for_label }}">Email</label>
+              {{ user_form.email.errors }}
+              {{ user_form.email }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="{{ profile_form.phone.id_for_label }}">Phone</label>
+              {{ profile_form.phone.errors }}
+              {{ profile_form.phone }}
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold" for="{{ profile_form.notes.id_for_label }}">Notes</label>
+              {{ profile_form.notes.errors }}
+              {{ profile_form.notes }}
+              <div class="form-text">Optional — only visible on your profile.</div>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 align-items-center mt-4 pt-3 border-top">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save changes</button>
+            <span class="small text-muted">JPG, PNG, WebP, or GIF · max 2 MB</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card profile-section-card mb-3">
+      <div class="card-header">Roles</div>
+      <div class="card-body">
+        {% if user_groups %}
+        <div class="d-flex flex-wrap gap-2">
+          {% for g in user_groups %}
+          <span class="profile-role-badge"><i class="bi bi-shield-check"></i>{{ g.name }}</span>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="profile-role-empty mb-0"><i class="bi bi-info-circle me-1"></i>No roles assigned. Contact an administrator if you need access.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card profile-section-card">
+      <div class="card-header">Security</div>
+      <div class="card-body">
+        <a href="{% url 'password_change' %}" class="profile-security-link">
+          <span class="profile-security-link__icon"><i class="bi bi-key"></i></span>
+          <span>
+            <strong class="d-block">Change password</strong>
+            <span class="small text-muted">Update your sign-in password</span>
+          </span>
+          <i class="bi bi-chevron-right ms-auto text-muted"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  var input = document.querySelector('.js-profile-avatar-input');
+  var preview = document.getElementById('profile-avatar-preview');
+  if (!input || !preview) return;
+
+  input.addEventListener('change', function () {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    if (!file.type.match(/^image\//)) return;
+
+    var reader = new FileReader();
+    reader.onload = function (event) {
+      var existing = preview.querySelector('img');
+      if (existing) {
+        existing.src = event.target.result;
+        return;
+      }
+      preview.innerHTML = '';
+      var img = document.createElement('img');
+      img.src = event.target.result;
+      img.alt = '';
+      img.className = 'profile-hero__avatar';
+      img.id = 'profile-avatar-img';
+      img.width = 120;
+      img.height = 120;
+      preview.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+})();
+</script>
+{% endblock %}

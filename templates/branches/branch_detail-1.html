@@ -1,0 +1,846 @@
+{% extends "base.html" %}
+{% block title %}{{ branch.name }} · Branches · Canmee Dairies{% endblock %}
+{% block page_heading %}Branch{% endblock %}
+{% block extra_css %}
+<style>
+  .route-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+  .route-meta-table th {
+    width: 220px;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+  }
+  .route-meta-table td {
+    color: #0f172a;
+  }
+  .route-split-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 46%) 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .route-section-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.65rem;
+  }
+  .route-points-pane {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.85rem;
+    background: #fff;
+  }
+  .branch-detail-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .point-list {
+    margin: 0;
+    padding-left: 1.55rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .point-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.45rem 0.65rem;
+    list-style: decimal;
+  }
+  .point-item::marker {
+    color: #475569;
+    font-weight: 700;
+  }
+  .point-main {
+    line-height: 1.25rem;
+    min-width: 0;
+  }
+  .point-main .name {
+    color: #1e293b;
+    font-weight: 600;
+  }
+  .point-main .index {
+    color: #334155;
+    font-weight: 700;
+    margin-right: 0.3rem;
+  }
+  .point-main .meta {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+  .point-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  .point-actions .btn-link {
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.83rem;
+  }
+  .point-actions .btn-link:hover {
+    text-decoration: underline;
+  }
+  .branch-route-modal .modal-content {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+  }
+  .branch-route-modal .modal-header {
+    border-bottom: 1px solid #edf2f7;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 0.95rem 1rem;
+  }
+  .branch-route-modal .modal-title {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .branch-route-modal .modal-body {
+    padding: 1rem;
+  }
+  .branch-route-modal .modal-footer {
+    border-top: 1px solid #edf2f7;
+    padding: 0.8rem 1rem 1rem;
+  }
+  .branch-route-modal .modal-dialog {
+    max-width: 520px;
+  }
+  .branch-route-form-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 0.8rem;
+  }
+  .branch-route-form-row .form-label {
+    margin: 0;
+    font-weight: 600;
+    color: #334155;
+  }
+  .branch-route-form-row .invalid-feedback {
+    grid-column: 2 / 3;
+    margin-top: 0.2rem;
+  }
+  @media (max-width: 576px) {
+    .branch-route-form-row {
+      grid-template-columns: 1fr;
+    }
+    .branch-route-form-row .invalid-feedback {
+      grid-column: auto;
+    }
+  }
+  .route-collection-card {
+    margin-top: 1.25rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  }
+  .route-collection-card .card-body {
+    padding: 1rem;
+  }
+  .route-collection-card table tfoot th {
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.35rem;
+    vertical-align: middle;
+    border-top: 2px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .route-collection-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+  .route-collection-stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.75rem 0.85rem;
+  }
+  .route-collection-stat .label {
+    display: block;
+    color: #64748b;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+    font-weight: 700;
+  }
+  .route-collection-stat .value {
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  @media (max-width: 991.98px) {
+    .route-split-grid {
+      grid-template-columns: 1fr;
+    }
+    .route-collection-grid {
+      grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+  }
+  @media (max-width: 576px) {
+    .route-collection-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ branch.name }}</h1>
+    <p class="page-subtitle">Code {{ branch.code }}</p>
+  </div>
+  <div class="page-actions d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{% url 'branch-list' %}">Back</a>
+    {% if perms.branches.change_branch %}
+    <a class="btn btn-primary" href="{% url 'branch-edit' branch.pk %}">Edit</a>
+    {% endif %}
+    {% if perms.branches.delete_branch %}
+    <a
+      class="btn btn-outline-danger js-swal-delete-post"
+      href="{% url 'branch-delete' branch.pk %}"
+      data-swal-title="Delete branch {{ branch.name }}?"
+      data-swal-text="This cannot be undone. Deletion will fail if routes, farmers, or other records still reference this branch."
+    >Delete</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card route-detail-card">
+  <div class="card-body">
+    <div class="route-split-grid">
+      <div>
+        <div class="route-section-title">Branch details</div>
+        <table class="table table-bordered align-middle mb-3 route-meta-table">
+          <tbody>
+            <tr><th>Code</th><td>{{ branch.code }}</td></tr>
+            <tr><th>Name</th><td>{{ branch.name }}</td></tr>
+            <tr><th>Collection unit</th><td>{{ branch.get_collection_unit_display }}</td></tr>
+          </tbody>
+        </table>
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+          <div class="route-section-title mb-0">Routes</div>
+          {% if perms.masters.add_route %}
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary px-3"
+            data-bs-toggle="modal"
+            data-bs-target="#branchRouteAddModal"
+          ><i class="bi bi-plus-lg me-1"></i>Add route</button>
+          {% endif %}
+        </div>
+        <div class="route-points-pane">
+          {% if branch.routes.all %}
+          <ol class="point-list mb-0">
+            {% for r in branch.routes.all %}
+            <li class="point-item">
+              <div class="point-main">
+                <a class="name text-decoration-none" href="{% url 'route-detail' r.pk %}"><span class="index">{{ forloop.counter }}.</span>{{ r.name }}</a>
+              </div>
+              {% if perms.masters.change_route or perms.masters.delete_route %}
+              <span class="point-actions">
+                {% if perms.masters.change_route %}
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm p-0 align-baseline js-branch-route-edit"
+                  data-route-id="{{ r.pk }}"
+                  data-route-name="{{ r.name|escape }}"
+                ><i class="bi bi-pencil-square me-1"></i>Edit</button>
+                {% endif %}
+                {% if perms.masters.change_route and perms.masters.delete_route %}
+                <span class="text-muted mx-1">·</span>
+                {% endif %}
+                {% if perms.masters.delete_route %}
+                <a
+                  href="{% url 'branch-route-quick-delete' branch.pk r.pk %}"
+                  class="btn btn-link btn-sm p-0 align-baseline text-danger js-swal-delete-post"
+                  data-swal-title="Delete route {{ r.name }}?"
+                  data-swal-text="This cannot be undone. Deletion fails if collection points, farmers, milk collections, or other records still reference this route."
+                ><i class="bi bi-trash3 me-1"></i>Delete</a>
+                {% endif %}
+              </span>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <span class="text-muted">{% if perms.masters.add_route %}No routes yet. Use Add route to create one.{% else %}No routes for this branch yet.{% endif %}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="branch-detail-stack">
+        <div>
+          <div class="route-section-title">Assigned users</div>
+          <div class="route-points-pane">
+            {% if branch.users.all %}
+            <ol class="point-list mb-0">
+              {% for u in branch.users.all %}
+              <li class="point-item">
+                <div class="point-main">
+                  <span class="name">{{ u.get_username }}</span>
+                </div>
+              </li>
+              {% endfor %}
+            </ol>
+            {% else %}
+            <span class="text-muted">No users assigned.</span>
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <div class="route-section-title">Assigned employees</div>
+          <div class="route-points-pane">
+            {% if branch.employees.all %}
+            <ol class="point-list mb-0">
+              {% for e in branch.employees.all %}
+              <li class="point-item">
+                <div class="point-main">
+                  <span class="name">{% if e.common_name %}{{ e.common_name }}{% else %}{{ e.get_full_name }}{% endif %}</span>
+                </div>
+              </li>
+              {% endfor %}
+            </ol>
+            {% else %}
+            <span class="text-muted">No employees assigned.</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card route-collection-card">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      <div class="route-section-title mb-0">Branch milk &amp; stock</div>
+      {% if can_manage_opening_stock %}
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-primary px-3"
+        data-bs-toggle="modal"
+        data-bs-target="#branchOpeningStockModal"
+      ><i class="bi bi-pencil-square me-1"></i>Update opening stock</button>
+      {% endif %}
+    </div>
+    <div class="route-collection-grid">
+      <div class="route-collection-stat">
+        <span class="label">Opening stock ({{ opening_stock_unit_label|lower }})</span>
+        <span class="value">{{ opening_stock_display }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Total entries</span>
+        <span class="value">{{ branch_collection.total_entries }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Point entries</span>
+        <span class="value">{{ branch_collection.point_entries }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Farmer entries</span>
+        <span class="value">{{ branch_collection.farmer_entries }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Total kg</span>
+        <span class="value">{{ branch_collection.total_kg }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Total liters</span>
+        <span class="value">{{ branch_collection.total_liters }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Latest collection date</span>
+        <span class="value">{% if branch_collection.latest_date %}{{ branch_collection.latest_date|date:"Y-m-d" }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Raw supplier entries</span>
+        <span class="value">{{ branch_raw_collection.total_entries }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Raw supplier kg</span>
+        <span class="value">{{ branch_raw_collection.total_kg }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Raw supplier liters</span>
+        <span class="value">{{ branch_raw_collection.total_liters }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Today milk (kg)</span>
+        <span class="value">{{ today_collection_kg }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Today dispatch (kg)</span>
+        <span class="value">{{ today_dispatch_kg }}</span>
+      </div>
+      <div class="route-collection-stat">
+        <span class="label">Current stock (kg)</span>
+        <span class="value">{{ current_stock_kg }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card route-collection-card">
+  <div class="card-body pb-0">
+    <div class="route-section-title mb-2">Milk collections (this branch)</div>
+    <ul class="nav nav-tabs milk-collection-tabs border-0 gap-1 flex-wrap mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if milk_tab == 'route' %}active{% endif %}"
+          href="{% url 'branch-detail' branch.pk %}?milk_tab=route"
+          role="tab"
+        >Route totals</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if milk_tab == 'point' %}active{% endif %}"
+          href="{% url 'branch-detail' branch.pk %}?milk_tab=point"
+          role="tab"
+        >Collection point</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if milk_tab == 'farmer' %}active{% endif %}"
+          href="{% url 'branch-detail' branch.pk %}?milk_tab=farmer"
+          role="tab"
+        >Farmer</a>
+      </li>
+    </ul>
+  </div>
+  <div class="card-body pt-0 table-wrap">
+    {% if milk_tab == 'route' %}
+    <p class="small text-muted mb-2">Totals include only <strong>collection point</strong> entries for each date and route (not farmer lines).</p>
+    <table class="table table-hover datatable mb-0 route-totals-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Route</th>
+          <th class="text-end">Kg</th>
+          <th class="text-end">Liters</th>
+          <th class="text-end text-nowrap">Print</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in branch_milk_route_rows %}
+        <tr>
+          <td>{{ row.date }}</td>
+          <td class="fw-medium">{{ row.route_name|default:"—" }}</td>
+          <td class="text-end">{{ row.total_kg }}</td>
+          <td class="text-end">{{ row.total_liters }}</td>
+          <td class="text-end text-nowrap small">
+            {% if perms.collections.view_milkcollection %}
+            <a
+              href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=summary"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-secondary fw-semibold me-2"
+            >Summary</a>
+            <a
+              href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=receipts"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-success fw-semibold me-2"
+            >Receipts</a>
+            <a
+              href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=receipts&include_goods=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-success fw-semibold text-decoration-underline"
+              title="Per-point slips including farmer goods issued to each center this date"
+            >+Goods</a>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-5">No collection point totals for this branch yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "includes/_kg_liters_table_footer.html" with totals=branch_milk_route_table_totals label_colspan=3 %}
+    </table>
+
+    {% elif milk_tab == 'point' %}
+    <table class="table table-hover datatable mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Route</th>
+          <th>Point</th>
+          <th>Kg</th>
+          <th>Liters</th>
+          <th>User</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in branch_milk_collections %}
+        <tr>
+          <td>{{ o.date }}</td>
+          <td>{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if o.collection_point_id and o.collection_point %}
+              {{ o.collection_point.number }} — {{ o.collection_point.name }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ o.kg }}</td>
+          <td>{{ o.liters }}</td>
+          <td>{{ o.created_by }}</td>
+          <td class="text-end text-nowrap">
+            {% if o.collection_point_id %}
+            <a class="me-2" href="{% url 'milk-collection-point-receipt' %}?date={{ o.date|date:'Y-m-d' }}&point={{ o.collection_point_id }}" target="_blank" rel="noopener">Receipt</a>
+            {% endif %}
+            {% if perms.collections.view_milkcollectionadjustment %}
+            <a class="me-2" href="{% url 'milk-collection-adjustments' o.pk %}" title="Kg add/subtract history">History</a>
+            {% endif %}
+            {% if perms.collections.change_milkcollection %}
+            <a class="me-2" href="{% url 'milk-collection-edit' o.pk %}">Edit</a>
+            {% endif %}
+            {% if perms.collections.delete_milkcollection %}
+            <a
+              href="{% url 'branch-collection-quick-delete' branch.pk o.pk %}"
+              class="js-swal-delete-post text-danger"
+              data-swal-title="Delete this milk collection record?"
+              data-swal-text="This cannot be undone."
+            >Delete</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">No collection point entries for this branch yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <table class="table table-hover datatable mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Route</th>
+          <th>Farmer</th>
+          <th>Kg</th>
+          <th>Liters</th>
+          <th>User</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in branch_milk_collections %}
+        <tr>
+          <td>{{ o.date }}</td>
+          <td>{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if o.farmer_id and o.farmer %}
+              {{ o.farmer.common_name|default:o.farmer.full_name }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ o.kg }}</td>
+          <td>{{ o.liters }}</td>
+          <td>{{ o.created_by }}</td>
+          <td class="text-end text-nowrap">
+            {% if perms.collections.view_milkcollectionadjustment %}
+            <a class="me-2" href="{% url 'milk-collection-adjustments' o.pk %}" title="Kg add/subtract history">History</a>
+            {% endif %}
+            {% if perms.collections.change_milkcollection %}
+            <a class="me-2" href="{% url 'milk-collection-edit' o.pk %}">Edit</a>
+            {% endif %}
+            {% if perms.collections.delete_milkcollection %}
+            <a
+              href="{% url 'branch-collection-quick-delete' branch.pk o.pk %}"
+              class="js-swal-delete-post text-danger"
+              data-swal-title="Delete this milk collection record?"
+              data-swal-text="This cannot be undone."
+            >Delete</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">No farmer entries for this branch yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card route-collection-card">
+  <div class="card-body">
+    <div class="route-section-title mb-2">Raw supplier bulk collections (this branch)</div>
+    <table class="table table-hover datatable mb-0">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Supplier</th>
+          <th>Dispatch</th>
+          <th>Status</th>
+          <th>Payment</th>
+          <th>Kg</th>
+          <th>Liters</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in branch_raw_milk_collections %}
+        <tr>
+          <td>{{ o.date }}</td>
+          <td>{{ o.supplier }}</td>
+          <td>{{ o.dispatch_no }}</td>
+          <td>{{ o.get_status_display }}</td>
+          <td>{{ o.get_payment_status_display }}</td>
+          <td>{{ o.kg }}</td>
+          <td>{{ o.liters }}</td>
+          <td class="text-end text-nowrap">
+            {% if perms.suppliers.change_rawmilksuppliercollection %}
+            <a class="me-2" href="{% url 'raw-milk-collection-edit' o.pk %}">Edit</a>
+            <a class="me-2" href="{% url 'raw-milk-collection-result' o.pk %}">Result</a>
+            <a href="{% url 'raw-milk-collection-payment' o.pk %}">Payment</a>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td></td>
+          <td class="text-center text-muted py-5">No raw supplier bulk collection records for this branch yet.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "includes/_kg_liters_table_footer.html" with totals=branch_raw_milk_table_totals label_colspan=5 %}
+    </table>
+  </div>
+</div>
+
+{% if can_manage_opening_stock %}
+<div class="modal fade branch-route-modal" id="branchOpeningStockModal" tabindex="-1" aria-labelledby="branchOpeningStockModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'branch-opening-stock-update' branch.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="branchOpeningStockModalLabel">Update opening stock</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Set opening stock for <strong>{{ branch.name }}</strong>. Current stock is recalculated as opening + collected - dispatched.</p>
+          <input type="hidden" name="next_url" value="{{ request.path }}">
+          <div class="branch-route-form-row mb-0">
+            <label class="form-label" for="{{ opening_stock_form.opening_quantity.id_for_label }}">Opening stock ({{ opening_stock_unit_label|lower }})</label>
+            <div>
+              {{ opening_stock_form.opening_quantity }}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save opening stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.masters.add_route %}
+<div class="modal fade branch-route-modal" id="branchRouteAddModal" tabindex="-1" aria-labelledby="branchRouteAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="branch-route-add-form" method="post" action="{% url 'branch-route-quick-add' branch.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="branchRouteAddModalLabel">Add route</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">New route will be created under <strong>{{ branch.name }}</strong>. The route code is assigned automatically.</p>
+          <div class="branch-route-form-row mb-0">
+            <label class="form-label" for="id_branch_route_add_name">Name</label>
+            <div>
+              <input id="id_branch_route_add_name" name="name" type="text" class="form-control" maxlength="120" autocomplete="off" required>
+              <div class="invalid-feedback" data-br-add-error="name"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save route</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if perms.masters.change_route %}
+<div class="modal fade branch-route-modal" id="branchRouteEditModal" tabindex="-1" aria-labelledby="branchRouteEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="branch-route-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="branchRouteEditModalLabel">Edit route</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Branch stays <strong>{{ branch.name }}</strong>. Only the route name can be changed here.</p>
+          <div class="branch-route-form-row mb-0">
+            <label class="form-label" for="id_branch_route_edit_name">Name</label>
+            <div>
+              <input id="id_branch_route_edit_name" name="name" type="text" class="form-control" maxlength="120" autocomplete="off" required>
+              <div class="invalid-feedback" data-br-edit-error="name"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update route</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.masters.add_route or perms.masters.change_route %}
+<script>
+(function () {
+  var addForm = document.getElementById("branch-route-add-form");
+  var addModalEl = document.getElementById("branchRouteAddModal");
+  var editForm = document.getElementById("branch-route-edit-form");
+  var editModalEl = document.getElementById("branchRouteEditModal");
+  var addModal = addModalEl ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+
+  function clearBrErrors(form, attr) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[" + attr + "]").forEach(function (el) { el.textContent = ""; });
+  }
+
+  function setBrErrors(form, attr, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector("[" + attr + '="' + field + '"]');
+      if (input) input.classList.add("is-invalid");
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  function submitBranchRouteForm(form, errAttr, submitBtn, onOk) {
+    if (!form) return;
+    clearBrErrors(form, errAttr);
+    if (submitBtn) submitBtn.disabled = true;
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setBrErrors(form, errAttr, (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: "Could not save route." });
+          }
+          return;
+        }
+        onOk(res.data);
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save route." });
+      })
+      .finally(function () {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+  }
+
+  if (addForm && addModalEl) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var btn = addForm.querySelector('button[type="submit"]');
+      submitBranchRouteForm(addForm, "data-br-add-error", btn, function () {
+        if (addModal) addModal.hide();
+        window.location.reload();
+      });
+    });
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      addForm.reset();
+      clearBrErrors(addForm, "data-br-add-error");
+    });
+    addModalEl.addEventListener("shown.bs.modal", function () {
+      var n = document.getElementById("id_branch_route_add_name");
+      if (n) n.focus();
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var btn = editForm.querySelector('button[type="submit"]');
+      submitBranchRouteForm(editForm, "data-br-edit-error", btn, function () {
+        if (editModal) editModal.hide();
+        window.location.reload();
+      });
+    });
+    editModalEl.addEventListener("hidden.bs.modal", function () {
+      editForm.reset();
+      clearBrErrors(editForm, "data-br-edit-error");
+    });
+    editModalEl.addEventListener("shown.bs.modal", function () {
+      var n = document.getElementById("id_branch_route_edit_name");
+      if (n) n.focus();
+    });
+  }
+
+  document.querySelectorAll(".js-branch-route-edit").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      if (!editForm || !editModal) return;
+      var routeId = btn.getAttribute("data-route-id");
+      var name = btn.getAttribute("data-route-name") || "";
+      editForm.action = "{% url 'branch-route-quick-edit' branch.pk 0 %}".replace("/routes/0/", "/routes/" + routeId + "/");
+      var inp = document.getElementById("id_branch_route_edit_name");
+      if (inp) inp.value = name;
+      clearBrErrors(editForm, "data-br-edit-error");
+      editModal.show();
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

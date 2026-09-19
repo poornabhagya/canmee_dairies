@@ -1,0 +1,653 @@
+{% extends "base.html" %}
+{% block title %}{{ count.count_number }} · Stock count{% endblock %}
+{% block page_heading %}{{ count.count_number }}{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-secondary" href="{% url 'stock-count-print' count.pk %}" target="_blank" rel="noopener"><i class="bi bi-printer me-1"></i>Print</a>
+<a class="btn btn-outline-secondary" href="{% url 'stock-count-list' %}">All counts</a>
+{% if count.status == "draft" and can_post %}
+<button type="submit" form="stock-count-form" name="action" value="post" class="btn btn-primary js-swal-submit-guard"
+  data-swal-title="Post stock count?"
+  data-swal-text="Shortages will be written off and excesses posted as stock corrections. This cannot be undone from this screen.">
+  <i class="bi bi-check2-circle me-1"></i>Save &amp; post
+</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .stock-count-sheet-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .stock-count-sheet-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .stock-count-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.85rem;
+    align-items: center;
+    margin: -0.15rem 0 0.85rem;
+    font-size: 0.82rem;
+    color: #64748b;
+  }
+  .stock-count-meta strong {
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .stock-count-status {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+  .stock-count-status--draft {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .stock-count-status--posted {
+    background: rgba(5, 150, 105, 0.1);
+    color: #047857;
+  }
+  .stock-count-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .stock-count-toolbar-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    margin-left: auto;
+  }
+  .stock-count-search {
+    min-width: min(220px, 42vw);
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.38rem 0.85rem 0.38rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    font-size: 0.875rem;
+  }
+  .stock-count-search:focus {
+    outline: none;
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.1);
+  }
+  .stock-count-sheet-card .stock-count-table {
+    width: 100% !important;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .stock-count-table-scroll {
+    max-height: min(62vh, 720px);
+    overflow: auto;
+    border: 1px solid #e7edf5;
+    border-radius: 12px;
+    background: #fff;
+  }
+  .stock-count-sheet-card .stock-count-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 0 1px 0 #e2e8f0;
+  }
+  .stock-count-sheet-card .stock-count-table tbody td {
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .stock-count-sheet-card .stock-count-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .stock-count-sheet-card .stock-count-table tbody tr.is-filtered-out {
+    display: none;
+  }
+  .stock-count-product-name {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .stock-count-unit {
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+  .stock-count-sheet-card .stock-count-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .stock-count-variance-pos { color: #047857; font-weight: 600; }
+  .stock-count-variance-neg { color: #b91c1c; font-weight: 600; }
+  .stock-count-physical-input {
+    max-width: 7.5rem;
+    text-align: right;
+    border-radius: 10px;
+    border-color: #dbe3ef;
+    font-variant-numeric: tabular-nums;
+  }
+  .stock-count-physical-input:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.12);
+  }
+  .stock-count-physical-input.is-saving { opacity: 0.7; }
+  .stock-count-physical-input.is-saved {
+    border-color: rgba(5, 150, 105, 0.55);
+    box-shadow: 0 0 0 0.15rem rgba(5, 150, 105, 0.12);
+  }
+  .stock-count-physical-input.is-error { border-color: #dc2626; }
+  .stock-count-autosave-status {
+    font-size: 0.78rem;
+    color: #64748b;
+    min-height: 1.1rem;
+  }
+  .stock-count-autosave-status.is-error { color: #b91c1c; }
+  .stock-count-autosave-status.is-ok { color: #047857; }
+  .stock-count-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #eef2f7;
+  }
+  .stock-count-alert {
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    color: #1e40af;
+    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.84rem;
+    margin-bottom: 0.85rem;
+  }
+  .stock-count-alert--shortage {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+  .stock-count-alert--shortage a {
+    color: #b91c1c;
+    font-weight: 600;
+  }
+  .stock-count-alert-list {
+    margin: 0.45rem 0 0;
+    padding-left: 1.1rem;
+  }
+  .stock-count-alert-list li {
+    margin: 0.15rem 0;
+  }
+  @media (max-width: 767.98px) {
+    .stock-count-sheet-card .card-body.table-wrap { padding: 0.75rem; }
+    .stock-count-search { width: 100%; min-width: 0; }
+    .stock-count-toolbar { flex-direction: column; align-items: stretch; }
+    .stock-count-toolbar-actions { margin-left: 0; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table stock-count-sheet-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Stock count summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Lines</span>
+        <span class="smart-dt-stat-value" id="stockCountStatTotal">{{ line_summary.total }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">Counted</span>
+        <span class="smart-dt-stat-value" id="stockCountStatCounted">{{ line_summary.counted }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Remaining</span>
+        <span class="smart-dt-stat-value" id="stockCountStatRemaining">{{ line_summary.remaining }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Variance rows</span>
+        <span class="smart-dt-stat-value">
+          <span id="stockCountStatExcess" class="text-success">{{ line_summary.excess }}</span>
+          <small>/</small>
+          <span id="stockCountStatShortage" class="text-danger">{{ line_summary.shortage }}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="stock-count-meta">
+      <span><strong>{{ count.branch.name }}</strong></span>
+      <span>{{ count.date|date:"Y-m-d" }}</span>
+      {% if count.status == "posted" %}
+      <span class="stock-count-status stock-count-status--posted">Posted{% if count.posted_at %} · {{ count.posted_at|date:"Y-m-d H:i" }}{% endif %}</span>
+      {% else %}
+      <span class="stock-count-status stock-count-status--draft">Draft</span>
+      {% endif %}
+      {% if count.remarks %}<span>{{ count.remarks }}</span>{% endif %}
+    </div>
+
+    {% if count.status == "posted" and count.correction_grn_id %}
+    <div class="stock-count-alert">
+      Excess posted on correction GRN
+      <a href="{% url 'grn-list' %}?q={{ count.correction_grn.grn_number }}">{{ count.correction_grn.grn_number }}</a>.
+    </div>
+    {% endif %}
+
+    {% if count.status == "posted" and shortage_issues %}
+    <div class="stock-count-alert stock-count-alert--shortage">
+      <div>
+        Shortages written off as stocktake issues
+        (<a href="{% url 'stock-history' %}?action_type=issue&amp;branch={{ count.branch_id }}">view in Stock history</a>).
+      </div>
+      <ul class="stock-count-alert-list">
+        {% for issue in shortage_issues %}
+        <li>
+          {{ issue.product.name }} · {{ issue.quantity }} {{ issue.product.unit }}
+          {% if issue.product_id %}
+          · <a href="{% url 'stock-history' %}?product={{ issue.product_id }}&amp;action_type=issue&amp;branch={{ count.branch_id }}">history</a>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" id="stock-count-form" action="{% url 'stock-count-edit' count.pk %}">
+      {% csrf_token %}
+
+      <div class="stock-count-toolbar">
+        <div id="stockCountLineFilters" class="smart-dt-filters" role="toolbar" aria-label="Filter count lines">
+          <button type="button" class="smart-dt-chip is-active" data-line-filter="all">
+            All<span class="smart-dt-chip-count" id="chipCountAll">{{ line_summary.total }}</span>
+          </button>
+          <button type="button" class="smart-dt-chip" data-line-filter="remaining">
+            Remaining<span class="smart-dt-chip-count" id="chipCountRemaining">{{ line_summary.remaining }}</span>
+          </button>
+          <button type="button" class="smart-dt-chip" data-line-filter="counted">
+            Counted<span class="smart-dt-chip-count" id="chipCountCounted">{{ line_summary.counted }}</span>
+          </button>
+          <button type="button" class="smart-dt-chip" data-line-filter="variance">
+            Variance<span class="smart-dt-chip-count" id="chipCountVariance">{{ line_summary.excess|add:line_summary.shortage }}</span>
+          </button>
+        </div>
+        <div class="stock-count-toolbar-actions">
+          <input type="search" class="stock-count-search" id="stockCountLineSearch" placeholder="Search product…" autocomplete="off">
+          {% if count.status == "draft" %}
+          <button type="submit" name="action" value="refresh_book" class="btn btn-sm btn-outline-secondary">Refresh book qty</button>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if count.status == "draft" %}
+      <div class="stock-count-autosave-status mb-2" id="stockCountAutosaveStatus" aria-live="polite"></div>
+      {% endif %}
+
+      <div class="stock-count-table-scroll">
+        <table class="table table-hover stock-count-table mb-0 w-100" id="stockCountLinesTable">
+          <thead>
+            <tr>
+              <th style="width: 3rem;">#</th>
+              <th>Product</th>
+              <th>Unit</th>
+              <th class="text-end">Book (Available)</th>
+              <th class="text-end">Physical</th>
+              <th class="text-end">Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in lines %}
+            <tr
+              data-line-id="{{ line.pk }}"
+              data-book-qty="{{ line.book_qty }}"
+              data-product="{{ line.product.name|lower }}"
+              class="{% if line.physical_qty == None %}smart-row--remaining{% else %}smart-row--counted{% endif %}{% if line.variance %} smart-row--variance{% endif %}"
+            >
+              <td class="text-muted">{{ forloop.counter }}</td>
+              <td><span class="stock-count-product-name">{{ line.product.name }}</span></td>
+              <td><span class="stock-count-unit">{{ line.product.unit }}</span></td>
+              <td class="text-end dt-num js-book-qty">{{ line.book_qty }}</td>
+              <td class="text-end">
+                {% if count.status == "draft" %}
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="form-control form-control-sm stock-count-physical-input ms-auto"
+                  name="physical_{{ line.pk }}"
+                  value="{% if line.physical_qty != None %}{{ line.physical_qty }}{% endif %}"
+                  placeholder="—"
+                  autocomplete="off"
+                  data-line-id="{{ line.pk }}"
+                  data-book-qty="{{ line.book_qty }}"
+                >
+                {% else %}
+                <span class="dt-num">{% if line.physical_qty != None %}{{ line.physical_qty }}{% else %}—{% endif %}</span>
+                {% endif %}
+              </td>
+              <td class="text-end js-variance-cell">
+                {% if line.variance != None %}
+                  {% if line.variance > 0 %}
+                  <span class="stock-count-variance-pos">+{{ line.variance }}</span>
+                  {% elif line.variance < 0 %}
+                  <span class="stock-count-variance-neg">{{ line.variance }}</span>
+                  {% else %}
+                  0.00
+                  {% endif %}
+                {% else %}
+                —
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted">No products with stock for this branch.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if count.status == "draft" %}
+      <div class="stock-count-footer-actions">
+        <button type="submit" name="action" value="save" class="btn btn-outline-primary">Save all counts</button>
+        {% if can_post %}
+        <button type="submit" name="action" value="post" class="btn btn-success js-swal-submit-guard"
+          data-swal-title="Post stock count?"
+          data-swal-text="Shortages will be written off and excesses posted as stock corrections. This cannot be undone from this screen.">
+          Save &amp; post
+        </button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  var form = document.getElementById("stock-count-form");
+  var table = document.getElementById("stockCountLinesTable");
+  var filtersEl = document.getElementById("stockCountLineFilters");
+  var searchEl = document.getElementById("stockCountLineSearch");
+  if (!form || !table) return;
+
+  var statusEl = document.getElementById("stockCountAutosaveStatus");
+  var csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+  var saving = false;
+  var activeFilter = "all";
+  var searchText = "";
+
+  function rows() {
+    return Array.prototype.slice.call(table.querySelectorAll("tbody tr[data-line-id]"));
+  }
+
+  function physicalInputs() {
+    return Array.prototype.slice.call(
+      form.querySelectorAll("tbody tr[data-line-id]:not(.is-filtered-out) input.stock-count-physical-input")
+    );
+  }
+
+  function parseQty(raw) {
+    var text = String(raw == null ? "" : raw).trim().replace(/,/g, "");
+    if (!text) return null;
+    var num = Number(text);
+    if (!isFinite(num)) return NaN;
+    return Math.round(num * 100) / 100;
+  }
+
+  function formatQty(num) {
+    return (Math.round(num * 100) / 100).toFixed(2);
+  }
+
+  function setStatus(text, kind) {
+    if (!statusEl) return;
+    statusEl.textContent = text || "";
+    statusEl.classList.remove("is-ok", "is-error");
+    if (kind) statusEl.classList.add("is-" + kind);
+  }
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = String(value);
+  }
+
+  function refreshRowState(row, input) {
+    var physical = parseQty(input ? input.value : "");
+    var book = parseQty(row.getAttribute("data-book-qty"));
+    row.classList.remove("smart-row--remaining", "smart-row--counted", "smart-row--variance");
+    if (physical === null || !isFinite(physical)) {
+      row.classList.add("smart-row--remaining");
+      return;
+    }
+    row.classList.add("smart-row--counted");
+    if (book !== null && isFinite(book) && physical !== book) {
+      row.classList.add("smart-row--variance");
+    }
+  }
+
+  function updateSummary() {
+    var all = rows();
+    var counted = 0;
+    var remaining = 0;
+    var excess = 0;
+    var shortage = 0;
+    all.forEach(function (row) {
+      var input = row.querySelector("input.stock-count-physical-input");
+      var physical = input ? parseQty(input.value) : parseQty(row.querySelector(".js-variance-cell") && "");
+      if (input) {
+        physical = parseQty(input.value);
+      } else {
+        var cell = row.querySelector(".js-variance-cell");
+        var hasCount = row.classList.contains("smart-row--counted");
+        physical = hasCount ? 0 : null;
+        if (!hasCount) {
+          remaining += 1;
+          return;
+        }
+        counted += 1;
+        if (row.classList.contains("smart-row--variance")) {
+          var txt = ((cell && cell.textContent) || "").trim();
+          if (txt.indexOf("+") === 0) excess += 1;
+          else if (txt.indexOf("-") === 0) shortage += 1;
+        }
+        return;
+      }
+      if (physical === null || !isFinite(physical)) {
+        remaining += 1;
+        return;
+      }
+      counted += 1;
+      var book = parseQty(row.getAttribute("data-book-qty"));
+      if (book !== null && isFinite(book)) {
+        var variance = Math.round((physical - book) * 100) / 100;
+        if (variance > 0) excess += 1;
+        else if (variance < 0) shortage += 1;
+      }
+    });
+    setText("stockCountStatTotal", all.length);
+    setText("stockCountStatCounted", counted);
+    setText("stockCountStatRemaining", remaining);
+    setText("stockCountStatExcess", excess);
+    setText("stockCountStatShortage", shortage);
+    setText("chipCountAll", all.length);
+    setText("chipCountCounted", counted);
+    setText("chipCountRemaining", remaining);
+    setText("chipCountVariance", excess + shortage);
+  }
+
+  function applyFilters() {
+    rows().forEach(function (row) {
+      var product = row.getAttribute("data-product") || "";
+      var matchSearch = !searchText || product.indexOf(searchText) !== -1;
+      var matchFilter = true;
+      if (activeFilter === "remaining") matchFilter = row.classList.contains("smart-row--remaining");
+      else if (activeFilter === "counted") matchFilter = row.classList.contains("smart-row--counted");
+      else if (activeFilter === "variance") matchFilter = row.classList.contains("smart-row--variance");
+      row.classList.toggle("is-filtered-out", !(matchSearch && matchFilter));
+    });
+  }
+
+  function updateVariance(input) {
+    var row = input.closest("tr");
+    if (!row) return;
+    var cell = row.querySelector(".js-variance-cell");
+    if (!cell) return;
+    var book = parseQty(input.getAttribute("data-book-qty"));
+    var physical = parseQty(input.value);
+    if (physical === null) {
+      cell.textContent = "—";
+      refreshRowState(row, input);
+      updateSummary();
+      applyFilters();
+      return;
+    }
+    if (!isFinite(physical) || physical < 0 || book === null || !isFinite(book)) {
+      cell.innerHTML = '<span class="stock-count-variance-neg">?</span>';
+      refreshRowState(row, input);
+      updateSummary();
+      applyFilters();
+      return;
+    }
+    var variance = Math.round((physical - book) * 100) / 100;
+    if (variance > 0) {
+      cell.innerHTML = '<span class="stock-count-variance-pos">+' + formatQty(variance) + "</span>";
+    } else if (variance < 0) {
+      cell.innerHTML = '<span class="stock-count-variance-neg">' + formatQty(variance) + "</span>";
+    } else {
+      cell.textContent = "0.00";
+    }
+    refreshRowState(row, input);
+    updateSummary();
+    applyFilters();
+  }
+
+  function focusNext(input) {
+    var inputs = physicalInputs();
+    var idx = inputs.indexOf(input);
+    if (idx < 0) {
+      inputs = Array.prototype.slice.call(form.querySelectorAll("input.stock-count-physical-input"));
+      idx = inputs.indexOf(input);
+    }
+    if (idx < 0) return;
+    if (idx < inputs.length - 1) {
+      var next = inputs[idx + 1];
+      next.focus();
+      next.select();
+    } else {
+      input.blur();
+      setStatus("Last line saved.", "ok");
+    }
+  }
+
+  function autosaveLine(input, thenFocusNext) {
+    updateVariance(input);
+    var physical = parseQty(input.value);
+    if (physical !== null && (!isFinite(physical) || physical < 0)) {
+      input.classList.add("is-error");
+      setStatus("Enter a valid non-negative quantity.", "error");
+      return;
+    }
+    input.classList.remove("is-error", "is-saved");
+    input.classList.add("is-saving");
+    saving = true;
+    setStatus("Saving…", null);
+
+    var body = new FormData();
+    if (csrfInput) body.append("csrfmiddlewaretoken", csrfInput.value);
+    body.append("action", "autosave");
+    body.append(input.name, input.value);
+
+    fetch(form.getAttribute("action") || window.location.pathname, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json",
+      },
+    })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        });
+      })
+      .then(function (res) {
+        saving = false;
+        input.classList.remove("is-saving");
+        if (!res.ok || !res.data || !res.data.ok) {
+          input.classList.add("is-error");
+          setStatus((res.data && res.data.error) || "Could not save line.", "error");
+          return;
+        }
+        updateVariance(input);
+        input.classList.add("is-saved");
+        setTimeout(function () {
+          input.classList.remove("is-saved");
+        }, 700);
+        setStatus("Saved.", "ok");
+        if (thenFocusNext) focusNext(input);
+      })
+      .catch(function () {
+        saving = false;
+        input.classList.remove("is-saving");
+        input.classList.add("is-error");
+        setStatus("Could not save line.", "error");
+      });
+  }
+
+  if (filtersEl) {
+    filtersEl.addEventListener("click", function (e) {
+      var chip = e.target.closest("[data-line-filter]");
+      if (!chip) return;
+      activeFilter = chip.getAttribute("data-line-filter") || "all";
+      filtersEl.querySelectorAll("[data-line-filter]").forEach(function (btn) {
+        btn.classList.toggle("is-active", btn === chip);
+      });
+      applyFilters();
+    });
+  }
+
+  if (searchEl) {
+    searchEl.addEventListener("input", function () {
+      searchText = String(searchEl.value || "").trim().toLowerCase();
+      applyFilters();
+    });
+  }
+
+  form.addEventListener("input", function (e) {
+    var el = e.target;
+    if (!el || !el.classList || !el.classList.contains("stock-count-physical-input")) return;
+    el.classList.remove("is-error", "is-saved");
+    updateVariance(el);
+  });
+
+  form.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var el = e.target;
+    if (!el || !el.classList || !el.classList.contains("stock-count-physical-input")) return;
+    e.preventDefault();
+    if (saving) return;
+    autosaveLine(el, true);
+  });
+
+  form.querySelectorAll("input.stock-count-physical-input").forEach(function (input) {
+    updateVariance(input);
+  });
+  updateSummary();
+  applyFilters();
+})();
+</script>
+{% endblock %}

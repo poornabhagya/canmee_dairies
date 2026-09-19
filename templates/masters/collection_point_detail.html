@@ -1,0 +1,2403 @@
+{% extends "base.html" %}
+{% load static format_extras %}
+{% block title %}Collection point {{ point.number }} · Canmee Dairies{% endblock %}
+{% block body_class %}point-page{% endblock %}
+{% block page_heading %}{{ point.number }} — {{ point.name }}{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "includes/_detail_page_list_styles.html" %}
+{% include "collection_point_loans/_cp_loan_page_styles.html" %}
+{% include "masters/_buyer_page_compact_styles.html" %}
+<style>
+  .farmer-detail-card,
+  .point-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    max-width: 100%;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+  .farmer-section-title,
+  .point-section-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.65rem;
+  }
+  .point-meta-table th {
+    width: 220px;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+  }
+  .cp-loan-screen > .point-detail-card,
+  .cp-loan-screen > #point-bank-accounts {
+    margin-bottom: 0.85rem;
+  }
+  #point-bank-accounts .cp-loan-statement__head-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+  .point-bank-table {
+    table-layout: auto;
+    width: 100%;
+  }
+  .point-bank-col-primary {
+    width: 5.5rem;
+  }
+  .point-bank-col-actions {
+    width: 5.5rem;
+  }
+  .point-bank-primary-form {
+    display: inline-flex;
+    justify-content: center;
+    margin: 0;
+  }
+  .point-bank-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .custom-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    border: 1.5px solid #94a3b8;
+    border-radius: 0.3rem;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .custom-check:hover { border-color: #059669; }
+  .custom-check:checked { border-color: #059669; background: #059669; }
+  .custom-check:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.3rem;
+    top: 0.08rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .custom-check:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+  .point-detail-card .cp-loan-statement__head-actions {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .point-details-additional {
+    padding: 0.85rem 1.1rem 1rem;
+    border-top: 1px solid #eef2f7;
+  }
+  .point-details-additional .point-collection-grid {
+    margin: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cp-loan-statement__figure-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #64748b;
+  }
+  .cp-loan-statement__figure-line + .cp-loan-statement__figure-line {
+    margin-top: 0.28rem;
+  }
+  .cp-loan-statement__figure-line span:last-child {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .cp-loan-statement__figure-line.is-amount {
+    font-size: 0.82rem;
+  }
+  .cp-loan-statement__figure-line.is-amount span:last-child {
+    font-size: 1.12rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+  }
+  .point-details-additional__note {
+    margin: 0.65rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+  #pointFeeUpdateModal .point-fee-history-section.has-form {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #eef2f7;
+  }
+  #pointFeeUpdateModal .point-fee-history-table {
+    width: 100%;
+    margin: 0;
+  }
+  #pointFeeUpdateModal .point-fee-history-table th,
+  #pointFeeUpdateModal .point-fee-history-table td {
+    font-size: 0.82rem;
+    vertical-align: middle;
+  }
+  #pointFeeUpdateModal .point-fee-history-empty {
+    margin: 0;
+    padding: 0.35rem 0 0.1rem;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .point-detail-card .cp-loan-statement__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .point-detail-card .cp-loan-statement__grid dl:first-child {
+    border-right: 1px solid #eef2f7;
+    border-bottom: 0;
+  }
+  @media (max-width: 767.98px) {
+    .point-detail-card .cp-loan-statement__grid {
+      grid-template-columns: 1fr;
+    }
+    .point-detail-card .cp-loan-statement__grid dl:first-child {
+      border-right: 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+  }
+  .farmer-split-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 42%);
+    gap: 1rem;
+    align-items: start;
+    max-width: 100%;
+  }
+  .farmer-split-grid > * { min-width: 0; }
+  .farmer-rate-pane,
+  .point-additional-pane {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.85rem;
+    background: #fff;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .point-collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 0.65rem;
+  }
+  .point-collection-stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.65rem 0.75rem;
+  }
+  .point-collection-stat .label {
+    display: block;
+    color: #64748b;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.15rem;
+    font-weight: 700;
+  }
+  .point-collection-stat .value {
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .point-farmer-actions-trigger::after { display: none; }
+  #point-related-farmers,
+  #point-related-farmers .card-body.table-wrap,
+  #point-related-farmers .dataTables_wrapper,
+  #point-related-farmers div.dt-container,
+  #point-related-farmers .dt-smart-toolbar,
+  #point-related-farmers .dt-buttons,
+  #point-milk-collections,
+  #point-milk-collections .card-body.table-wrap,
+  #point-milk-collections .dataTables_wrapper,
+  #point-milk-collections div.dt-container,
+  #point-milk-collections .dt-smart-toolbar,
+  #point-milk-collections .dt-buttons {
+    overflow: visible !important;
+  }
+  #point-related-farmers,
+  #point-milk-collections {
+    position: relative;
+    z-index: 2;
+  }
+  #point-related-farmers div.dt-scroll,
+  #point-related-farmers div.dt-scroll-body,
+  #point-milk-collections div.dt-scroll,
+  #point-milk-collections div.dt-scroll-body {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  #point-related-farmers .point-farmers-table .smart-dt-name-row { min-width: 0; }
+  #point-related-farmers .point-farmers-table .smart-dt-name-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(10rem, 22vw);
+  }
+  #point-related-farmers .farmer-col-reg {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+    color: #475569;
+    max-width: 5.5rem;
+  }
+  #point-related-farmers .farmer-today-col,
+  #point-related-farmers .farmer-avg-col {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  #point-related-farmers .farmer-row--inactive-30 td { background-color: rgba(254, 243, 199, 0.22); }
+  #point-related-farmers .farmer-view-btn,
+  #point-related-farmers .farmer-resign-btn {
+    border: 0;
+    background: transparent;
+    padding: 0.1rem 0.25rem;
+    line-height: 1;
+    text-decoration: none;
+  }
+  #point-related-farmers .farmer-view-btn { color: #64748b; }
+  #point-related-farmers .farmer-view-btn:hover { color: #0f172a; }
+  #point-related-farmers .farmer-resign-btn { color: #b45309; }
+  #point-related-farmers .farmer-resign-btn:hover { color: #92400e; }
+  #point-related-farmers .farmer-rate-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 1.75rem;
+  }
+  #point-related-farmers .farmer-rate-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0.35rem;
+    margin: 0;
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  #point-related-farmers .farmer-rate-display:hover,
+  #point-related-farmers .farmer-rate-display:focus {
+    background: rgba(5, 150, 105, 0.08);
+    outline: none;
+  }
+  #point-related-farmers .farmer-rate-display .farmer-rate-edit-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  #point-related-farmers .farmer-rate-display:hover .farmer-rate-edit-icon,
+  #point-related-farmers .farmer-rate-display:focus .farmer-rate-edit-icon,
+  #point-related-farmers tr:hover .farmer-rate-display .farmer-rate-edit-icon {
+    opacity: 1;
+  }
+  #point-related-farmers .farmer-rate-display.is-empty {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  #point-related-farmers .farmer-rate-editor {
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    width: 100%;
+  }
+  #point-related-farmers .farmer-rate-inline.is-editing .farmer-rate-display { display: none; }
+  #point-related-farmers .farmer-rate-inline.is-editing .farmer-rate-editor { display: inline-flex; }
+  #point-related-farmers .farmer-rate-editor .js-farmer-rate-input {
+    width: 5.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  #point-related-farmers .farmer-rate-inline.is-saving { opacity: 0.65; pointer-events: none; }
+  #point-related-farmers .farmer-rate-inline.is-saved .farmer-rate-display {
+    background: rgba(5, 150, 105, 0.12);
+  }
+  #point-related-farmers .farmer-rate-inline.is-error .js-farmer-rate-input {
+    border-color: #f87171;
+  }
+  .farmer-view-modal-dl {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 0.55rem 0.85rem;
+    margin: 0;
+  }
+  .farmer-view-modal-dl dt {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .farmer-view-modal-dl dd {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 600;
+  }
+  .payment-sheet-paid-popover {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-popover-pop {
+    --bs-popover-max-width: 15rem;
+    font-size: 0.8125rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-header {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.45rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-body { padding: 0.5rem 0.65rem; }
+  .payment-sheet-paid-popover-body__hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .payment-sheet-paid-popover-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-sheet-paid-popover-row--total {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .farmer-modal .modal-dialog { max-width: 760px; }
+  .point-loan-instalments-modal .point-loan-instalments-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin: 0.35rem 0 0.9rem;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis > div {
+    border: 1px solid #e7edf5;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 0.5rem 0.65rem;
+    min-width: 0;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis span {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis strong {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-table {
+    font-size: 0.82rem;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-table th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    font-weight: 700;
+    border-bottom-color: #e7edf5;
+    white-space: nowrap;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-table td {
+    vertical-align: middle;
+  }
+  .farmer-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+  }
+  .farmer-form-grid .full { grid-column: 1 / -1; }
+  .farmer-inline-note {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+  }
+  @media (max-width: 991.98px) {
+    .farmer-split-grid { grid-template-columns: 1fr; }
+    .point-meta-table th { width: 40%; }
+  }
+  @media (max-width: 767.98px) {
+    .farmer-form-grid { grid-template-columns: 1fr; }
+    .point-collection-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions cp-loan-page-actions">
+  <a class="btn btn-outline-secondary" href="{% url 'point-list' %}"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+  {% if perms.reports.view_collectionpointpaymentsheet %}
+  <a
+    class="btn btn-outline-secondary"
+    href="{% url 'collection-point-payment-sheet' %}{% if statement_period_active %}?start={{ statement_from }}&amp;end={{ statement_to }}&amp;branches={{ point.route.branch_id }}{% endif %}"
+  ><i class="bi bi-receipt me-1"></i>Payment sheet</a>
+  {% endif %}
+  {% if perms.masters.change_collectionpoint %}
+  <a class="btn btn-outline-primary" href="{% url 'point-edit' point.pk %}">Edit</a>
+  {% endif %}
+  {% if perms.masters.delete_collectionpoint %}
+  <a
+    class="btn btn-outline-danger js-swal-delete-post"
+    href="{% url 'point-quick-delete' point.pk %}"
+    data-swal-title="Delete collection point {{ point.number }} — {{ point.name }}?"
+    data-swal-text="This cannot be undone. Deletion may fail if this point is used by farmers, collections, or factors."
+  >Delete</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div
+  class="cp-loan-screen"
+  data-bank-print="1"
+  data-bank-company="CANMEE DAIRIES (PVT) LTD"
+  data-bank-phone="071 543 5019"
+  data-bank-logo="{% static 'img/logo.png' %}"
+  data-bank-point-no="{{ point.number }}"
+  data-bank-point-name="{{ point.name }}"
+  data-bank-route="{{ point.route.name|default:'—' }}"
+  data-bank-branch="{% if point.route.branch %}{{ point.route.branch.name }}{% else %}—{% endif %}"
+  data-bank-location="{{ point.location|default:'—' }}"
+  data-bank-period="{% if statement_period_active %}{{ statement_from }} — {{ statement_to }}{% else %}Full history{% endif %}"
+>
+<div class="smart-stat-grid cp-loan-kpi-grid">
+  <a class="smart-stat-card cp-loan-kpi--count" href="#point-milk-collections" title="View milk collections">
+    <span class="smart-stat-card__icon smart-stat-card__icon--sky"><i class="bi bi-droplet-half" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Milk</span>
+      <span class="smart-stat-card__value">{{ point_collection.total_entries }}</span>
+      <span class="smart-stat-card__hint">Collection entries</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--amount" href="#point-milk-collections" title="View milk collections">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Total kg</span>
+      <span class="smart-stat-card__value">{{ point_collection.total_kg|floatformat:2 }}</span>
+      <span class="smart-stat-card__hint">Milk collected</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--paid" href="#point-milk-collections" title="View milk collections">
+    <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-droplet" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Total L</span>
+      <span class="smart-stat-card__value">{{ point_collection.total_liters|floatformat:2 }}</span>
+      <span class="smart-stat-card__hint">Liters</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--instalments" href="#point-milk-collections" title="Latest collection">
+    <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Latest</span>
+      <span class="smart-stat-card__value">{% if point_collection.latest_date %}{{ point_collection.latest_date|date:"Y-m-d" }}{% else %}—{% endif %}</span>
+      <span class="smart-stat-card__hint">Last collection date</span>
+    </span>
+  </a>
+  {% if can_view_milk_payment_status %}
+  <a class="smart-stat-card{% if point_collection.unpaid_entries %} smart-stat-card--warn cp-loan-kpi--balance{% else %} cp-loan-kpi--paid{% endif %}" href="#point-milk-collections" title="Paid and unpaid collections">
+    <span class="smart-stat-card__icon {% if point_collection.unpaid_entries %}smart-stat-card__icon--amber{% else %}smart-stat-card__icon--teal{% endif %}"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Paid / unpaid</span>
+      <span class="smart-stat-card__value">{{ point_collection.paid_entries }} / {{ point_collection.unpaid_entries }}</span>
+      <span class="smart-stat-card__hint">{% if point_collection.unpaid_entries %}{{ point_collection.unpaid_entries }} unpaid{% else %}All paid{% endif %}</span>
+    </span>
+  </a>
+  {% endif %}
+  {% if can_view_farmer_payments and point_previous_outstanding_open %}
+  <a class="smart-stat-card smart-stat-card--warn cp-loan-kpi--balance" href="#point-previous-outstanding" title="Open previous outstanding">
+    <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Prev. outstanding</span>
+      <span class="smart-stat-card__value">{{ point_previous_outstanding_open|money }}</span>
+      <span class="smart-stat-card__hint">Carried to payment sheet</span>
+    </span>
+  </a>
+  {% endif %}
+  <a class="smart-stat-card cp-loan-kpi--count" href="#point-related-farmers" title="Farmers at this point">
+    <span class="smart-stat-card__icon smart-stat-card__icon--orange"><i class="bi bi-people" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Farmers</span>
+      <span class="smart-stat-card__value">{{ point_farmers|length }}</span>
+      <span class="smart-stat-card__hint">Linked to this point</span>
+    </span>
+  </a>
+</div>
+
+<div class="card farmer-detail-card point-detail-card cp-loan-page-card smart-list-card">
+  <div class="card-body">
+        <article class="cp-loan-statement" id="point-details">
+          <header class="cp-loan-statement__head">
+            <div>
+              <span class="cp-loan-statement__kicker">Collection point</span>
+              <h2 class="cp-loan-statement__title">Point details</h2>
+              <p class="cp-loan-statement__meta">{{ point.route.name }}{% if point.route.branch %} · {{ point.route.branch.name }}{% endif %}</p>
+            </div>
+            <div class="cp-loan-statement__head-actions">
+              <span class="cp-loan-statement__account">{{ point.number }}</span>
+              <span class="cp-loan-statement__account" id="additional-farmer-basis-badge">
+                {% if additional_uses_all_farmers %}All farmers{% else %}Selected farmers{% endif %}
+              </span>
+              <div class="cp-loan-statement__exports">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="point-fee-add-btn">
+                  {% if perms.masters.change_collectionpoint %}
+                  <i class="bi bi-plus-lg me-1"></i>Update fees
+                  {% else %}
+                  <i class="bi bi-clock-history me-1"></i>Fee history
+                  {% endif %}
+                </button>
+              </div>
+            </div>
+          </header>
+          <div class="cp-loan-statement__grid">
+            <dl>
+              <div class="cp-loan-statement__row">
+                <dt>Branch</dt>
+                <dd>{% if point.route.branch %}{{ point.route.branch.name }}{% else %}—{% endif %}</dd>
+              </div>
+              <div class="cp-loan-statement__row">
+                <dt>Route</dt>
+                <dd>{{ point.route.name }}</dd>
+              </div>
+              <div class="cp-loan-statement__row">
+                <dt>Point no</dt>
+                <dd>{{ point.number }}</dd>
+              </div>
+              <div class="cp-loan-statement__row">
+                <dt>Name</dt>
+                <dd>{{ point.name }}</dd>
+              </div>
+            </dl>
+            <dl>
+              <div class="cp-loan-statement__row">
+                <dt>Location</dt>
+                <dd>{% if point.location %}{{ point.location }}{% else %}—{% endif %}</dd>
+              </div>
+              <div class="cp-loan-statement__row">
+                <dt>Additional basis</dt>
+                <dd id="additional-farmer-basis-text">
+                  {% if additional_uses_all_farmers %}All {{ additional_farmer_totals.all_count }} farmers{% else %}{{ additional_farmer_totals.selected_count }} of {{ additional_farmer_totals.all_count }} selected{% endif %}
+                </dd>
+              </div>
+              {% if can_view_farmer_payments %}
+              <div class="cp-loan-statement__row">
+                <dt>Previous outstanding</dt>
+                <dd>
+                  <span class="{% if point_previous_outstanding_open %}point-outstanding-amount{% endif %}">{{ point_previous_outstanding_open|default:0|money }}</span>
+                  {% if point_previous_outstanding_open %}
+                  <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1">Open</span>
+                  {% endif %}
+                </dd>
+              </div>
+              {% endif %}
+            </dl>
+          </div>
+          <div class="point-details-additional" id="additional-farmer-totals-card">
+            <div class="point-collection-grid">
+              <div class="point-collection-stat">
+                <span class="label">Farmer milk entries</span>
+                <span class="value" id="additional-farmer-entries">{{ additional_farmer_totals.total_entries }}</span>
+              </div>
+              <div class="point-collection-stat">
+                <span class="label">Farmer kg</span>
+                <span class="value" id="additional-farmer-kg">{{ additional_farmer_totals.total_kg }}</span>
+              </div>
+              <div class="point-collection-stat">
+                <span class="label">Farmer liters</span>
+                <span class="value" id="additional-farmer-liters">{{ additional_farmer_totals.total_liters }}</span>
+              </div>
+            </div>
+            <p class="point-details-additional__note">Farmer milk is used for Additional. Point Unpaid counts daily point collections, so the numbers can differ.</p>
+          </div>
+          <div class="cp-loan-statement__footer" aria-label="Point fees">
+            <div class="cp-loan-statement__figure">
+              <span class="cp-loan-statement__figure-label">Collector fee</span>
+              <div class="cp-loan-statement__figure-line">
+                <span>Rate</span>
+                <span id="point-details-collector-fee-rate">{{ additional_farmer_totals.collector_fee_rate|money }}</span>
+              </div>
+              <div class="cp-loan-statement__figure-line is-amount">
+                <span>Amount</span>
+                <span id="point-details-collector-fee-amount">{{ additional_farmer_totals.collector_fee_amount|money }}</span>
+              </div>
+            </div>
+            <div class="cp-loan-statement__figure">
+              <span class="cp-loan-statement__figure-label">Additional</span>
+              <div class="cp-loan-statement__figure-line">
+                <span>Rate</span>
+                <span id="point-details-additional-rate">{{ additional_farmer_totals.additional_rate|money }}</span>
+              </div>
+              <div class="cp-loan-statement__figure-line is-amount">
+                <span>Amount</span>
+                <span id="point-details-additional-amount">{{ additional_farmer_totals.additional_amount|money }}</span>
+              </div>
+            </div>
+            {% if can_view_farmer_payments %}
+            <div class="cp-loan-statement__figure{% if point_previous_outstanding_open %} is-balance{% endif %}">
+              <span class="cp-loan-statement__figure-label">Previous outstanding</span>
+              <span class="cp-loan-statement__figure-value">{{ point_previous_outstanding_open|default:0|money }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+  </div>
+</div>
+{% include "masters/_collection_point_bank_accounts.html" %}
+<div class="modal fade smart-modal smart-modal--wide" id="pointFeeUpdateModal" tabindex="-1" aria-labelledby="pointFeeUpdateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-cash-coin"></i></span>
+          <div>
+            <h5 class="modal-title" id="pointFeeUpdateModalLabel">{% if perms.masters.change_collectionpoint %}Update fees{% else %}Fee history{% endif %}</h5>
+            <p class="modal-subtitle">{% if perms.masters.change_collectionpoint %}Collector fee and additional apply from the effective date.{% else %}Collector fee and additional records for this point.{% endif %}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% if perms.masters.change_collectionpoint %}
+        <form method="post" action="{% url 'point-fee-update' point.pk %}" id="point-fee-update-form">
+          {% csrf_token %}
+          {% if fee_form.errors %}
+          <div class="text-danger small mb-2">
+            {% for field in fee_form %}
+              {% for error in field.errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in fee_form.non_field_errors %}
+              <div>{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div class="smart-form-sections">
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-receipt" aria-hidden="true"></i>Fee amounts</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="{{ fee_form.collector_fee.id_for_label }}">Collector fee</label>
+                  {{ fee_form.collector_fee }}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ fee_form.additional.id_for_label }}">Additional</label>
+                  {{ fee_form.additional }}
+                </div>
+                <div class="smart-field span-2">
+                  <label class="form-label" for="{{ fee_form.effective_from.id_for_label }}">Effective date</label>
+                  {{ fee_form.effective_from }}
+                </div>
+              </div>
+            </section>
+          </div>
+        </form>
+        {% endif %}
+        <section class="smart-form-section mb-0 point-fee-history-section{% if perms.masters.change_collectionpoint %} has-form{% endif %}">
+          <h6 class="smart-form-section-title"><i class="bi bi-clock-history" aria-hidden="true"></i>Fee history</h6>
+          {% if point_fee_history %}
+          <table class="table table-hover align-middle mb-0 point-fee-history-table">
+            <thead>
+              <tr>
+                <th>Effective at</th>
+                <th class="text-end">Collector fee</th>
+                <th class="text-end">Additional</th>
+                {% if user.is_superuser %}
+                <th>User</th>
+                <th>Created at</th>
+                <th class="text-end"><span class="visually-hidden">Actions</span></th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in point_fee_history %}
+              <tr>
+                <td class="text-nowrap">{{ item.effective_at|date:"Y-m-d H:i" }}</td>
+                <td class="text-end">{{ item.collector_fee|money }}</td>
+                <td class="text-end">{{ item.additional|money }}</td>
+                {% if user.is_superuser %}
+                <td class="text-nowrap">{% if item.changed_by %}{{ item.changed_by.get_username }}{% else %}—{% endif %}</td>
+                <td class="text-nowrap"{% if item.updated_at and item.updated_at != item.created_at %} title="Updated {{ item.updated_at|date:'Y-m-d H:i' }}"{% endif %}>{{ item.created_at|date:"Y-m-d H:i" }}</td>
+                <td class="text-end">
+                  <span class="farmer-row-actions">
+                    <a
+                      class="icon-action-btn icon-action-danger js-swal-delete-post"
+                      href="{% url 'point-fee-history-delete' point.pk item.pk %}"
+                      data-swal-title="Delete this fee record?"
+                      data-swal-text="Current fees will be recalculated from remaining history."
+                      title="Delete fee record"
+                      aria-label="Delete fee record"
+                    ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+                  </span>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="point-fee-history-empty">No fee history yet.</p>
+          {% endif %}
+        </section>
+      </div>
+      <div class="modal-footer">
+        {% if perms.masters.change_collectionpoint %}
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="point-fee-update-form" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save fees</button>
+        {% else %}
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-table farmer-collection-card smart-list-card" id="point-related-farmers">
+  <div class="card-body table-wrap">
+    <div class="farmer-milk-actions-bar" aria-label="Related farmer actions">
+      <p class="farmer-milk-actions-bar__label">Related farmers</p>
+      <div class="farmer-milk-actions-bar__groups">
+        {% if can_edit_additional_farmers %}
+        <div class="farmer-milk-actions-group" aria-label="Additional selection">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="additional-farmers-select-all">Select all</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="additional-farmers-clear">Clear</button>
+          <button type="button" class="btn btn-sm btn-primary" id="additional-farmers-apply">Apply to Additional</button>
+        </div>
+        {% endif %}
+        {% if perms.masters.add_farmer %}
+        <div class="farmer-milk-actions-group" aria-label="Add">
+          <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#pointFarmerAddModal"><i class="bi bi-plus-lg me-1"></i>Add farmer</button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <div id="pointFarmersDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter related farmers">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ point_farmer_summary.count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="active">
+        Active<span class="smart-dt-chip-count">{{ point_farmer_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="inactive">
+        Inactive<span class="smart-dt-chip-count">{{ point_farmer_summary.inactive_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="inactive-30">
+        30+ days<span class="smart-dt-chip-count">{{ point_farmer_summary.inactive_30_days }}</span>
+      </button>
+    </div>
+    <table
+      class="table table-hover datatable datatable-smart farmer-table point-farmers-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No farmers linked to this collection point."
+      data-filters-target="pointFarmersDtFilters"
+      data-smart-order="{% if can_edit_additional_farmers %}2,asc{% else %}1,asc{% endif %}"
+      data-print-title="Related farmers"
+    >
+      <thead>
+        <tr>
+          {% if can_edit_additional_farmers %}
+          <th class="all no-export">
+            <input type="checkbox" class="form-check-input custom-check" id="additional-farmers-check-all" aria-label="Select all farmers" {% if additional_uses_all_farmers %}checked{% endif %}>
+          </th>
+          {% endif %}
+          <th class="all dt-reg">Reg no</th>
+          <th class="all">Common name</th>
+          <th class="all text-end">Today (kg)</th>
+          <th class="min-tablet-l text-end" title="Average daily supply (kg per collection day)">Avg daily (kg)</th>
+          {% if perms.masters.bulk_update_farmerrate %}
+          <th class="min-tablet-l text-end">Rate</th>
+          {% endif %}
+          {% if can_view_farmer_account %}<th class="min-tablet-l text-end">Account</th>{% endif %}
+          <th class="min-tablet-l">Route</th>
+          <th class="min-desktop">Mobile</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in point_farmers %}
+        <tr
+          class="{% if f.is_resigned %}smart-row--resigned{% elif f.is_active_farmer %}smart-row--active{% elif f.is_inactive_farmer %}smart-row--inactive{% endif %}{% if f.is_inactive_30_days and not f.is_resigned %} smart-row--inactive-30 farmer-row--inactive-30{% endif %}"
+        >
+          {% if can_edit_additional_farmers %}
+          <td class="all">
+            <input
+              type="checkbox"
+              class="form-check-input custom-check js-additional-farmer"
+              name="farmer_ids"
+              value="{{ f.pk }}"
+              aria-label="Include {{ f.common_name|default:f.full_name }} in Additional"
+              {% if additional_uses_all_farmers or f.pk in additional_farmer_ids %}checked{% endif %}
+            >
+          </td>
+          {% endif %}
+          <td class="all farmer-col-reg">{{ f.registration_number|default:"—" }}</td>
+          <td class="all">
+            <div class="smart-dt-name-row">
+              <a
+                href="{% url 'farmer-detail' f.pk %}{% if statement_period_active %}?from={{ statement_from }}&amp;to={{ statement_to }}{% endif %}"
+                class="smart-dt-name-link"
+              >{{ f.common_name|default:"—" }}</a>
+              <button
+                type="button"
+                class="farmer-view-btn js-point-farmer-view"
+                title="View farmer details"
+                aria-label="View {{ f.common_name|default:f.full_name }}"
+                data-farmer-name="{{ f.common_name|default:f.full_name }}"
+                data-farmer-account="{% if can_view_farmer_account and f.account_summary %}{{ f.account_summary.net|money }}{% else %}—{% endif %}"
+                data-farmer-route="{% if f.route %}{{ f.route.name }}{% else %}—{% endif %}"
+                data-farmer-branch="{% if f.branch %}{{ f.branch.name }}{% else %}—{% endif %}"
+                data-farmer-point="{% if f.collection_point %}{{ f.collection_point.number }} - {{ f.collection_point.name }}{% else %}—{% endif %}"
+                data-farmer-nic="{{ f.nic|default:'—' }}"
+                data-farmer-whatsapp="{{ f.whatsapp|default:'—' }}"
+              ><i class="bi bi-eye" aria-hidden="true"></i></button>
+              {% if f.is_resigned %}
+              <span class="badge text-bg-secondary-subtle border text-secondary-emphasis">Resigned</span>
+              {% elif perms.masters.change_farmer %}
+              <button
+                type="button"
+                class="smart-dt-edit-btn js-point-farmer-edit"
+                title="Edit farmer"
+                aria-label="Edit {{ f.common_name|default:f.full_name }}"
+                data-farmer-id="{{ f.pk }}"
+                data-farmer-full-name="{{ f.full_name }}"
+                data-farmer-initial="{{ f.initial|default:'' }}"
+                data-farmer-common-name="{{ f.common_name|default:'' }}"
+                data-farmer-rate="{{ f.rate|default:'' }}"
+                data-farmer-apply-rate-paid="{{ f.apply_rate_paid|default:'' }}"
+                data-farmer-nic="{{ f.nic|default:'' }}"
+                data-farmer-dob="{% if f.date_of_birth %}{{ f.date_of_birth|date:'Y-m-d' }}{% endif %}"
+                data-farmer-mobile="{{ f.mobile|default:'' }}"
+                data-farmer-whatsapp="{{ f.whatsapp|default:'' }}"
+                data-farmer-email="{{ f.email|default:'' }}"
+                data-farmer-address="{{ f.address|default:'' }}"
+              ><i class="bi bi-pen-fill" aria-hidden="true"></i></button>
+              <button
+                type="button"
+                class="farmer-resign-btn js-point-farmer-resign"
+                title="Mark as resigned"
+                aria-label="Mark {{ f.common_name|default:f.full_name }} as resigned"
+                data-farmer-id="{{ f.pk }}"
+                data-farmer-name="{{ f.common_name|default:f.full_name }}"
+              ><i class="bi bi-box-arrow-right" aria-hidden="true"></i></button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="all farmer-today-col text-end dt-num" data-order="{{ f.today_milk_kg|default:'0' }}">
+            {% if f.is_resigned %}<span class="text-muted">—</span>{% else %}{{ f.today_milk_kg }}{% endif %}
+          </td>
+          <td class="min-tablet-l farmer-avg-col text-end dt-num" data-order="{{ f.avg_daily_milk_kg|default:'0' }}">
+            {% if f.avg_daily_milk_kg != None %}{{ f.avg_daily_milk_kg }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          {% if perms.masters.bulk_update_farmerrate %}
+          <td class="min-tablet-l text-end farmer-rate-cell" data-order="{{ f.rate|default:'0' }}">
+            {% if f.is_resigned %}
+            <span class="text-muted">—</span>
+            {% else %}
+            <div
+              class="farmer-rate-inline"
+              data-farmer-id="{{ f.pk }}"
+              data-rate="{{ f.rate|default_if_none:'0' }}"
+              data-apply-rate-paid="{{ f.apply_rate_paid|default:'yes' }}"
+            >
+              <button type="button" class="farmer-rate-display js-farmer-rate-edit {% if not f.rate %}is-empty{% endif %}" title="Edit rate">
+                <span class="js-farmer-rate-label">
+                  {% if f.rate %}{{ f.rate|money }}{% else %}Set rate{% endif %}
+                </span>
+                <i class="bi bi-pencil farmer-rate-edit-icon" aria-hidden="true"></i>
+              </button>
+              <div class="farmer-rate-editor">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="form-control form-control-sm js-farmer-rate-input no-global-select2"
+                  value="{% if f.rate %}{{ f.rate }}{% endif %}"
+                  aria-label="Rate for {{ f.common_name|default:f.full_name }}"
+                >
+              </div>
+            </div>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% if can_view_farmer_account %}
+          <td class="min-tablet-l text-end">
+            {% include "masters/_farmer_account_cell.html" with account=f.account_summary %}
+          </td>
+          {% endif %}
+          <td class="min-tablet-l">{% if f.route %}{{ f.route.name }}{% else %}—{% endif %}</td>
+          <td class="min-desktop">{% if f.mobile %}{{ f.mobile }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row farmer-detail-split-row">
+  <div class="{% if can_view_farmer_advances or can_view_point_advances %}col-xl-7 col-lg-7{% else %}col-12{% endif %}">
+<div class="card card-table farmer-milk-list-card smart-list-card" id="point-milk-collections">
+  <div class="card-body table-wrap">
+    <div class="farmer-milk-actions-bar" aria-label="Milk collection actions">
+      <p class="farmer-milk-actions-bar__label">Milk Collection</p>
+      <div class="farmer-milk-actions-bar__groups">
+        {% if user.is_superuser %}
+        <div class="farmer-milk-actions-group" aria-label="Delete">
+          <button
+            type="submit"
+            form="point-milk-bulk-form"
+            class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger"
+            name="bulk_action"
+            value="delete_selected"
+            hidden
+            data-swal-title="Delete selected records?"
+            data-swal-text="All checked milk collection rows will be removed."
+          ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete selected</button>
+          <button
+            type="submit"
+            form="point-milk-bulk-form"
+            class="btn btn-sm btn-outline-danger js-swal-submit-trigger"
+            name="bulk_action"
+            value="delete_all"
+            data-swal-title="Delete all milk collections{% if statement_period_active %} in this period{% endif %}?"
+            data-swal-text="This removes every milk collection row{% if statement_period_active %} matching the selected period{% else %} for this collection point{% endif %} (superuser only)."
+          ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete all</button>
+        </div>
+        {% endif %}
+        <div class="farmer-milk-actions-group" aria-label="Statements">
+          {% if perms.collections.view_milkcollectiontallysheet %}
+          <a
+            class="btn btn-sm btn-outline-primary"
+            href="{% url 'milk-collection-tally' %}?point={{ point.pk }}{% if statement_period_active %}&amp;from={{ statement_from }}&amp;to={{ statement_to }}{% endif %}"
+          ><i class="bi bi-table me-1" aria-hidden="true"></i>Tally sheet</a>
+          {% endif %}
+          <a
+            class="btn btn-sm btn-outline-secondary"
+            href="{% url 'point-statement-print' point.pk %}?full=1"
+            target="_blank"
+            rel="noopener"
+          ><i class="bi bi-printer me-1" aria-hidden="true"></i>Full statement</a>
+          {% if statement_period_active %}
+          <a
+            class="btn btn-sm btn-primary"
+            href="{% url 'point-statement-print' point.pk %}?from={{ statement_from }}&amp;to={{ statement_to }}"
+            target="_blank"
+            rel="noopener"
+          ><i class="bi bi-printer me-1" aria-hidden="true"></i>Period statement</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div id="pointMilkDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter milk collections">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ point_collection.total_entries }}</span>
+      </button>
+      {% if can_view_milk_payment_status %}
+      <button type="button" class="smart-dt-chip" data-smart-filter="paid">
+        Paid<span class="smart-dt-chip-count">{{ point_collection.paid_entries }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="unpaid">
+        Unpaid<span class="smart-dt-chip-count">{{ point_collection.unpaid_entries }}</span>
+      </button>
+      {% endif %}
+      <form method="get" id="point-milk-period-filter" class="farmer-milk-period-filter" role="search">
+        <label class="visually-hidden" for="point-milk-period">Period</label>
+        <div class="input-group input-group-sm flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+          <input
+            type="text"
+            id="point-milk-period"
+            class="form-control border-start-0 js-datepicker-range js-datepicker-range-iso"
+            data-range-start="from"
+            data-range-end="to"
+            placeholder="Period"
+            autocomplete="off"
+            readonly
+            aria-label="Date period"
+            value="{% if statement_from and statement_to %}{{ statement_from }} to {{ statement_to }}{% elif statement_from %}{{ statement_from }}{% elif statement_to %}{{ statement_to }}{% endif %}"
+          >
+        </div>
+        <input type="hidden" name="from" value="{{ statement_from }}">
+        <input type="hidden" name="to" value="{{ statement_to }}">
+        {% if statement_period_active %}
+        <a href="{% url 'point-detail' point.pk %}" class="btn btn-sm btn-outline-secondary" title="Clear period">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% if user.is_superuser %}
+    <form method="post" id="point-milk-bulk-form" class="js-swal-submit-guard farmer-milk-bulk-form d-none" aria-hidden="true">
+      {% csrf_token %}
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+      {% if statement_from %}<input type="hidden" name="from" value="{{ statement_from }}">{% endif %}
+      {% if statement_to %}<input type="hidden" name="to" value="{{ statement_to }}">{% endif %}
+    </form>
+    {% endif %}
+    <table
+      class="table table-hover datatable datatable-smart datatable-no-responsive farmer-milk-collections-table smart-dt-table mb-0"
+      data-page-length="25"
+      data-empty-table="No milk collection records for this period."
+      data-filters-target="pointMilkDtFilters"
+      data-footer-sum-cols="{% if user.is_superuser %}3,4{% else %}2,3{% endif %}"
+      data-default-order-col="{% if user.is_superuser %}1{% else %}0{% endif %}"
+      data-smart-order="{% if user.is_superuser %}1,desc{% else %}0,desc{% endif %}"
+      data-print-title="Milk collections"
+    >
+      <thead>
+        <tr>
+          {% if user.is_superuser %}
+          <th class="all no-export farmer-milk-select-col"><input type="checkbox" class="form-check-input custom-check js-select-all-rows" form="point-milk-bulk-form" aria-label="Select all rows"></th>
+          {% endif %}
+          <th class="all">Date</th>
+          <th class="min-tablet-l farmer-milk-route-col">Route</th>
+          <th class="all text-end">Kg</th>
+          <th class="all text-end">Liters</th>
+          {% if can_view_milk_payment_status %}<th class="min-tablet-l">Payment</th>{% endif %}
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in point_milk_collections %}
+        <tr class="{% if can_view_milk_payment_status %}{% if o.is_paid %}smart-row--paid milk-collection-row--paid{% else %}smart-row--unpaid milk-collection-row--unpaid{% endif %}{% endif %}">
+          {% if user.is_superuser %}
+          <td class="all farmer-milk-select-col"><input type="checkbox" class="form-check-input custom-check js-row-select" form="point-milk-bulk-form" name="selected_ids" value="{{ o.pk }}" aria-label="Select row"></td>
+          {% endif %}
+          <td class="all text-nowrap" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"Y-m-d" }}</td>
+          <td class="min-tablet-l farmer-milk-route-col"><span class="smart-dt-name-text">{{ o.route.name }}</span></td>
+          <td class="all text-end dt-num" data-order="{{ o.kg }}">{{ o.kg }}</td>
+          <td class="all text-end dt-num" data-order="{{ o.liters }}">{{ o.liters }}</td>
+          {% if can_view_milk_payment_status %}{% include "collections/_milk_collection_payment_cell.html" %}{% endif %}
+          <td class="all text-end milk-collection-actions-cell">
+            {% include "collections/_point_milk_collection_row_actions_dropdown.html" with collection=o %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if point_collection.total_entries %}
+      <tfoot>
+        <tr>
+          {% if user.is_superuser %}<th class="all farmer-milk-select-col"></th>{% endif %}
+          <th class="all"></th>
+          <th class="min-tablet-l farmer-milk-route-col text-end">Totals</th>
+          <th class="all text-end dt-foot-total"></th>
+          <th class="all text-end dt-foot-total"></th>
+          {% if can_view_milk_payment_status %}<th class="min-tablet-l"></th>{% endif %}
+          <th class="all"></th>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+  </div>
+  {% if can_view_farmer_advances or can_view_point_advances %}
+  <div class="col-xl-5 col-lg-5">
+    <div class="card farmer-collection-card farmer-advance-aside-card">
+      <div class="card-body">
+        {% include "masters/_point_linked_advances_block.html" with aside=1 %}
+        {% include "masters/_point_advance_payments_block.html" with aside=1 %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% include "masters/_collection_point_detail_financial_sections.html" with hide_linked_advances=1 hide_point_advances=1 %}
+
+{% if can_view_cp_loans %}
+<div class="modal fade smart-modal smart-modal--wide point-loan-instalments-modal" id="pointCpLoanInstalmentsModal" tabindex="-1" aria-labelledby="pointCpLoanInstalmentsTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-calendar2-check"></i></span>
+          <div>
+            <h5 class="modal-title js-loan-instalments-title" id="pointCpLoanInstalmentsTitle">Loan instalments</h5>
+            <p class="modal-subtitle js-loan-instalments-subtitle" id="pointCpLoanInstalmentsSubtitle"></p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% for loan in point_cp_loans %}
+        <div class="js-loan-instalments-panel d-none" data-loan-id="{{ loan.pk }}">
+          <div class="point-loan-instalments-kpis" aria-label="Loan totals">
+            <div>
+              <span>Amount</span>
+              <strong>{{ loan.loan_amount|money }}</strong>
+            </div>
+            <div>
+              <span>Paid</span>
+              <strong>{{ loan.paid_total|money }}</strong>
+            </div>
+            <div>
+              <span>Balance</span>
+              <strong>{{ loan.balance_total|money }}</strong>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 point-loan-instalments-table">
+              <thead>
+                <tr>
+                  <th>Inst.</th>
+                  <th>Due date</th>
+                  <th class="text-end">Amount</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inst in loan.repayment_schedules.all %}
+                <tr class="{% if inst.is_paid %}farmer-financial-row--settled{% endif %}">
+                  <td>{{ inst.installment_number }}</td>
+                  <td class="text-nowrap">{{ inst.due_date|date:"Y-m-d" }}</td>
+                  <td class="text-end">{{ inst.installment_amount|money }}</td>
+                  {% include "reports/_payslip_recovery_status.html" with is_paid=inst.is_paid paid_on=inst.paid_on %}
+                  <td class="text-end text-nowrap">
+                    {% include "reports/_cp_loan_instalment_manual_settle_action.html" with instalment=inst %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-3">No instalments on this loan yet.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">No collection point loans.</p>
+        {% endfor %}
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-secondary js-loan-instalments-detail" id="pointCpLoanInstalmentsDetailBtn"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Full loan</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if can_view_farmer_loans %}
+<div class="modal fade smart-modal smart-modal--wide point-loan-instalments-modal" id="pointFarmerLoanInstalmentsModal" tabindex="-1" aria-labelledby="pointFarmerLoanInstalmentsTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-calendar2-check"></i></span>
+          <div>
+            <h5 class="modal-title js-loan-instalments-title" id="pointFarmerLoanInstalmentsTitle">Loan instalments</h5>
+            <p class="modal-subtitle js-loan-instalments-subtitle" id="pointFarmerLoanInstalmentsSubtitle"></p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% for loan in point_linked_loans %}
+        <div class="js-loan-instalments-panel d-none" data-loan-id="{{ loan.pk }}">
+          <div class="point-loan-instalments-kpis" aria-label="Loan totals">
+            <div>
+              <span>Amount</span>
+              <strong>{{ loan.loan_amount|money }}</strong>
+            </div>
+            <div>
+              <span>Paid</span>
+              <strong>{{ loan.paid_total|money }}</strong>
+            </div>
+            <div>
+              <span>Balance</span>
+              <strong>{{ loan.balance_total|money }}</strong>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 point-loan-instalments-table">
+              <thead>
+                <tr>
+                  <th>Inst.</th>
+                  <th>Due date</th>
+                  <th class="text-end">Amount</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inst in loan.repayment_schedules.all %}
+                <tr class="{% if inst.is_paid %}farmer-financial-row--settled{% endif %}">
+                  <td>{{ inst.installment_number }}</td>
+                  <td class="text-nowrap">{{ inst.due_date|date:"Y-m-d" }}</td>
+                  <td class="text-end">{{ inst.installment_amount|money }}</td>
+                  {% include "reports/_payslip_recovery_status.html" with is_paid=inst.is_paid paid_on=inst.paid_on %}
+                  <td class="text-end text-nowrap">
+                    {% include "reports/_loan_instalment_manual_settle_action.html" with instalment=inst %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-3">No instalments on this loan yet.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">No linked farmer loans.</p>
+        {% endfor %}
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-secondary js-loan-instalments-detail" id="pointFarmerLoanInstalmentsDetailBtn"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Full loan</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if can_view_farmer_goods %}
+{% include "reports/_payslip_embed_modal.html" %}
+<div class="modal fade" id="farmerGoodsActionModal" tabindex="-1" aria-labelledby="farmerGoodsActionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fs-6" id="farmerGoodsActionModalLabel">Goods</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="farmerGoodsActionModalBody">
+        <div class="text-center py-4 text-muted small">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not can_view_farmer_goods and not can_view_farmer_advances and not can_view_point_advances and not can_view_farmer_loans and not can_view_farmer_payments %}
+<div class="card point-collection-card">
+  <div class="card-body">
+    <p class="small text-muted mb-0">Financial sections (goods, advances, loans, payments) are hidden. Ask an administrator for goods issue or payment settlement view permissions.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="modal fade smart-modal" id="pointFarmerViewModal" tabindex="-1" aria-labelledby="pointFarmerViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="pointFarmerViewModalLabel">Farmer details</h5>
+          <p class="text-muted small mb-0" id="pointFarmerViewSubtitle"></p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <dl class="farmer-view-modal-dl">
+          <dt>Account</dt><dd id="pointFarmerViewAccount">—</dd>
+          <dt>Route</dt><dd id="pointFarmerViewRoute">—</dd>
+          <dt>Branch</dt><dd id="pointFarmerViewBranch">—</dd>
+          <dt>Collection point</dt><dd id="pointFarmerViewPoint">—</dd>
+          <dt>NIC</dt><dd id="pointFarmerViewNic">—</dd>
+          <dt>WhatsApp</dt><dd id="pointFarmerViewWhatsapp">—</dd>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if perms.masters.add_farmer %}
+<div class="modal fade farmer-modal" id="pointFarmerAddModal" tabindex="-1" aria-labelledby="pointFarmerAddLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="pointFarmerAddForm" method="post" action="{% url 'farmer-quick-add' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="collection_point" value="{{ point.pk }}">
+        <input type="hidden" name="registration_number" value="">
+        <input type="hidden" name="initial" value="">
+        <div class="modal-header">
+          <h5 class="modal-title" id="pointFarmerAddLabel">Add farmer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="farmer-form-grid">
+            <div class="full">
+              <label class="form-label">Collection point</label>
+              <input type="text" class="form-control" value="{{ point.number }} - {{ point.name }}" disabled>
+              <div class="farmer-inline-note">Route: {{ point.route.name }}</div>
+            </div>
+            <div class="full">
+              <label class="form-label" for="id_point_farmer_add_full_name">Full name</label>
+              <input type="text" class="form-control" id="id_point_farmer_add_full_name" name="full_name" required>
+              <div class="farmer-inline-note">Initial: <span id="pointFarmerAddInitialPreview">—</span></div>
+              <div class="invalid-feedback" data-add-error-for="full_name"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_common_name">Common name</label>
+              <input type="text" class="form-control" id="id_point_farmer_add_common_name" name="common_name" required>
+              <div class="invalid-feedback" data-add-error-for="common_name"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_nic">NIC</label>
+              <input type="text" class="form-control" id="id_point_farmer_add_nic" name="nic">
+              <div class="invalid-feedback" data-add-error-for="nic"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_rate">Rate</label>
+              <input type="number" class="form-control" id="id_point_farmer_add_rate" name="rate" step="0.01" min="0.01" required>
+              <div class="invalid-feedback" data-add-error-for="rate"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_apply_rate_paid">Apply Rate Paid</label>
+              <select class="form-select" id="id_point_farmer_add_apply_rate_paid" name="apply_rate_paid" required>
+                <option value="yes" selected>Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="invalid-feedback" data-add-error-for="apply_rate_paid"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_date_of_birth">DOB</label>
+              <input type="date" class="form-control" id="id_point_farmer_add_date_of_birth" name="date_of_birth">
+              <div class="invalid-feedback" data-add-error-for="date_of_birth"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_mobile">Mobile</label>
+              <input type="text" class="form-control" id="id_point_farmer_add_mobile" name="mobile">
+              <div class="invalid-feedback" data-add-error-for="mobile"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_whatsapp">WhatsApp</label>
+              <input type="text" class="form-control" id="id_point_farmer_add_whatsapp" name="whatsapp">
+              <div class="invalid-feedback" data-add-error-for="whatsapp"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_add_email">Email</label>
+              <input type="email" class="form-control" id="id_point_farmer_add_email" name="email">
+              <div class="invalid-feedback" data-add-error-for="email"></div>
+            </div>
+            <div class="full">
+              <label class="form-label" for="id_point_farmer_add_address">Address</label>
+              <textarea class="form-control" id="id_point_farmer_add_address" name="address" rows="2"></textarea>
+              <div class="invalid-feedback" data-add-error-for="address"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save farmer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.masters.change_farmer %}
+<div class="modal fade farmer-modal" id="pointFarmerEditModal" tabindex="-1" aria-labelledby="pointFarmerEditLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="pointFarmerEditForm" method="post" action="{% url 'farmer-quick-edit' 0 %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="collection_point" value="{{ point.pk }}">
+        <input type="hidden" name="registration_number" value="">
+        <input type="hidden" name="initial" value="">
+        <div class="modal-header">
+          <h5 class="modal-title" id="pointFarmerEditLabel">Edit farmer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="farmer-form-grid">
+            <div class="full">
+              <label class="form-label">Collection point</label>
+              <input type="text" class="form-control" value="{{ point.number }} - {{ point.name }}" disabled>
+              <div class="farmer-inline-note">Route: {{ point.route.name }}</div>
+            </div>
+            <div class="full">
+              <label class="form-label" for="id_point_farmer_edit_full_name">Full name</label>
+              <input type="text" class="form-control" id="id_point_farmer_edit_full_name" name="full_name" required>
+              <div class="farmer-inline-note">Initial: <span id="pointFarmerEditInitialPreview">—</span></div>
+              <div class="invalid-feedback" data-edit-error-for="full_name"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_common_name">Common name</label>
+              <input type="text" class="form-control" id="id_point_farmer_edit_common_name" name="common_name" required>
+              <div class="invalid-feedback" data-edit-error-for="common_name"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_nic">NIC</label>
+              <input type="text" class="form-control" id="id_point_farmer_edit_nic" name="nic">
+              <div class="invalid-feedback" data-edit-error-for="nic"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_rate">Rate</label>
+              <input type="number" class="form-control" id="id_point_farmer_edit_rate" name="rate" step="0.01" min="0.01" required>
+              <div class="invalid-feedback" data-edit-error-for="rate"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_apply_rate_paid">Apply Rate Paid</label>
+              <select class="form-select" id="id_point_farmer_edit_apply_rate_paid" name="apply_rate_paid" required>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="invalid-feedback" data-edit-error-for="apply_rate_paid"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_date_of_birth">DOB</label>
+              <input type="date" class="form-control" id="id_point_farmer_edit_date_of_birth" name="date_of_birth">
+              <div class="invalid-feedback" data-edit-error-for="date_of_birth"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_mobile">Mobile</label>
+              <input type="text" class="form-control" id="id_point_farmer_edit_mobile" name="mobile">
+              <div class="invalid-feedback" data-edit-error-for="mobile"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_whatsapp">WhatsApp</label>
+              <input type="text" class="form-control" id="id_point_farmer_edit_whatsapp" name="whatsapp">
+              <div class="invalid-feedback" data-edit-error-for="whatsapp"></div>
+            </div>
+            <div>
+              <label class="form-label" for="id_point_farmer_edit_email">Email</label>
+              <input type="email" class="form-control" id="id_point_farmer_edit_email" name="email">
+              <div class="invalid-feedback" data-edit-error-for="email"></div>
+            </div>
+            <div class="full">
+              <label class="form-label" for="id_point_farmer_edit_address">Address</label>
+              <textarea class="form-control" id="id_point_farmer_edit_address" name="address" rows="2"></textarea>
+              <div class="invalid-feedback" data-edit-error-for="address"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update farmer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal fade farmer-modal" id="pointFarmerResignModal" tabindex="-1" aria-labelledby="pointFarmerResignLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="pointFarmerResignForm" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="pointFarmerResignLabel">Mark farmer as resigned</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-3" data-resign-farmer-subtitle>Record resignation and keep farmer history.</p>
+          <div class="mb-3">
+            <label class="form-label" for="id_point_farmer_resign_date">Resignation date</label>
+            <div class="input-group">
+              <input id="id_point_farmer_resign_date" name="resigned_at" type="text" class="form-control js-datepicker" placeholder="Select date" autocomplete="off" required>
+              <span class="input-group-text js-datepicker-trigger" data-target="#id_point_farmer_resign_date"><i class="bi bi-calendar3"></i></span>
+            </div>
+            <div class="invalid-feedback" data-resign-error-for="resigned_at"></div>
+          </div>
+          <div>
+            <label class="form-label" for="id_point_farmer_resign_note">Note</label>
+            <textarea id="id_point_farmer_resign_note" name="resignation_note" class="form-control" rows="2" placeholder="Optional"></textarea>
+            <div class="invalid-feedback" data-resign-error-for="resignation_note"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning"><i class="bi bi-box-arrow-right me-1"></i>Save resignation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% include "masters/_buyer_statement_amount_fit.html" %}
+<script>
+(function () {
+  if (typeof bootstrap === "undefined") return;
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-point-loan-instalments");
+    if (!btn) return;
+    var modalId = btn.getAttribute("data-loan-instalments-modal");
+    var modalEl = modalId ? document.getElementById(modalId) : null;
+    if (!modalEl) return;
+    e.preventDefault();
+    var loanId = btn.getAttribute("data-loan-id") || "";
+    modalEl.querySelectorAll(".js-loan-instalments-panel").forEach(function (panel) {
+      panel.classList.toggle("d-none", panel.getAttribute("data-loan-id") !== loanId);
+    });
+    var titleEl = modalEl.querySelector(".js-loan-instalments-title");
+    var subEl = modalEl.querySelector(".js-loan-instalments-subtitle");
+    var detailBtn = modalEl.querySelector(".js-loan-instalments-detail");
+    if (titleEl) titleEl.textContent = loanId ? "Loan #" + loanId + " instalments" : "Loan instalments";
+    if (subEl) {
+      subEl.textContent = [
+        btn.getAttribute("data-farmer"),
+        btn.getAttribute("data-status"),
+        btn.getAttribute("data-loan-date"),
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    if (detailBtn) {
+      detailBtn.href = btn.getAttribute("data-detail-url") || "#";
+      detailBtn.classList.toggle("d-none", !btn.getAttribute("data-detail-url"));
+    }
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  });
+})();
+</script>
+{% if can_view_farmer_goods %}
+{% include "reports/_payslip_embed_script.html" %}
+<script>
+(function () {
+  var modalEl = document.getElementById("farmerGoodsActionModal");
+  var bodyEl = document.getElementById("farmerGoodsActionModalBody");
+  var titleEl = document.getElementById("farmerGoodsActionModalLabel");
+  if (!modalEl || !bodyEl || !window.bootstrap) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  function bindPaymentPanel(root) {
+    var form = root.querySelector("#goods-partial-payment-form");
+    if (!form) return;
+    var selectAll = root.querySelector("#goods-pay-select-all");
+    var lineChecks = Array.prototype.slice.call(root.querySelectorAll(".js-goods-pay-line"));
+    var totalEl = root.querySelector("#goods-selected-total");
+    function formatMoney(value) {
+      var n = Number(value);
+      if (!isFinite(n)) return "0.00";
+      return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function sync() {
+      var total = lineChecks.reduce(function (sum, el) {
+        return el.checked ? sum + Number(el.getAttribute("data-amount") || 0) : sum;
+      }, 0);
+      if (totalEl) totalEl.textContent = formatMoney(total);
+      if (selectAll) {
+        var checked = lineChecks.filter(function (el) { return el.checked; });
+        selectAll.checked = lineChecks.length > 0 && checked.length === lineChecks.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < lineChecks.length;
+      }
+    }
+    if (selectAll) {
+      selectAll.addEventListener("change", function () {
+        lineChecks.forEach(function (el) { el.checked = selectAll.checked; });
+        sync();
+      });
+    }
+    lineChecks.forEach(function (el) {
+      el.addEventListener("change", sync);
+    });
+    sync();
+  }
+
+  function loadPanel(url, title) {
+    titleEl.textContent = title || "Goods";
+    bodyEl.innerHTML =
+      '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+    modal.show();
+    fetch(url, { credentials: "same-origin", headers: { Accept: "text/html" } })
+      .then(function (res) {
+        if (!res.ok) throw new Error("load failed");
+        return res.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var root =
+          doc.querySelector(".goods-payment-embed-root") ||
+          doc.querySelector(".goods-line-edit-embed-root");
+        bodyEl.innerHTML = root ? root.innerHTML : html;
+        bindPaymentPanel(bodyEl);
+        var editForm = bodyEl.querySelector(".js-goods-line-edit-form");
+        if (editForm) {
+          var nextInput = editForm.querySelector('input[name="next"]');
+          if (nextInput && !nextInput.value) {
+            nextInput.value = window.location.pathname + window.location.search;
+          }
+        }
+      })
+      .catch(function () {
+        bodyEl.innerHTML =
+          '<div class="text-center py-4 text-danger small">Could not load details.</div>';
+      });
+  }
+
+  document.addEventListener("click", function (e) {
+    var payBtn = e.target.closest(".js-goods-pay-modal");
+    if (payBtn) {
+      e.preventDefault();
+      loadPanel(
+        payBtn.getAttribute("data-panel-url"),
+        payBtn.getAttribute("data-modal-title") || "Record payment"
+      );
+      return;
+    }
+    var editBtn = e.target.closest(".js-goods-line-edit-modal");
+    if (editBtn) {
+      e.preventDefault();
+      loadPanel(
+        editBtn.getAttribute("data-panel-url"),
+        editBtn.getAttribute("data-modal-title") || "Edit issued product"
+      );
+    }
+  });
+
+  modalEl.addEventListener("hidden.bs.modal", function () {
+    bodyEl.innerHTML = "";
+  });
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  function buildInitial(v) {
+    var parts = (v || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    if (parts.length === 1) return parts[0];
+    var prefix = parts
+      .slice(0, -1)
+      .map(function (p) { return p.charAt(0).toUpperCase(); })
+      .join(".");
+    return prefix + "." + parts[parts.length - 1];
+  }
+  function capitalizeWords(value) {
+    return (value || "")
+      .replace(/\s+/g, " ")
+      .trimStart()
+      .replace(/\b([a-zA-Z])([a-zA-Z]*)/g, function (_, first, rest) {
+        return first.toUpperCase() + rest.toLowerCase();
+      });
+  }
+  function titleCaseInput(el) {
+    if (!el) return;
+    var current = el.value || "";
+    var converted = capitalizeWords(current);
+    if (converted !== current) {
+      var hadTrailingSpace = /\s$/.test(current);
+      el.value = hadTrailingSpace ? converted + " " : converted;
+    }
+  }
+  function syncInitial(form, fullSel, initialSel, previewSel) {
+    if (!form) return;
+    var full = form.querySelector(fullSel);
+    var initial = form.querySelector(initialSel);
+    var preview = document.querySelector(previewSel);
+    if (!full || !initial) return;
+    initial.value = buildInitial(full.value || "");
+    if (preview) preview.textContent = initial.value || "—";
+  }
+  function clearErr(form, attr) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[" + attr + "]").forEach(function (el) { el.textContent = ""; });
+  }
+  function setErr(form, attr, errors) {
+    Object.keys(errors || {}).forEach(function (k) {
+      var i = form.querySelector('[name="' + k + '"]');
+      var m = form.querySelector("[" + attr + '="' + k + '"]');
+      if (i) i.classList.add("is-invalid");
+      if (m) m.textContent = (errors[k] || []).join(" ");
+    });
+  }
+  function submitForm(form, attr, onDone) {
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErr(form, attr, (res.data && res.data.errors) || {});
+          return;
+        }
+        onDone();
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save farmer." });
+      });
+  }
+
+  var addModalEl = document.getElementById("pointFarmerAddModal");
+  var editModalEl = document.getElementById("pointFarmerEditModal");
+  var addForm = document.getElementById("pointFarmerAddForm");
+  var editForm = document.getElementById("pointFarmerEditForm");
+  var addModal = addModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+
+  if (addForm) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErr(addForm, "data-add-error-for");
+      syncInitial(addForm, '[name="full_name"]', '[name="initial"]', "#pointFarmerAddInitialPreview");
+      submitForm(addForm, "data-add-error-for", function () {
+        if (addModal) addModal.hide();
+        window.location.reload();
+      });
+    });
+    var addFull = addForm.querySelector('[name="full_name"]');
+    if (addFull) {
+      addFull.addEventListener("input", function () {
+        titleCaseInput(addFull);
+        syncInitial(addForm, '[name="full_name"]', '[name="initial"]', "#pointFarmerAddInitialPreview");
+      });
+    }
+    var addCommon = addForm.querySelector('[name="common_name"]');
+    if (addCommon) {
+      addCommon.addEventListener("input", function () { titleCaseInput(addCommon); });
+    }
+  }
+  if (addModalEl && addForm) {
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      addForm.reset();
+      var addApply = addForm.querySelector('[name="apply_rate_paid"]');
+      if (addApply) addApply.value = "yes";
+      clearErr(addForm, "data-add-error-for");
+      var preview = document.getElementById("pointFarmerAddInitialPreview");
+      if (preview) preview.textContent = "—";
+    });
+  }
+
+  if (editForm) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErr(editForm, "data-edit-error-for");
+      syncInitial(editForm, '[name="full_name"]', '[name="initial"]', "#pointFarmerEditInitialPreview");
+      submitForm(editForm, "data-edit-error-for", function () {
+        if (editModal) editModal.hide();
+        window.location.reload();
+      });
+    });
+    var editFull = editForm.querySelector('[name="full_name"]');
+    if (editFull) {
+      editFull.addEventListener("input", function () {
+        titleCaseInput(editFull);
+        syncInitial(editForm, '[name="full_name"]', '[name="initial"]', "#pointFarmerEditInitialPreview");
+      });
+    }
+    var editCommon = editForm.querySelector('[name="common_name"]');
+    if (editCommon) {
+      editCommon.addEventListener("input", function () { titleCaseInput(editCommon); });
+    }
+  }
+
+  function openPointFarmerEdit(a) {
+    if (!editForm || !editModal) return;
+    var id = a.getAttribute("data-farmer-id");
+    editForm.action = "{% url 'farmer-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + id + "/quick-edit/");
+    editForm.querySelector('[name="full_name"]').value = a.getAttribute("data-farmer-full-name") || "";
+    editForm.querySelector('[name="initial"]').value = a.getAttribute("data-farmer-initial") || "";
+    editForm.querySelector('[name="common_name"]').value = a.getAttribute("data-farmer-common-name") || "";
+    editForm.querySelector('[name="rate"]').value = a.getAttribute("data-farmer-rate") || "";
+    editForm.querySelector('[name="apply_rate_paid"]').value = a.getAttribute("data-farmer-apply-rate-paid") || "yes";
+    editForm.querySelector('[name="nic"]').value = a.getAttribute("data-farmer-nic") || "";
+    editForm.querySelector('[name="date_of_birth"]').value = a.getAttribute("data-farmer-dob") || "";
+    editForm.querySelector('[name="mobile"]').value = a.getAttribute("data-farmer-mobile") || "";
+    editForm.querySelector('[name="whatsapp"]').value = a.getAttribute("data-farmer-whatsapp") || "";
+    editForm.querySelector('[name="email"]').value = a.getAttribute("data-farmer-email") || "";
+    editForm.querySelector('[name="address"]').value = a.getAttribute("data-farmer-address") || "";
+    clearErr(editForm, "data-edit-error-for");
+    syncInitial(editForm, '[name="full_name"]', '[name="initial"]', "#pointFarmerEditInitialPreview");
+    editModal.show();
+  }
+
+  var resignForm = document.getElementById("pointFarmerResignForm");
+  var resignModalEl = document.getElementById("pointFarmerResignModal");
+  var resignModal = resignModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(resignModalEl) : null;
+
+  function openPointFarmerResign(btn) {
+    if (!resignForm || !resignModal) return;
+    var id = btn.getAttribute("data-farmer-id");
+    var name = btn.getAttribute("data-farmer-name") || "farmer";
+    resignForm.action = "{% url 'farmer-resign' 0 %}".replace("/0/resign/", "/" + id + "/resign/");
+    var subtitle = resignModalEl.querySelector("[data-resign-farmer-subtitle]");
+    if (subtitle) subtitle.textContent = "Record resignation for " + name + ".";
+    clearErr(resignForm, "data-resign-error-for");
+    resignModal.show();
+  }
+
+  if (resignForm) {
+    resignForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErr(resignForm, "data-resign-error-for");
+      submitForm(resignForm, "data-resign-error-for", function () {
+        if (resignModal) resignModal.hide();
+        window.location.reload();
+      });
+    });
+  }
+
+  var relatedFarmersRoot = document.getElementById("point-related-farmers");
+  if (relatedFarmersRoot) {
+    relatedFarmersRoot.addEventListener("click", function (e) {
+      var editBtn = e.target.closest(".js-point-farmer-edit");
+      if (editBtn) {
+        e.preventDefault();
+        openPointFarmerEdit(editBtn);
+        return;
+      }
+      var resignBtn = e.target.closest(".js-point-farmer-resign");
+      if (resignBtn) {
+        e.preventDefault();
+        openPointFarmerResign(resignBtn);
+      }
+    });
+  }
+
+  (function initPointFarmerViewModal() {
+    var modalEl = document.getElementById("pointFarmerViewModal");
+    if (!modalEl || typeof bootstrap === "undefined") return;
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    var subtitleEl = document.getElementById("pointFarmerViewSubtitle");
+    var fields = {
+      account: document.getElementById("pointFarmerViewAccount"),
+      route: document.getElementById("pointFarmerViewRoute"),
+      branch: document.getElementById("pointFarmerViewBranch"),
+      point: document.getElementById("pointFarmerViewPoint"),
+      nic: document.getElementById("pointFarmerViewNic"),
+      whatsapp: document.getElementById("pointFarmerViewWhatsapp"),
+    };
+    document.addEventListener("click", function (e) {
+      var trigger = e.target.closest(".js-point-farmer-view");
+      if (!trigger) return;
+      e.preventDefault();
+      if (subtitleEl) subtitleEl.textContent = trigger.getAttribute("data-farmer-name") || "";
+      if (fields.account) fields.account.textContent = trigger.getAttribute("data-farmer-account") || "—";
+      if (fields.route) fields.route.textContent = trigger.getAttribute("data-farmer-route") || "—";
+      if (fields.branch) fields.branch.textContent = trigger.getAttribute("data-farmer-branch") || "—";
+      if (fields.point) fields.point.textContent = trigger.getAttribute("data-farmer-point") || "—";
+      if (fields.nic) fields.nic.textContent = trigger.getAttribute("data-farmer-nic") || "—";
+      if (fields.whatsapp) fields.whatsapp.textContent = trigger.getAttribute("data-farmer-whatsapp") || "—";
+      modal.show();
+    });
+  })();
+
+  document.querySelectorAll(".js-point-farmer-edit").forEach(function (a) {
+    if (a.closest("#point-related-farmers")) return;
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      openPointFarmerEdit(a);
+    });
+  });
+
+  function initPointFarmerAccountPopovers(scope) {
+    if (!window.bootstrap || !bootstrap.Popover) return;
+    var root = scope || document.getElementById("point-related-farmers");
+    if (!root) return;
+    root.querySelectorAll(".farmer-account-popover").forEach(function (trigger) {
+      if (trigger.dataset.popoverReady === "1") return;
+      var template = trigger.nextElementSibling;
+      if (!template || template.tagName !== "TEMPLATE") return;
+      new bootstrap.Popover(trigger, {
+        html: true,
+        sanitize: false,
+        title: "Farmer account summary",
+        content: template.innerHTML,
+        trigger: "hover focus",
+        placement: "left",
+        container: "body",
+        customClass: "payment-sheet-paid-popover-pop",
+      });
+      trigger.dataset.popoverReady = "1";
+    });
+  }
+  initPointFarmerAccountPopovers();
+  var pointFarmersTable = document.querySelector("#point-related-farmers .point-farmers-table");
+  if (pointFarmersTable && window.jQuery && $.fn.dataTable) {
+    $(pointFarmersTable).on("draw.dt", function () {
+      initPointFarmerAccountPopovers(document.getElementById("point-related-farmers"));
+    });
+  }
+
+  var applyBtn = document.getElementById("additional-farmers-apply");
+  if (applyBtn) {
+    var additionalUrl = "{% url 'point-additional-farmers' point.pk %}";
+    var checkAll = document.getElementById("additional-farmers-check-all");
+    var selectAllBtn = document.getElementById("additional-farmers-select-all");
+    var clearBtn = document.getElementById("additional-farmers-clear");
+    var csrfToken = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "";
+
+    function farmerChecks() {
+      return Array.prototype.slice.call(document.querySelectorAll(".js-additional-farmer"));
+    }
+
+    function setAllChecked(on) {
+      farmerChecks().forEach(function (cb) { cb.checked = !!on; });
+      if (checkAll) checkAll.checked = !!on;
+    }
+
+    if (checkAll) {
+      checkAll.addEventListener("change", function () {
+        setAllChecked(checkAll.checked);
+      });
+    }
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener("click", function () { setAllChecked(true); });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function () { setAllChecked(false); });
+    }
+
+    function updateTotalsUi(data) {
+      var t = data.totals || {};
+      var setText = function (id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+      setText("additional-farmer-entries", t.total_entries != null ? t.total_entries : "0");
+      setText("additional-farmer-kg", t.total_kg != null ? t.total_kg : "0.00");
+      setText("additional-farmer-liters", t.total_liters != null ? t.total_liters : "0.00");
+      setText("point-details-additional-rate", t.additional_rate != null ? t.additional_rate : "0.00");
+      setText("point-details-additional-amount", t.additional_amount != null ? t.additional_amount : "0.00");
+      setText("point-details-collector-fee-rate", t.collector_fee_rate != null ? t.collector_fee_rate : "0.00");
+      setText("point-details-collector-fee-amount", t.collector_fee_amount != null ? t.collector_fee_amount : "0.00");
+      var basis = document.getElementById("additional-farmer-basis-text");
+      if (basis) {
+        if (data.uses_all_farmers) {
+          basis.textContent = "All " + (t.all_count || 0) + " farmers";
+        } else {
+          basis.textContent = (t.selected_count || 0) + " of " + (t.all_count || 0) + " selected";
+        }
+      }
+      var badge = document.getElementById("additional-farmer-basis-badge");
+      if (badge) badge.textContent = data.uses_all_farmers ? "All farmers" : "Selected farmers";
+    }
+
+    applyBtn.addEventListener("click", function () {
+      var body = new URLSearchParams();
+      body.append("csrfmiddlewaretoken", csrfToken);
+      var periodForm = document.getElementById("point-milk-period-filter");
+      var fromInput = periodForm ? periodForm.querySelector('input[name="from"]') : null;
+      var toInput = periodForm ? periodForm.querySelector('input[name="to"]') : null;
+      if (fromInput && fromInput.value) body.append("from", fromInput.value);
+      if (toInput && toInput.value) body.append("to", toInput.value);
+      farmerChecks().forEach(function (cb) {
+        if (cb.checked) body.append("farmer_ids", cb.value);
+      });
+      applyBtn.disabled = true;
+      fetch(additionalUrl, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        body: body,
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          applyBtn.disabled = false;
+          if (!data.ok) {
+            if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: data.error || "Could not apply selection." });
+            return;
+          }
+          updateTotalsUi(data);
+          if (typeof Swal !== "undefined") {
+            Swal.fire({
+              icon: "success",
+              title: data.uses_all_farmers ? "Additional uses all farmers" : "Additional farmers updated",
+              timer: 1600,
+              showConfirmButton: false,
+            });
+          }
+        })
+        .catch(function () {
+          applyBtn.disabled = false;
+          if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not apply selection." });
+        });
+    });
+  }
+})();
+</script>
+<script>
+(function () {
+  var form = document.getElementById("point-milk-period-filter");
+  if (!form) return;
+  var rangeInput = form.querySelector("#point-milk-period");
+  if (!rangeInput) return;
+
+  function submitPeriodFilter() {
+    if (typeof form.requestSubmit === "function") {
+      form.requestSubmit();
+    } else {
+      form.submit();
+    }
+  }
+
+  window.setTimeout(function () {
+    var fp = rangeInput._flatpickrInstance || rangeInput._flatpickr;
+    if (!fp) return;
+    var fromEl = form.querySelector('input[name="from"]');
+    var toEl = form.querySelector('input[name="to"]');
+    var dateSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+    var prevOnChange = fp.config.onChange;
+    fp.set("onChange", function (selectedDates, dateStr, instance) {
+      if (typeof prevOnChange === "function") {
+        prevOnChange(selectedDates, dateStr, instance);
+      } else if (Array.isArray(prevOnChange)) {
+        prevOnChange.forEach(function (fn) { fn(selectedDates, dateStr, instance); });
+      }
+      var nextSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+      if (nextSnapshot !== dateSnapshot && (selectedDates.length === 2 || selectedDates.length === 0)) {
+        dateSnapshot = nextSnapshot;
+        submitPeriodFilter();
+      }
+    });
+  }, 200);
+})();
+</script>
+<script>
+(function () {
+  var modalEl = document.getElementById("pointFeeUpdateModal");
+  var openBtn = document.getElementById("point-fee-add-btn");
+  if (modalEl && openBtn && window.bootstrap) {
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    openBtn.addEventListener("click", function () {
+      modal.show();
+    });
+    {% if fee_form.errors %}
+    modal.show();
+    {% endif %}
+  }
+  var form = document.getElementById("point-fee-update-form");
+  if (!form || form.dataset.submitGuardBound === "1") return;
+  form.dataset.submitGuardBound = "1";
+  form.addEventListener("submit", function () {
+    if (form.dataset.submitting === "1") return false;
+    form.dataset.submitting = "1";
+    var btn = document.querySelector('button[type="submit"][form="point-fee-update-form"]') || form.querySelector('button[type="submit"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+    }
+  });
+})();
+</script>
+{% if perms.masters.change_collectionpoint %}
+<script>
+(function () {
+  var modalEl = document.getElementById("pointBankAccountModal");
+  var form = document.getElementById("point-bank-account-form");
+  if (!modalEl || !form || !window.bootstrap) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  var titleEl = document.getElementById("pointBankAccountModalLabel");
+  var idInput = document.getElementById("id_point_bank_account_id");
+  var nameInput = form.querySelector('[name="account_name"]');
+  var numberInput = form.querySelector('[name="account_number"]');
+  var bankInput = form.querySelector('[name="bank_name"]');
+  var bankCodeInput = form.querySelector('[name="bank_code"]');
+  var branchInput = form.querySelector('[name="bank_branch"]');
+  var branchCodeInput = form.querySelector('[name="branch_code"]');
+  var primaryInput = form.querySelector('[name="is_primary"]');
+
+  function setTitle(isEdit) {
+    if (titleEl) titleEl.textContent = isEdit ? "Edit bank account" : "Add bank account";
+  }
+
+  function clearForm() {
+    if (idInput) idInput.value = "";
+    if (nameInput) nameInput.value = "";
+    if (numberInput) numberInput.value = "";
+    if (bankInput) bankInput.value = "";
+    if (bankCodeInput) bankCodeInput.value = "";
+    if (branchInput) branchInput.value = "";
+    if (branchCodeInput) branchCodeInput.value = "";
+    if (primaryInput) primaryInput.checked = false;
+    form.querySelectorAll(".invalid-feedback, .text-danger").forEach(function (el) {
+      if (el.closest(".modal-body")) el.remove();
+    });
+  }
+
+  function fillForm(btn) {
+    if (idInput) idInput.value = btn.getAttribute("data-id") || "";
+    if (nameInput) nameInput.value = btn.getAttribute("data-account-name") || "";
+    if (numberInput) numberInput.value = btn.getAttribute("data-account-number") || "";
+    if (bankInput) {
+      var bankName = btn.getAttribute("data-bank-name") || "";
+      bankInput.value = bankName;
+      if (bankName && bankInput.value !== bankName) {
+        var option = document.createElement("option");
+        option.value = bankName;
+        option.textContent = bankName;
+        bankInput.appendChild(option);
+        bankInput.value = bankName;
+      }
+    }
+    if (bankCodeInput) bankCodeInput.value = btn.getAttribute("data-bank-code") || "";
+    if (branchInput) branchInput.value = btn.getAttribute("data-bank-branch") || "";
+    if (branchCodeInput) branchCodeInput.value = btn.getAttribute("data-branch-code") || "";
+    if (primaryInput) primaryInput.checked = btn.getAttribute("data-is-primary") === "1";
+  }
+
+  document.querySelectorAll(".js-cp-bank-add").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      clearForm();
+      setTitle(false);
+      modal.show();
+    });
+  });
+  document.querySelectorAll(".js-cp-bank-edit").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      clearForm();
+      fillForm(btn);
+      setTitle(true);
+      modal.show();
+    });
+  });
+  {% if bank_account_form.errors %}
+  modal.show();
+  {% endif %}
+})();
+</script>
+{% endif %}
+{% if perms.masters.bulk_update_farmerrate %}
+<script>
+(function () {
+  var root = document.getElementById("point-related-farmers");
+  if (!root) return;
+  var saveUrl = "{% url 'farmer-bulk-rate-cell-save' %}";
+  var csrfToken = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "{{ csrf_token }}";
+  var inFlight = Object.create(null);
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getEditors() {
+    return Array.prototype.slice.call(root.querySelectorAll(".farmer-rate-inline"));
+  }
+
+  function closeEditor(wrap, restore) {
+    if (!wrap) return;
+    var input = wrap.querySelector(".js-farmer-rate-input");
+    if (restore && input) {
+      var original = wrap.getAttribute("data-rate") || "";
+      input.value = original === "0" || original === "0.00" ? "" : original;
+    }
+    wrap.classList.remove("is-editing", "is-error");
+  }
+
+  function openEditor(wrap) {
+    getEditors().forEach(function (other) {
+      if (other !== wrap) closeEditor(other, true);
+    });
+    wrap.classList.add("is-editing");
+    wrap.classList.remove("is-error", "is-saved");
+    var input = wrap.querySelector(".js-farmer-rate-input");
+    if (input) {
+      input.focus();
+      if (typeof input.select === "function") input.select();
+    }
+  }
+
+  function setLabel(wrap, rateDisplay, hasRate) {
+    var label = wrap.querySelector(".js-farmer-rate-label");
+    var btn = wrap.querySelector(".farmer-rate-display");
+    if (!label) return;
+    if (hasRate) {
+      label.textContent = rateDisplay;
+      if (btn) btn.classList.remove("is-empty");
+    } else {
+      label.textContent = "Set rate";
+      if (btn) btn.classList.add("is-empty");
+    }
+  }
+
+  function nextEditor(wrap) {
+    var editors = getEditors().filter(function (el) {
+      return el.offsetParent !== null;
+    });
+    var idx = editors.indexOf(wrap);
+    if (idx < 0) return null;
+    return editors[idx + 1] || null;
+  }
+
+  function saveEditor(wrap, options) {
+    options = options || {};
+    var farmerId = wrap.getAttribute("data-farmer-id");
+    if (!farmerId || inFlight[farmerId]) return Promise.resolve();
+    var input = wrap.querySelector(".js-farmer-rate-input");
+    if (!input) return Promise.resolve();
+
+    var rate = String(input.value || "").replace(/,/g, "").trim();
+    var applyRatePaid = wrap.getAttribute("data-apply-rate-paid") || "yes";
+    var originalRate = wrap.getAttribute("data-rate") || "0";
+    if (!rate) {
+      closeEditor(wrap, true);
+      return Promise.resolve();
+    }
+    if (rate === originalRate) {
+      closeEditor(wrap, false);
+      if (options.moveNext) {
+        var nxtSame = nextEditor(wrap);
+        if (nxtSame) openEditor(nxtSame);
+      }
+      return Promise.resolve();
+    }
+
+    inFlight[farmerId] = true;
+    wrap.classList.add("is-saving");
+    wrap.classList.remove("is-error");
+    var body = new FormData();
+    body.append("farmer_id", farmerId);
+    body.append("rate", rate);
+    body.append("apply_rate_paid", applyRatePaid);
+    body.append("csrfmiddlewaretoken", csrfToken);
+
+    return fetch(saveUrl, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return { ok: r.ok, data: d };
+        });
+      })
+      .then(function (res) {
+        wrap.classList.remove("is-saving");
+        delete inFlight[farmerId];
+        if (!res.ok || !res.data || !res.data.ok) {
+          wrap.classList.add("is-error");
+          if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Could not save rate",
+              text: (res.data && res.data.error) || "Please try again.",
+              timer: 2200,
+              showConfirmButton: false,
+              toast: true,
+              position: "top-end",
+            });
+          }
+          return;
+        }
+        var data = res.data;
+        wrap.setAttribute("data-rate", data.rate);
+        if (data.apply_rate_paid) {
+          wrap.setAttribute("data-apply-rate-paid", data.apply_rate_paid);
+        }
+        input.value = data.rate;
+        setLabel(wrap, data.rate_display || formatMoney(data.rate), parseFloat(data.rate) > 0);
+        var cell = wrap.closest("td");
+        if (cell) cell.setAttribute("data-order", data.rate);
+        wrap.classList.remove("is-editing");
+        wrap.classList.add("is-saved");
+        window.setTimeout(function () {
+          wrap.classList.remove("is-saved");
+        }, 900);
+        if (options.moveNext) {
+          var nxt = nextEditor(wrap);
+          if (nxt) openEditor(nxt);
+        }
+      })
+      .catch(function () {
+        wrap.classList.remove("is-saving");
+        delete inFlight[farmerId];
+        wrap.classList.add("is-error");
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var editBtn = ev.target.closest("#point-related-farmers .js-farmer-rate-edit");
+    if (editBtn) {
+      ev.preventDefault();
+      openEditor(editBtn.closest(".farmer-rate-inline"));
+      return;
+    }
+    var inside = ev.target.closest("#point-related-farmers .farmer-rate-inline.is-editing");
+    if (!inside) {
+      getEditors().forEach(function (wrap) {
+        if (wrap.classList.contains("is-editing")) saveEditor(wrap);
+      });
+    }
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var wrap = ev.target.closest("#point-related-farmers .farmer-rate-inline.is-editing");
+    if (!wrap) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor(wrap, { moveNext: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor(wrap, true);
+    }
+  });
+})();
+</script>
+{% endif %}
+{% if user.is_superuser %}
+<script>
+(function () {
+  var table = document.querySelector(".farmer-milk-collections-table");
+  var deleteBtn = document.querySelector("#point-milk-collections .delete-selected-btn");
+  if (!table) return;
+
+  function rowChecks() {
+    return table.querySelectorAll(".js-row-select");
+  }
+
+  function syncBulkDeleteVisibility() {
+    if (!deleteBtn) return;
+    var anyChecked = false;
+    rowChecks().forEach(function (cb) { if (cb.checked) anyChecked = true; });
+    deleteBtn.hidden = !anyChecked;
+  }
+
+  table.addEventListener("change", function (e) {
+    var target = e.target;
+    if (!target) return;
+    if (target.classList.contains("js-select-all-rows")) {
+      rowChecks().forEach(function (cb) { cb.checked = target.checked; });
+    }
+    if (target.classList.contains("js-select-all-rows") || target.classList.contains("js-row-select")) {
+      syncBulkDeleteVisibility();
+    }
+  });
+  syncBulkDeleteVisibility();
+})();
+</script>
+{% endif %}
+{% endblock %}

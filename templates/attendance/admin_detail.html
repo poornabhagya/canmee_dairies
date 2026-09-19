@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Attendance detail · Canmee Dairies{% endblock %}
+{% block page_heading %}Attendance detail{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-secondary" href="{% url 'attendance:admin-list' %}">All records</a>
+{% endblock %}
+{% block content %}
+<div class="card" style="border:1px solid #e7edf5;border-radius:14px;max-width:720px;">
+  <div class="card-body">
+    <h1 class="h4">{{ record.get_punch_type_display }}</h1>
+    <p class="text-muted">{{ record.punched_at|date:"Y-m-d H:i:s" }}</p>
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Employee</dt>
+      <dd class="col-sm-8">{{ record.employee.get_full_name }} ({{ record.employee.employee_number }})</dd>
+      <dt class="col-sm-4">NIC</dt>
+      <dd class="col-sm-8">{{ record.employee.nic|default:"—" }}</dd>
+      <dt class="col-sm-4">Department</dt>
+      <dd class="col-sm-8">{% if record.employee.department %}{{ record.employee.department.name }}{% else %}—{% endif %}</dd>
+      <dt class="col-sm-4">Coordinates</dt>
+      <dd class="col-sm-8">
+        {% if record.has_coordinates %}
+        <a href="{{ record.maps_url }}" target="_blank" rel="noopener">{{ record.latitude }}, {{ record.longitude }}</a>
+        {% if record.accuracy_m %} (±{{ record.accuracy_m }} m){% endif %}
+        {% else %}—{% endif %}
+      </dd>
+      <dt class="col-sm-4">Location label</dt>
+      <dd class="col-sm-8">{{ record.location_label|default:"—" }}</dd>
+      <dt class="col-sm-4">IP address</dt>
+      <dd class="col-sm-8">{{ record.ip_address|default:"—" }}</dd>
+      <dt class="col-sm-4">Device</dt>
+      <dd class="col-sm-8">{{ record.device_label|default:"—" }}</dd>
+      <dt class="col-sm-4">App</dt>
+      <dd class="col-sm-8">{{ record.app_label|default:"—" }}</dd>
+      <dt class="col-sm-4">User agent</dt>
+      <dd class="col-sm-8"><code class="small">{{ record.user_agent|default:"—" }}</code></dd>
+      <dt class="col-sm-4">Recorded by</dt>
+      <dd class="col-sm-8">{% if record.created_by %}{{ record.created_by.get_username }}{% else %}—{% endif %}</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}

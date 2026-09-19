@@ -1,0 +1,57 @@
+{% load format_extras %}
+{% if account %}
+{% if account.net > 0 or account.collector_fee > 0 or account.gross > 0 %}
+<span
+  class="payment-sheet-paid-popover point-account-popover text-success"
+  tabindex="0"
+  role="button"
+  aria-label="Account balance {{ account.net|money }}, show details"
+>{{ account.net|money }}</span>
+<template class="payment-sheet-paid-popover-content">
+  <div class="payment-sheet-paid-popover-body">
+    {% if account.collector_fee > 0 %}
+    <div class="payment-sheet-paid-popover-body__hint">Collector fee pending</div>
+    <div class="payment-sheet-paid-popover-row payment-sheet-paid-popover-row--total">
+      <span>Unpaid collector fee</span>
+      <span>{{ account.collector_fee|money }}</span>
+    </div>
+    {% endif %}
+    {% if account.gross > 0 or account.advance > 0 or account.goods > 0 or account.loan > 0 %}
+    <div class="payment-sheet-paid-popover-body__hint mt-2">Linked farmer settlements</div>
+    {% if account.gross > 0 %}
+    <div class="payment-sheet-paid-popover-row">
+      <span>Unpaid milk (gross)</span>
+      <span>{{ account.gross|money }}</span>
+    </div>
+    {% endif %}
+    {% if account.advance > 0 %}
+    <div class="payment-sheet-paid-popover-row">
+      <span>Advance to recover</span>
+      <span>{{ account.advance|money }}</span>
+    </div>
+    {% endif %}
+    {% if account.goods > 0 %}
+    <div class="payment-sheet-paid-popover-row">
+      <span>Goods deducted</span>
+      <span>{{ account.goods|money }}</span>
+    </div>
+    {% endif %}
+    {% if account.loan > 0 %}
+    <div class="payment-sheet-paid-popover-row">
+      <span>Loan deducted</span>
+      <span>{{ account.loan|money }}</span>
+    </div>
+    {% endif %}
+    {% endif %}
+    <div class="payment-sheet-paid-popover-row payment-sheet-paid-popover-row--total mt-2">
+      <span>Net payable</span>
+      <span>{{ account.net|money }}</span>
+    </div>
+  </div>
+</template>
+{% else %}
+<span class="text-muted">—</span>
+{% endif %}
+{% else %}
+<span class="text-muted">—</span>
+{% endif %}

@@ -1,0 +1,825 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if is_edit %}Edit issue receipt{% else %}{{ page_heading_branch }}{% endif %}{% endblock %}
+{% block page_heading %}{% if is_edit %}Edit issue receipt{% else %}{{ page_heading_branch }}{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+  .issue-goods-card .issue-target-panel {
+    display: none;
+  }
+  .issue-goods-card .issue-target-panel.is-active {
+    display: block;
+  }
+  .issue-lookup-result {
+    margin-top: 0.35rem;
+    font-size: 0.84rem;
+    color: #0f766e;
+    font-weight: 600;
+  }
+  .issue-lookup-result.is-empty {
+    color: #64748b;
+    font-weight: 500;
+  }
+  .issue-goods-card .from-branch-fixed {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.35;
+  }
+  .issue-goods-card .milk-form-row-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    align-items: end;
+  }
+  .issue-goods-card .milk-form-row-two .form-col {
+    min-width: 0;
+  }
+  .issue-goods-card .milk-form-row-two .form-label {
+    margin-bottom: 0.35rem;
+  }
+  .issue-goods-card .milk-form-row-two .select2-container .select2-selection--single {
+    min-height: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+  }
+  .issue-goods-card .milk-form-row-two .select2-container .select2-selection__rendered {
+    line-height: 38px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 2rem !important;
+  }
+  .issue-goods-card .milk-form-row-two .select2-container .select2-selection__arrow {
+    height: 38px !important;
+  }
+  @media (max-width: 767.98px) {
+    .issue-goods-card .milk-form-row-two {
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+    }
+  }
+  .issue-goods-card .transfer-products-table .transfer-line-product {
+    min-width: 0;
+  }
+  .issue-goods-card .transfer-products-table .transfer-line-qty {
+    width: 7rem;
+  }
+  .issue-goods-card .transfer-products-table .transfer-line-avail,
+  .issue-goods-card .transfer-products-table .transfer-line-price {
+    width: 7.25rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .issue-goods-card .js-issue-available.is-low {
+    color: #b45309;
+    font-weight: 700;
+  }
+  .issue-goods-card .js-issue-available.is-none {
+    color: #dc2626;
+    font-weight: 700;
+  }
+  .issue-goods-card .issue-lines-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: #64748b;
+    padding: 0.35rem 0.65rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+  }
+  .issue-goods-card .issue-lines-hint i {
+    color: #059669;
+  }
+  @media (max-width: 767.98px) {
+    .issue-goods-card.milk-collection-card .card-body {
+      padding: 0.75rem 0.65rem 1rem;
+    }
+    .issue-goods-card .transfer-products-table .transfer-line-qty {
+      width: 5.5rem;
+      min-width: 5.5rem;
+    }
+    .issue-goods-card .transfer-products-table thead th,
+    .issue-goods-card .transfer-products-table tbody td {
+      padding: 0.4rem 0.35rem;
+    }
+    .issue-goods-card .issue-lines-hint {
+      width: 100%;
+      justify-content: center;
+      font-size: 0.72rem;
+    }
+    .issue-goods-card .milk-collection-actions .btn-outline-secondary {
+      flex: 1 1 calc(50% - 0.25rem);
+      min-width: 0;
+    }
+  }
+  @media (max-width: 400px) {
+    .issue-goods-card .milk-collection-actions .btn-outline-secondary {
+      flex-basis: 100%;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{{ issue_branches_json|json_script:"issue-branches-data" }}
+{{ issue_points_json|json_script:"issue-points-data" }}
+{{ issue_farmers_json|json_script:"issue-farmers-data" }}
+{{ issue_products_by_branch_json|json_script:"issue-products-by-branch-data" }}
+<div class="card milk-collection-card issue-goods-card">
+  <div class="card-body">
+    <form method="post" class="milk-collection-form js-transfer-form" novalidate>
+      {% csrf_token %}
+      {% if issue_branch_select_count == 0 %}
+      <div class="alert alert-warning swal-flash mb-3">No branch is assigned to your account. You cannot issue goods until an administrator assigns a branch.</div>
+      {% endif %}
+      {% if form.non_field_errors %}<div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>{% endif %}
+      {% if line_formset.non_form_errors %}<div class="alert alert-danger swal-flash">{{ line_formset.non_form_errors }}</div>{% endif %}
+
+      <div class="mb-3 milk-form-row-two">
+        <div class="form-col">
+          {% if issue_branch_select_count == 1 %}
+          <label class="form-label fw-semibold">Branch</label>
+          <p class="from-branch-fixed">{{ page_heading_branch }}</p>
+          <div class="visually-hidden" aria-hidden="true">{{ form.from_branch }}</div>
+          {% else %}
+          <label class="form-label fw-semibold" for="{{ form.from_branch.id_for_label }}"><i class="bi bi-diagram-3 me-1"></i>Branch</label>
+          {{ form.from_branch }}
+          {% endif %}
+          {% if form.from_branch.errors %}
+          <div class="alert alert-danger swal-flash mt-2" hidden aria-live="polite">{{ form.from_branch.errors }}</div>
+          {% endif %}
+        </div>
+        <div class="form-col">
+          <label class="form-label fw-semibold" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+          {{ form.date }}
+          {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <div class="d-none">{{ form.issue_to_type }}{{ form.issue_to_id }}</div>
+        <div class="source-toggle-wrap">
+          <div class="source-segment" role="tablist" aria-label="Collection point or farmer">
+            <button type="button" class="source-segment__btn issue-type-tab" data-issue-type="collection_point">
+              <i class="bi bi-geo-alt-fill source-segment__icon" aria-hidden="true"></i>
+              <span class="source-segment__text">Collection point</span>
+            </button>
+            <button type="button" class="source-segment__btn issue-type-tab" data-issue-type="farmer">
+              <i class="bi bi-person-badge source-segment__icon" aria-hidden="true"></i>
+              <span class="source-segment__text">Farmer</span>
+            </button>
+          </div>
+        </div>
+        {% if form.issue_to_type.errors %}<div class="alert alert-danger swal-flash mt-2" hidden aria-live="polite">{{ form.issue_to_type.errors }}</div>{% endif %}
+      </div>
+
+      <div class="issue-target-panel milk-collection-panel is-active" data-target-panel="collection_point">
+        <div class="milk-collection-panel__title">Collection point</div>
+        <div class="milk-collection-point-route-row">
+          <div class="milk-collection-point-route-row__point">
+            <label class="form-label fw-semibold" for="issue-point-quick-input">Point number</label>
+            <input
+              type="text"
+              id="issue-point-quick-input"
+              class="form-control form-control-lg milk-collection-combo"
+              placeholder="e.g. 12 or point name"
+              autocomplete="off"
+              inputmode="text"
+              enterkeyhint="enter"
+            >
+            <div class="issue-lookup-result is-empty" id="issue-point-lookup-result">Type point number/name, then press Enter or Tab.</div>
+          </div>
+          <div class="milk-collection-point-route-row__route">
+            <span class="form-label text-muted small text-uppercase fw-semibold mb-1 d-block milk-collection-route-label">Route (from point)</span>
+            <div class="route-chip route-chip--row" id="issue-point-route" aria-live="polite">—</div>
+          </div>
+        </div>
+        <div class="d-none">{{ form.issue_to_collection_point }}</div>
+        {% if form.issue_to_collection_point.errors %}<div class="text-danger small mt-1">{{ form.issue_to_collection_point.errors }}</div>{% endif %}
+      </div>
+
+      <div class="issue-target-panel milk-collection-panel" data-target-panel="farmer">
+        <div class="milk-collection-panel__title">Farmer</div>
+        <div class="milk-form-row-two">
+          <div class="form-col">
+            <label class="form-label fw-semibold" for="issue-farmer-quick-input">Farmer quick find (Reg last 5 digits)</label>
+            <input
+              type="text"
+              id="issue-farmer-quick-input"
+              class="form-control"
+              maxlength="5"
+              inputmode="numeric"
+              enterkeyhint="enter"
+              autocomplete="off"
+              placeholder="e.g. 7 or 00007"
+            >
+            <div class="issue-lookup-result is-empty" id="issue-farmer-lookup-result">Enter last 5 registration digits, then press Enter.</div>
+          </div>
+          <div class="form-col">
+            <label class="form-label fw-semibold" for="{{ form.issue_to_farmer.id_for_label }}">Farmer</label>
+            {{ form.issue_to_farmer }}
+            {% if form.issue_to_farmer.errors %}<div class="text-danger small mt-1">{{ form.issue_to_farmer.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="milk-collection-panel mb-0">
+        <div class="milk-collection-panel__title">Products &amp; quantity</div>
+        <div class="transfer-products-toolbar mb-2">
+          <span class="issue-lines-hint"><i class="bi bi-keyboard"></i>Tab through cells · Search products in first column</span>
+        </div>
+        {{ line_formset.management_form }}
+        <div class="transfer-inline-wrap transfer-products-shell">
+          <div class="table-responsive">
+            <table class="table transfer-inline-table transfer-products-table mb-0">
+              <thead>
+                <tr>
+                  <th class="transfer-line-num">#</th>
+                  <th class="transfer-line-product">Product</th>
+                  <th class="transfer-line-avail text-end">Available</th>
+                  <th class="transfer-line-price text-end">Price</th>
+                  <th class="transfer-line-qty text-end">Qty</th>
+                  <th class="transfer-line-actions"></th>
+                </tr>
+              </thead>
+              <tbody id="js-transfer-lines-body">
+                {% for line_form in line_formset %}
+                <tr class="js-transfer-line">
+                  <td class="transfer-line-num"><span class="js-line-num">{{ forloop.counter }}</span></td>
+                  <td class="transfer-line-product">
+                    {{ line_form.product }}
+                    {% if line_form.product.errors %}<div class="text-danger small mt-1">{{ line_form.product.errors }}</div>{% endif %}
+                  </td>
+                  <td class="transfer-line-avail text-end">
+                    <span class="js-issue-available text-muted">—</span>
+                  </td>
+                  <td class="transfer-line-price text-end">
+                    <span class="js-issue-price text-muted">—</span>
+                  </td>
+                  <td class="transfer-line-qty">
+                    {{ line_form.quantity }}
+                    {% if line_form.quantity.errors %}<div class="text-danger small mt-1">{{ line_form.quantity.errors }}</div>{% endif %}
+                  </td>
+                  <td class="transfer-line-actions">
+                    <button type="button" class="js-transfer-remove-line" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="transfer-inline-add">
+            <button type="button" class="btn btn-link text-success p-0 d-inline-flex align-items-center gap-1" id="js-transfer-add-line">
+              <i class="bi bi-plus-circle"></i> Add line
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 milk-collection-actions mt-3">
+        <button type="submit" class="btn btn-primary btn-lg flex-grow-1 flex-sm-grow-0" {% if issue_branch_select_count == 0 %}disabled aria-disabled="true"{% endif %}><i class="bi bi-check2 me-1"></i>{% if is_edit %}Save changes{% else %}Issue &amp; Print{% endif %}</button>
+        {% if is_edit %}
+        <a href="{% url 'farmer-goods-issue-list' %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+        {% else %}
+        {% if perms.suppliers.view_farmergoodsissue %}
+        <a href="{% url 'farmer-goods-issue-list' %}" class="btn btn-outline-secondary btn-lg">All receipts</a>
+        {% endif %}
+        <a href="{% url 'stock-overview' %}" class="btn btn-outline-secondary btn-lg">Stock overview</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'js/stock_transfer_lines.js' %}"></script>
+<script>
+(function () {
+  var typeInput = document.getElementById('{{ form.issue_to_type.id_for_label }}');
+  var idInput = document.getElementById('{{ form.issue_to_id.id_for_label }}');
+  if (!typeInput || !idInput) return;
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.issue-type-tab'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.issue-target-panel'));
+  var branchSelect = document.getElementById('{{ form.issue_to_branch.id_for_label }}');
+  var pointSelect = document.getElementById('{{ form.issue_to_collection_point.id_for_label }}');
+  var farmerSelect = document.getElementById('{{ form.issue_to_farmer.id_for_label }}');
+  var pointQuickInput = document.getElementById('issue-point-quick-input');
+  var pointRouteInput = document.getElementById('issue-point-route');
+  var farmerQuickInput = document.getElementById('issue-farmer-quick-input');
+  var pointLookupResult = document.getElementById('issue-point-lookup-result');
+  var farmerLookupResult = document.getElementById('issue-farmer-lookup-result');
+  var branchesDataEl = document.getElementById('issue-branches-data');
+  var pointsDataEl = document.getElementById('issue-points-data');
+  var farmersDataEl = document.getElementById('issue-farmers-data');
+  var productsDataEl = document.getElementById('issue-products-by-branch-data');
+  var fromBranchEl = document.getElementById('{{ form.from_branch.id_for_label }}');
+  var branchAllOptions = branchesDataEl ? JSON.parse(branchesDataEl.textContent) : [];
+  var pointAllOptions = pointsDataEl ? JSON.parse(pointsDataEl.textContent) : [];
+  var farmerAllOptions = farmersDataEl ? JSON.parse(farmersDataEl.textContent) : [];
+  var productsByBranch = productsDataEl ? JSON.parse(productsDataEl.textContent) : {};
+
+  function scopeBranchId() {
+    if (!fromBranchEl) return null;
+    var v = String(fromBranchEl.value || '').trim();
+    if (!v) return null;
+    var n = parseInt(v, 10);
+    return isNaN(n) ? null : n;
+  }
+  function pointsForScope() {
+    var bid = scopeBranchId();
+    if (bid == null) return [];
+    return pointAllOptions.filter(function (p) {
+      return p.branch_id != null && parseInt(p.branch_id, 10) === bid;
+    });
+  }
+  function farmersForScope() {
+    var bid = scopeBranchId();
+    if (bid == null) return [];
+    return farmerAllOptions.filter(function (f) {
+      return f.branch_id != null && parseInt(f.branch_id, 10) === bid;
+    });
+  }
+  function branchesForScope() {
+    var bid = scopeBranchId();
+    if (bid == null) return [];
+    return branchAllOptions.filter(function (b) {
+      return parseInt(b.id, 10) !== bid;
+    });
+  }
+
+  function destroySelect2(selectEl) {
+    if (!selectEl || !window.jQuery || !window.jQuery.fn.select2) return;
+    var $el = window.jQuery(selectEl);
+    if ($el.hasClass('select2-hidden-accessible')) {
+      $el.select2('destroy');
+    }
+  }
+  function initFarmerSelect2() {
+    if (!farmerSelect || !window.jQuery || !window.jQuery.fn.select2) return;
+    var $el = window.jQuery(farmerSelect);
+    destroySelect2(farmerSelect);
+    $el.select2({
+      width: '100%',
+      placeholder: 'Search farmer',
+      allowClear: true
+    });
+  }
+  function setSelectValue(selectEl, value) {
+    if (!selectEl) return;
+    var next = value || '';
+    selectEl.value = next;
+    if (window.jQuery && window.jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+      window.jQuery(selectEl).val(next || null).trigger('change');
+    }
+  }
+  function focusFirstProductSelect() {
+    var tbody = document.getElementById('js-transfer-lines-body');
+    if (!tbody) return;
+    var sel = tbody.querySelector('select.js-transfer-product-select');
+    if (!sel) return;
+    sel.focus();
+    openSelect(sel);
+  }
+  function openSelect(selectEl) {
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2 || !selectEl) return;
+    var $el = window.jQuery(selectEl);
+    if ($el.hasClass('select2-hidden-accessible')) $el.select2('open');
+  }
+  function alertQuickFindUnavailable(message, inputEl) {
+    var refocus = function () {
+      if (!inputEl) return;
+      window.setTimeout(function () {
+        inputEl.focus();
+        if (typeof inputEl.select === 'function') inputEl.select();
+      }, 0);
+    };
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        toast: true,
+        icon: 'warning',
+        title: message,
+        position: 'top-end',
+        timer: 1800,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        customClass: { popup: 'app-swal-popup' }
+      }).then(refocus);
+      return;
+    }
+    if (typeof window.appAlert === 'function') {
+      Promise.resolve(window.appAlert(message, { icon: 'warning', title: 'Warning' })).then(refocus);
+      return;
+    }
+    window.alert(message);
+    refocus();
+  }
+  function activeType() {
+    var v = String(typeInput.value || '').trim();
+    if (v === 'collection_point' || v === 'farmer') return v;
+    return '';
+  }
+  function syncTargetId() {
+    var t = activeType();
+    if (!t) {
+      idInput.value = '';
+      return;
+    }
+    idInput.value = t === 'collection_point' ? (pointSelect ? pointSelect.value || '' : '') :
+      (farmerSelect ? farmerSelect.value || '' : '');
+  }
+  function rebuildDestinationSelects() {
+    var pk = pointSelect ? pointSelect.value || '' : '';
+    var fk = farmerSelect ? farmerSelect.value || '' : '';
+    rebuildOptions(pointSelect, pointsForScope(), pk, 'Select collection point');
+    rebuildOptions(farmerSelect, farmersForScope(), fk, 'Select farmer');
+  }
+  function updateScopedPanels() {
+    if (!scopeBranchId()) {
+      if (pointLookupResult) {
+        pointLookupResult.textContent = 'Select a from branch first.';
+        pointLookupResult.classList.add('is-empty');
+      }
+      if (farmerLookupResult) {
+        farmerLookupResult.textContent = 'Select a from branch first.';
+        farmerLookupResult.classList.add('is-empty');
+      }
+      if (pointRouteInput) pointRouteInput.textContent = '—';
+      syncTargetId();
+      return;
+    }
+    if (activeType() === 'collection_point') {
+      applyPointQuickFilter();
+    } else if (pointLookupResult) {
+      pointLookupResult.textContent = 'Type point number/name, then press Enter or Tab.';
+      pointLookupResult.classList.add('is-empty');
+    }
+    if (activeType() === 'farmer') {
+      applyFarmerQuickLookup(false);
+    } else if (farmerLookupResult) {
+      farmerLookupResult.textContent = 'Enter last 5 registration digits, then press Enter.';
+      farmerLookupResult.classList.add('is-empty');
+    }
+    if (pointRouteInput) {
+      if (activeType() === 'collection_point') setRouteFromPoint(pointSelect ? pointSelect.value : '');
+      else setRouteFromFarmer(farmerSelect ? farmerSelect.value : '');
+    }
+    syncTargetId();
+  }
+  function setType(type) {
+    typeInput.value = type;
+    tabs.forEach(function (b) {
+      b.classList.toggle('is-active', type !== '' && b.dataset.issueType === type);
+    });
+    panels.forEach(function (p) {
+      p.classList.toggle('is-active', type !== '' && p.dataset.targetPanel === type);
+    });
+    syncTargetId();
+    rebuildDestinationSelects();
+    updateScopedPanels();
+  }
+  function onFromBranchChange() {
+    if (pointQuickInput) pointQuickInput.value = '';
+    if (farmerQuickInput) farmerQuickInput.value = '';
+    rebuildDestinationSelects();
+    rebuildProductSelectsForScope();
+    updateScopedPanels();
+  }
+  function setRouteFromPoint(pointId) {
+    if (!pointRouteInput) return;
+    var point = pointAllOptions.find(function (p) { return String(p.id) === String(pointId || ''); });
+    if (!point) {
+      pointRouteInput.textContent = '—';
+      return;
+    }
+    pointRouteInput.textContent = point.route_code ? (point.route_code + ' - ' + point.route_name) : (point.route_name || '—');
+  }
+  function setRouteFromFarmer(farmerId) {
+    if (!pointRouteInput) return;
+    var farmer = farmerAllOptions.find(function (f) { return String(f.id) === String(farmerId || ''); });
+    if (!farmer) {
+      pointRouteInput.textContent = '—';
+      return;
+    }
+    pointRouteInput.textContent = farmer.route_code ? (farmer.route_code + ' - ' + farmer.route_name) : (farmer.route_name || '—');
+  }
+  function rebuildOptions(selectEl, options, keepValue, emptyLabel) {
+    if (!selectEl) return;
+    if (selectEl === farmerSelect) {
+      destroySelect2(selectEl);
+    }
+    var label = emptyLabel != null ? emptyLabel : '---------';
+    selectEl.innerHTML = '';
+    var emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = label;
+    selectEl.appendChild(emptyOpt);
+    var keep = String(keepValue || '');
+    options.forEach(function (opt) {
+      var o = document.createElement('option');
+      o.value = String(opt.id);
+      o.textContent = opt.label;
+      selectEl.appendChild(o);
+    });
+    var hasKeep = keep && Array.prototype.some.call(selectEl.options, function (opt) { return opt.value === keep; });
+    selectEl.value = hasKeep ? keep : '';
+    if (selectEl === farmerSelect) {
+      initFarmerSelect2();
+      if (hasKeep && window.jQuery) {
+        window.jQuery(selectEl).val(keep).trigger('change.select2');
+      }
+      return;
+    }
+    if (window.jQuery && window.jQuery(selectEl).hasClass('select2-hidden-accessible')) {
+      window.jQuery(selectEl).trigger('change.select2');
+    }
+  }
+
+  function destroyAllProductSelect2() {
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
+    window.jQuery('select.js-transfer-product-select').each(function () {
+      var $el = window.jQuery(this);
+      if ($el.hasClass('select2-hidden-accessible')) {
+        $el.select2('destroy');
+      }
+    });
+  }
+
+  function initAllProductSelect2() {
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
+    window.jQuery('select.js-transfer-product-select').each(function () {
+      var $el = window.jQuery(this);
+      if ($el.hasClass('select2-hidden-accessible')) return;
+      $el.select2({
+        width: '100%',
+        placeholder: 'Search product…',
+        allowClear: true,
+        dropdownAutoWidth: false,
+      });
+    });
+  }
+
+  function productsForScope() {
+    var bid = scopeBranchId();
+    if (bid == null) return [];
+    return productsByBranch[String(bid)] || [];
+  }
+
+  function rebuildProductSelectsForScope() {
+    var selects = document.querySelectorAll('select.js-transfer-product-select');
+    if (!selects || !selects.length) return;
+    var opts = productsForScope();
+
+    // Remember current selection values so we can keep them if still valid.
+    var keepValues = [];
+    selects.forEach(function (sel) {
+      keepValues.push(String(sel.value || ''));
+    });
+
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+      destroyAllProductSelect2();
+    }
+
+    selects.forEach(function (sel, idx) {
+      var keep = keepValues[idx] || '';
+      sel.innerHTML = '';
+      var emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '---------';
+      sel.appendChild(emptyOpt);
+      opts.forEach(function (p) {
+        var o = document.createElement('option');
+        o.value = String(p.id);
+        o.textContent = p.label;
+        sel.appendChild(o);
+      });
+      var hasKeep = keep && Array.prototype.some.call(sel.options, function (opt) {
+        return opt.value === keep;
+      });
+      sel.value = hasKeep ? keep : '';
+    });
+
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+      initAllProductSelect2();
+      window.jQuery('select.js-transfer-product-select').trigger('change.select2');
+    }
+    refreshIssueLineMeta();
+  }
+
+  function formatIssueMoney(value) {
+    var n = Number(value);
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function productMeta(productId) {
+    if (!productId) return null;
+    var opts = productsForScope();
+    for (var i = 0; i < opts.length; i++) {
+      if (String(opts[i].id) === String(productId)) return opts[i];
+    }
+    return null;
+  }
+
+  function qtyUsedForProduct(productId, exceptRow) {
+    var used = 0;
+    var tbody = document.getElementById('js-transfer-lines-body');
+    if (!tbody) return 0;
+    tbody.querySelectorAll('.js-transfer-line').forEach(function (row) {
+      if (row === exceptRow) return;
+      var sel = row.querySelector('select.js-transfer-product-select');
+      if (!sel || String(sel.value || '') !== String(productId)) return;
+      var qtyEl = row.querySelector('input.js-transfer-qty, input.transfer-qty-input');
+      var qty = Number(qtyEl && qtyEl.value ? qtyEl.value : 0);
+      if (isFinite(qty) && qty > 0) used += qty;
+    });
+    return used;
+  }
+
+  function refreshIssueLineMeta() {
+    var tbody = document.getElementById('js-transfer-lines-body');
+    if (!tbody) return;
+    tbody.querySelectorAll('.js-transfer-line').forEach(function (row) {
+      var sel = row.querySelector('select.js-transfer-product-select');
+      var availEl = row.querySelector('.js-issue-available');
+      var priceEl = row.querySelector('.js-issue-price');
+      if (!availEl || !priceEl) return;
+      var pid = sel ? String(sel.value || '') : '';
+      var meta = productMeta(pid);
+      if (!meta) {
+        availEl.textContent = '—';
+        availEl.classList.remove('is-low', 'is-none');
+        availEl.classList.add('text-muted');
+        priceEl.textContent = '—';
+        priceEl.classList.add('text-muted');
+        return;
+      }
+      var stock = Number(meta.available || 0);
+      var used = qtyUsedForProduct(pid, row);
+      var remaining = stock - used;
+      if (!isFinite(remaining)) remaining = 0;
+      var unit = meta.unit ? (' ' + meta.unit) : '';
+      availEl.textContent = formatIssueMoney(remaining) + unit;
+      availEl.classList.remove('text-muted', 'is-low', 'is-none');
+      if (remaining <= 0) availEl.classList.add('is-none');
+      else if (remaining < stock) availEl.classList.add('is-low');
+      priceEl.textContent = formatIssueMoney(meta.unit_price);
+      priceEl.classList.remove('text-muted');
+    });
+  }
+
+  function applyPointQuickFilter() {
+    if (!pointSelect || !pointQuickInput) return [];
+    if (!scopeBranchId()) {
+      rebuildOptions(pointSelect, [], '', 'Select collection point');
+      if (pointLookupResult && activeType() === 'collection_point') {
+        pointLookupResult.textContent = 'Select a from branch first.';
+        pointLookupResult.classList.add('is-empty');
+      }
+      return [];
+    }
+    var q = String(pointQuickInput.value || '').trim().toLowerCase();
+    var keep = pointSelect.value || '';
+    var opts = pointsForScope().filter(function (opt) { return !q || String(opt.label || '').toLowerCase().indexOf(q) !== -1; });
+    rebuildOptions(pointSelect, opts, keep, 'Select collection point');
+    if (pointLookupResult) {
+      if (activeType() === 'collection_point') {
+        pointLookupResult.textContent = opts.length ? (opts.length + ' point(s) matched') : 'No points matched.';
+        pointLookupResult.classList.toggle('is-empty', !opts.length);
+      } else {
+        pointLookupResult.textContent = 'Type point number/name, then press Enter or Tab.';
+        pointLookupResult.classList.add('is-empty');
+      }
+    }
+    if (activeType() === 'collection_point' && q && opts.length) openSelect(pointSelect);
+    return opts;
+  }
+  function commitPointQuickLookup(moveToProduct) {
+    var filtered = applyPointQuickFilter();
+    var first = filtered.length ? filtered[0].id : '';
+    if (first && pointSelect) {
+      pointSelect.value = String(first);
+      if (window.jQuery && window.jQuery(pointSelect).hasClass('select2-hidden-accessible')) {
+        window.jQuery(pointSelect).trigger('change');
+      }
+      setRouteFromPoint(first);
+      syncTargetId();
+      if (moveToProduct) focusFirstProductSelect();
+      return true;
+    }
+    if (moveToProduct) {
+      alertQuickFindUnavailable('No collection point available in selected branch for this search.', pointQuickInput);
+    }
+    return false;
+  }
+  function applyFarmerQuickLookup(fromEnter) {
+    if (!farmerSelect || !farmerQuickInput) return false;
+    if (!scopeBranchId()) {
+      rebuildOptions(farmerSelect, [], '', 'Select farmer');
+      if (farmerLookupResult && activeType() === 'farmer') {
+        farmerLookupResult.textContent = 'Select a from branch first.';
+        farmerLookupResult.classList.add('is-empty');
+      }
+      return false;
+    }
+    var q = String(farmerQuickInput.value || '').trim();
+    rebuildOptions(farmerSelect, farmersForScope().slice(), farmerSelect.value || '', 'Select farmer');
+    if (!q) {
+      if (farmerLookupResult) { farmerLookupResult.textContent = 'Enter last 5 registration digits, then press Enter.'; farmerLookupResult.classList.add('is-empty'); }
+      return false;
+    }
+    var matches = farmersForScope().filter(function (opt) {
+      var reg = String(opt.reg || '');
+      var m = reg.match(/F[A-Za-z]{2}(\d{5})/);
+      return m && (m[1] === q || String(parseInt(m[1], 10)) === q);
+    });
+    if (matches.length === 1) {
+      setSelectValue(farmerSelect, String(matches[0].id));
+      if (farmerLookupResult) { farmerLookupResult.textContent = 'Farmer: ' + matches[0].label; farmerLookupResult.classList.remove('is-empty'); }
+      setRouteFromFarmer(matches[0].id);
+      syncTargetId(); if (fromEnter) focusFirstProductSelect(); return true;
+    }
+    if (farmerLookupResult) {
+      farmerLookupResult.textContent = matches.length ? (matches.length + ' farmers matched. Select one from list.') : 'No farmer matched that registration tail.';
+      farmerLookupResult.classList.toggle('is-empty', !matches.length);
+    }
+    if (fromEnter && !matches.length) {
+      alertQuickFindUnavailable('No farmer available in selected branch for that registration tail.', farmerQuickInput);
+    }
+    if (matches.length && activeType() === 'farmer') openSelect(farmerSelect);
+    syncTargetId();
+    return false;
+  }
+
+  tabs.forEach(function (btn) { btn.addEventListener('click', function () { setType(btn.dataset.issueType); }); });
+  if (fromBranchEl) {
+    fromBranchEl.addEventListener('change', onFromBranchChange);
+  }
+  if (pointSelect) {
+    pointSelect.addEventListener('change', function () {
+      syncTargetId();
+      setRouteFromPoint(pointSelect.value);
+    });
+  }
+  if (farmerSelect && window.jQuery && window.jQuery.fn.select2) {
+    window.jQuery(farmerSelect).on('change select2:select select2:clear', function () {
+      syncTargetId();
+      setRouteFromFarmer(farmerSelect.value);
+    });
+  } else if (farmerSelect) {
+    farmerSelect.addEventListener('change', function () {
+      syncTargetId();
+      setRouteFromFarmer(farmerSelect.value);
+    });
+  }
+  if (pointQuickInput) {
+    pointQuickInput.addEventListener('input', applyPointQuickFilter);
+    pointQuickInput.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' && ev.key !== 'Tab') return;
+      var q = String(pointQuickInput.value || '').trim();
+      if (ev.key === 'Tab' && !q) return;
+      ev.preventDefault();
+      commitPointQuickLookup(true);
+    });
+  }
+  if (farmerQuickInput) {
+    farmerQuickInput.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 5); });
+    farmerQuickInput.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); applyFarmerQuickLookup(true); }
+    });
+  }
+  setType(activeType() || 'collection_point');
+  rebuildProductSelectsForScope();
+  var form = document.querySelector('.issue-goods-card form');
+  if (form) {
+    form.addEventListener('submit', syncTargetId);
+    form.addEventListener('change', function (e) {
+      if (
+        e.target &&
+        (e.target.classList.contains('js-transfer-product-select') ||
+          e.target.classList.contains('js-transfer-qty') ||
+          e.target.classList.contains('transfer-qty-input'))
+      ) {
+        refreshIssueLineMeta();
+      }
+    });
+    form.addEventListener('input', function (e) {
+      if (
+        e.target &&
+        (e.target.classList.contains('js-transfer-qty') ||
+          e.target.classList.contains('transfer-qty-input'))
+      ) {
+        refreshIssueLineMeta();
+      }
+    });
+    if (window.jQuery) {
+      window.jQuery(form).on('select2:select select2:clear', 'select.js-transfer-product-select', refreshIssueLineMeta);
+    }
+  }
+  document.addEventListener('transfer-lines-changed', refreshIssueLineMeta);
+  refreshIssueLineMeta();
+})();
+</script>
+{% endblock %}

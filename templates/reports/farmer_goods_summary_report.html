@@ -1,0 +1,545 @@
+{% extends "base.html" %}
+{% load static format_extras %}
+{% block title %}Farmer goods summary · Canmee Dairies{% endblock %}
+{% block page_heading %}Farmer goods summary{% endblock %}
+{% block extra_css %}
+<style>
+  .farmer-goods-filter .form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+  }
+  .farmer-goods-filter .flatpickr-range-wrap .form-control,
+  .farmer-goods-filter .flatpickr-range-wrap .input-group-text,
+  .farmer-goods-filter .form-select {
+    height: 38px;
+    min-height: 38px;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+  .farmer-goods-report {
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+  .farmer-goods-report__header {
+    text-align: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #0f766e;
+  }
+  .farmer-goods-report__header img {
+    height: 42px;
+    margin-bottom: 0.35rem;
+  }
+  .farmer-goods-report__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    color: #0f172a;
+  }
+  .farmer-goods-report__meta {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin: 0.25rem 0 0;
+  }
+  .farmer-goods-branch {
+    margin-bottom: 1.25rem;
+  }
+  .farmer-goods-branch__title {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #065f46;
+    margin-bottom: 0.75rem;
+  }
+  .farmer-goods-point {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    background: #fff;
+  }
+  .farmer-goods-point__head {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+  }
+  .farmer-goods-point__name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #0f172a;
+    margin: 0;
+  }
+  .farmer-goods-point__route {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0.15rem 0 0;
+  }
+  .farmer-goods-table {
+    width: 100%;
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+  .farmer-goods-table th,
+  .farmer-goods-table td {
+    padding: 0.4rem 0.65rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .farmer-goods-table thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    background: #fff;
+    white-space: nowrap;
+  }
+  .farmer-goods-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .farmer-goods-table tfoot th,
+  .farmer-goods-table tfoot td {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    font-weight: 600;
+  }
+  .farmer-goods-branch-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    background: #f1f5f9;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .farmer-goods-grand {
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: #f8fafc;
+    font-weight: 600;
+  }
+  .farmer-goods-empty {
+    padding: 0.75rem;
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+  .farmer-goods-print-footer {
+    display: none;
+  }
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 12mm 10mm 20mm 10mm;
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        font-weight: 600;
+        color: #334155;
+        vertical-align: top;
+        padding-top: 1.5mm;
+      }
+    }
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    .farmer-goods-no-print {
+      display: none !important;
+    }
+    .app-main,
+    .content-wrap {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .farmer-goods-report {
+      max-width: none;
+      padding-bottom: 4mm;
+    }
+    .farmer-goods-report__header {
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    .farmer-goods-branch + .farmer-goods-branch {
+      break-before: page;
+      page-break-before: always;
+    }
+    .farmer-goods-branch {
+      margin-bottom: 0.75rem;
+    }
+    .farmer-goods-branch__title {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    .farmer-goods-point {
+      border-color: #cbd5e1;
+      overflow: visible;
+      margin-bottom: 0.5rem;
+    }
+    .farmer-goods-point:not(.farmer-goods-point--long) {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .farmer-goods-point__head {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    .farmer-goods-branch-total,
+    .farmer-goods-grand {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      break-before: avoid;
+      page-break-before: avoid;
+    }
+    .farmer-goods-table {
+      font-size: 9pt;
+    }
+    .farmer-goods-table thead {
+      display: table-header-group;
+    }
+    .farmer-goods-table th,
+    .farmer-goods-table td {
+      padding: 0.25rem 0.4rem;
+    }
+    .farmer-goods-table tbody tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .farmer-goods-table tfoot {
+      display: table-row-group;
+    }
+    .farmer-goods-table tfoot tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .farmer-goods-print-footer {
+      display: flex !important;
+      position: fixed;
+      left: 10mm;
+      right: 38mm;
+      bottom: 0;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: 0.75rem;
+      padding: 2mm 0 3mm;
+      border-top: 1px solid #cbd5e1;
+      background: #fff;
+      font-size: 8pt;
+      line-height: 1.35;
+      color: #475569;
+    }
+    .farmer-goods-print-footer__company {
+      font-weight: 700;
+      color: #0f766e;
+      letter-spacing: 0.02em;
+    }
+    .farmer-goods-print-footer__tagline {
+      font-size: 7.5pt;
+      color: #64748b;
+    }
+    .farmer-goods-print-footer__page {
+      display: none !important;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header farmer-goods-no-print">
+  <div>
+    <h1 class="page-title">Farmer goods summary</h1>
+    <p class="page-subtitle">Branch → farmer → products issued in the selected period. The same product is listed separately when receipts used different GRN issue prices; 0.00 means no issue price was found on stock.</p>
+  </div>
+</div>
+
+<div class="card mb-3 farmer-goods-no-print">
+  <div class="card-body farmer-goods-filter">
+    {{ farmer_goods_filter_routes_json|json_script:"farmer-goods-filter-routes-data" }}
+    {{ farmer_goods_filter_farmers_json|json_script:"farmer-goods-filter-farmers-data" }}
+    <form method="get" class="row g-3 align-items-end js-no-enter-submit farmer-goods-filter" id="farmer-goods-filter-form">
+      <div class="col-12 col-md-6 col-lg-2">
+        <label class="form-label" for="farmer-goods-branch">Branch</label>
+        <select id="farmer-goods-branch" name="branch" class="form-select no-global-select2">
+          <option value="" {% if not selected_branch %}selected{% endif %}>All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-lg-2">
+        <label class="form-label" for="farmer-goods-route">Route</label>
+        <select id="farmer-goods-route" name="route" class="form-select no-global-select2">
+          <option value="">All routes</option>
+          {% for ro in filter_routes %}
+          <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == selected_route %}selected{% endif %}>{{ ro.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-lg-2">
+        <label class="form-label" for="farmer-goods-farmer">Farmer</label>
+        <select id="farmer-goods-farmer" name="farmer" class="form-select no-global-select2">
+          <option value="">All farmers</option>
+          {% for f in filter_farmers %}
+          <option
+            value="{{ f.id }}"
+            data-branch-id="{% if f.branch_id %}{{ f.branch_id }}{% elif f.route_id %}{{ f.route.branch_id }}{% elif f.collection_point_id %}{{ f.collection_point.route.branch_id }}{% endif %}"
+            data-route-id="{% if f.route_id %}{{ f.route_id }}{% elif f.collection_point_id %}{{ f.collection_point.route_id }}{% endif %}"
+            {% if f.id|stringformat:'d' == selected_farmer %}selected{% endif %}
+          >{{ f }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-lg-3">
+        <label class="form-label" for="farmer-goods-period">Period</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+          <input
+            type="text"
+            id="farmer-goods-period"
+            class="form-control border-start-0 js-datepicker-range"
+            data-range-start="start"
+            data-range-end="end"
+            placeholder="Select period"
+            autocomplete="off"
+            readonly
+            aria-label="Date range"
+          >
+        </div>
+        <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+      </div>
+      <div class="col-auto d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Show report</button>
+        <a href="{% url 'farmer-goods-summary-report' %}" class="btn btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3 farmer-goods-no-print">
+  <button type="button" class="btn btn-primary btn-sm" onclick="prepareFarmerGoodsPrint(); window.print();">
+    <i class="bi bi-printer me-1"></i>Print A4
+  </button>
+  <a
+    class="btn btn-outline-primary btn-sm"
+    href="{% url 'farmer-goods-summary-slip-print' %}?{{ farmer_goods_filter_query }}"
+    target="_blank"
+    rel="noopener"
+  ><i class="bi bi-receipt me-1"></i>Print 100mm</a>
+  <a
+    class="btn btn-outline-secondary btn-sm"
+    href="{% url 'farmer-goods-summary-report-export-excel' %}?{{ farmer_goods_filter_query }}"
+  ><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+  <a
+    class="btn btn-outline-secondary btn-sm"
+    href="{% url 'farmer-goods-summary-report-export-pdf' %}?{{ farmer_goods_filter_query }}"
+  ><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+</div>
+
+<div class="farmer-goods-report">
+  <header class="farmer-goods-report__header">
+    <img src="{% static 'img/logo.png' %}" alt="Canmee Dairies">
+    <h2 class="farmer-goods-report__title">Farmer Goods Summary</h2>
+    <p class="farmer-goods-report__meta">
+      Period: <strong>{{ start|date:"Y-m-d" }}</strong> to <strong>{{ end|date:"Y-m-d" }}</strong>
+      {% if generated_at %} · Generated {{ generated_at|date:"Y-m-d H:i" }}{% endif %}
+    </p>
+  </header>
+
+  {% if branch_sections %}
+    {% for section in branch_sections %}
+    <section class="farmer-goods-branch">
+      <div class="farmer-goods-branch__title">{{ section.branch_label }}</div>
+
+      {% if section.farmer_sections %}
+        {% for farmer_section in section.farmer_sections %}
+        <article class="farmer-goods-point">
+          <div class="farmer-goods-point__head">
+            <p class="farmer-goods-point__name">{{ farmer_section.farmer_label }}</p>
+            <p class="farmer-goods-point__route">Route: {{ farmer_section.route_label }}</p>
+          </div>
+          {% if farmer_section.product_rows %}
+          <div class="table-responsive">
+            <table class="table farmer-goods-table mb-0">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th class="num">Qty</th>
+                  <th class="num">Unit price</th>
+                  <th class="num">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in farmer_section.product_rows %}
+                <tr>
+                  <td>{{ row.product_name }}</td>
+                  <td>{{ row.category_bucket|default:"—" }}</td>
+                  <td class="num">{{ row.quantity|money }}</td>
+                  <td class="num{% if not row.unit_price %} text-muted{% endif %}">{{ row.unit_price|money }}</td>
+                  <td class="num">{{ row.amount|money }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="2">
+                    Farmer total
+                    <span class="text-muted fw-normal">({{ farmer_section.totals.receipt_count }} receipt{{ farmer_section.totals.receipt_count|pluralize }}, {{ farmer_section.totals.product_count }} product{{ farmer_section.totals.product_count|pluralize }})</span>
+                  </th>
+                  <td class="num">{{ farmer_section.totals.quantity|money }}</td>
+                  <td></td>
+                  <td class="num">{{ farmer_section.totals.amount|money }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          {% else %}
+          <div class="farmer-goods-empty">No products in this period.</div>
+          {% endif %}
+        </article>
+        {% endfor %}
+
+        {% if section.totals.line_count %}
+        <div class="farmer-goods-branch-total">
+          <span>{{ section.branch_label }} total — {{ section.totals.receipt_count }} receipts, {{ section.totals.product_count }} products</span>
+          <span>{{ section.totals.amount|money }} LKR</span>
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="farmer-goods-empty">No goods issued to farmers in this period.</div>
+      {% endif %}
+    </section>
+    {% endfor %}
+
+    {% if grand_totals.line_count %}
+    <div class="farmer-goods-grand d-flex justify-content-between flex-wrap gap-2">
+      <span>Grand total — {{ grand_totals.receipt_count }} receipts across {{ grand_totals.product_count }} product lines</span>
+      <span>{{ grand_totals.amount|money }} LKR</span>
+    </div>
+    {% endif %}
+  {% else %}
+  <div class="alert alert-light border farmer-goods-no-print">No goods issued to farmers match these filters.</div>
+  {% endif %}
+</div>
+
+{% if print_footer %}
+<footer class="farmer-goods-print-footer" aria-hidden="true">
+  <div>
+    <div class="farmer-goods-print-footer__company">{{ print_footer.company }}</div>
+    <div class="farmer-goods-print-footer__tagline">{{ print_footer.phone }}{% if print_footer.footer %} · {{ print_footer.footer }}{% endif %}</div>
+  </div>
+</footer>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function prepareFarmerGoodsPrint() {
+  document.querySelectorAll(".farmer-goods-point").forEach(function (el) {
+    el.classList.remove("farmer-goods-point--long");
+    var rowCount = el.querySelectorAll(".farmer-goods-table tbody tr").length;
+    if (rowCount > 10) {
+      el.classList.add("farmer-goods-point--long");
+    }
+  });
+}
+
+(function () {
+  function readJson(id) {
+    try {
+      var el = document.getElementById(id);
+      return el ? JSON.parse(el.textContent || "[]") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  var branchSel = document.getElementById("farmer-goods-branch");
+  var routeSel = document.getElementById("farmer-goods-route");
+  var farmerSel = document.getElementById("farmer-goods-farmer");
+  if (!routeSel || !farmerSel) return;
+
+  var routes = readJson("farmer-goods-filter-routes-data");
+  var farmers = readJson("farmer-goods-filter-farmers-data");
+  var initialRoute = String(routeSel.value || "");
+  var initialFarmer = String(farmerSel.value || "");
+
+  function appendOption(selectEl, value, label, attrs) {
+    var opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    if (attrs) {
+      Object.keys(attrs).forEach(function (key) {
+        opt.setAttribute(key, attrs[key]);
+      });
+    }
+    selectEl.appendChild(opt);
+  }
+
+  function refillRoutes(preserveValue) {
+    var branchId = branchSel ? String(branchSel.value || "") : "";
+    var keep = preserveValue != null ? String(preserveValue) : String(routeSel.value || "");
+    routeSel.innerHTML = "";
+    appendOption(routeSel, "", "All routes");
+    routes.forEach(function (route) {
+      if (!branchId || String(route.branch_id) === branchId) {
+        appendOption(routeSel, String(route.id), route.label, {
+          "data-branch-id": String(route.branch_id),
+        });
+      }
+    });
+    if (keep && Array.prototype.some.call(routeSel.options, function (o) { return o.value === keep; })) {
+      routeSel.value = keep;
+    } else {
+      routeSel.value = "";
+    }
+  }
+
+  function refillFarmers(preserveValue) {
+    var branchId = branchSel ? String(branchSel.value || "") : "";
+    var routeId = String(routeSel.value || "");
+    var keep = preserveValue != null ? String(preserveValue) : String(farmerSel.value || "");
+    farmerSel.innerHTML = "";
+    appendOption(farmerSel, "", "All farmers");
+    farmers.forEach(function (farmer) {
+      var branchOk = !branchId || String(farmer.branch_id) === branchId;
+      var routeOk = !routeId || String(farmer.route_id) === routeId;
+      if (branchOk && routeOk) {
+        appendOption(farmerSel, String(farmer.id), farmer.label, {
+          "data-branch-id": String(farmer.branch_id),
+          "data-route-id": String(farmer.route_id),
+        });
+      }
+    });
+    if (keep && Array.prototype.some.call(farmerSel.options, function (o) { return o.value === keep; })) {
+      farmerSel.value = keep;
+    } else {
+      farmerSel.value = "";
+    }
+  }
+
+  if (branchSel) {
+    branchSel.addEventListener("change", function () {
+      refillRoutes("");
+      refillFarmers("");
+    });
+  }
+  routeSel.addEventListener("change", function () {
+    refillFarmers("");
+  });
+
+  refillRoutes(initialRoute);
+  refillFarmers(initialFarmer);
+})();
+</script>
+{% endblock %}

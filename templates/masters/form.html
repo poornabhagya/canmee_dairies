@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block page_heading %}{% if object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}</h1>
+    <p class="page-subtitle">Fill in the fields below and save your changes.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card js-master-form-enter-next" style="max-width: 36rem;">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Save</button>
+      <a href="javascript:history.back()" class="btn btn-outline-secondary mt-2 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.querySelector('form.js-master-form-enter-next');
+  if (!form) return;
+
+  function listFocusables() {
+    var sel =
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]),' +
+      'select, textarea';
+    var nodes = form.querySelectorAll(sel);
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.disabled) continue;
+      if (el.closest('[hidden]')) continue;
+      out.push(el);
+    }
+    return out;
+  }
+
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    var target = e.target;
+    if (!form.contains(target)) return;
+
+    if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
+    if (target.tagName === 'TEXTAREA') return;
+
+    var focusables = listFocusables();
+    var idx = focusables.indexOf(target);
+    if (idx === -1) return;
+
+    var next = focusables[idx + 1];
+    if (!next) return;
+
+    e.preventDefault();
+    next.focus();
+    if (next.tagName === 'SELECT' || next.tagName === 'TEXTAREA') return;
+    if (typeof next.select === 'function' && next.type !== 'email' && next.type !== 'date') {
+      try {
+        next.select();
+      } catch (err) {}
+    }
+  });
+})();
+</script>
+{% endblock %}

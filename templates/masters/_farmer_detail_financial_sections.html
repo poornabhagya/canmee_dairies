@@ -1,0 +1,596 @@
+{% load format_extras %}
+{% if can_view_farmer_advances and not hide_advance_payments or can_view_farmer_goods or can_view_farmer_loans or can_view_farmer_payments %}
+{% if statement_print %}
+  <div class="farmer-statement-section-title">Financial summary</div>
+{% else %}
+<div class="card farmer-collection-card point-collection-card point-financial-card smart-list-card">
+  <div class="card-body">
+    <div class="point-finance-head">
+      <div>
+        <h2 class="point-finance-head__title">Financial summary</h2>
+        <p class="point-finance-head__lede">{% if hide_advance_payments %}Goods, loans, and period payments{% else %}Advances, goods, loans, and period payments{% endif %} for this farmer{% if statement_period_active %} in the selected period{% endif %}.</p>
+      </div>
+    </div>
+    <div class="smart-stat-grid point-finance-kpis">
+      {% if can_view_farmer_goods %}
+      <div class="smart-stat-card" title="Goods issued to this farmer">
+        <span class="smart-stat-card__icon smart-stat-card__icon--orange"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+        <span class="smart-stat-card__body">
+          <span class="smart-stat-card__label">Goods</span>
+          <span class="smart-stat-card__value">{{ farmer_goods_summary_total|default:0|money }}</span>
+          <span class="smart-stat-card__hint">{{ farmer_goods_summary_receipt_count|default:0 }} receipt{{ farmer_goods_summary_receipt_count|default:0|pluralize }}</span>
+        </span>
+      </div>
+      {% endif %}
+      {% if can_view_farmer_loans %}
+      <div class="smart-stat-card" title="Farmer loan balances">
+        <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-bank" aria-hidden="true"></i></span>
+        <span class="smart-stat-card__body">
+          <span class="smart-stat-card__label">Loan balance</span>
+          <span class="smart-stat-card__value">{{ farmer_loans_kpi_balance|default:0|money }}</span>
+          <span class="smart-stat-card__hint">{{ farmer_loans|length }} loan{{ farmer_loans|length|pluralize }}</span>
+        </span>
+      </div>
+      {% endif %}
+      {% if can_view_farmer_payments %}
+      <div class="smart-stat-card" title="Period payments recorded">
+        <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+        <span class="smart-stat-card__body">
+          <span class="smart-stat-card__label">Payments</span>
+          <span class="smart-stat-card__value">{{ farmer_period_payments_total|default:0|money }}</span>
+          <span class="smart-stat-card__hint">{{ farmer_period_payments|length }} record{{ farmer_period_payments|length|pluralize }}</span>
+        </span>
+      </div>
+      {% endif %}
+    </div>
+{% endif %}
+
+    {% if can_view_farmer_advances and not hide_advance_payments %}
+    {% include "masters/_farmer_advance_payments_block.html" %}
+    {% endif %}
+
+    {% if can_view_farmer_goods %}
+    {% if statement_print %}
+    <div class="farmer-financial-block">
+      <div class="farmer-financial-block__title">Farmer goods summary</div>
+      <div class="mb-3">
+        <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+          <thead class="table-light">
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Unit price</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in farmer_goods_summary_rows %}
+            <tr>
+              <td>{{ row.product_name }}</td>
+              <td>{{ row.category_bucket|default:"—" }}</td>
+              <td class="text-end">{{ row.quantity|money }}</td>
+              <td class="text-end">{{ row.unit_price|money }}</td>
+              <td class="text-end">{{ row.amount|money }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No goods issued in this period.</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if farmer_goods_summary_rows %}
+          <tfoot>
+            <tr>
+              <th colspan="2">
+                Farmer total
+                <span class="text-muted fw-normal">({{ farmer_goods_summary_receipt_count }} receipt{{ farmer_goods_summary_receipt_count|pluralize }}, {{ farmer_goods_summary_rows|length }} product{{ farmer_goods_summary_rows|length|pluralize }})</span>
+              </th>
+              <td class="text-end">{{ farmer_goods_summary_qty|money }}</td>
+              <td></td>
+              <td class="text-end">{{ farmer_goods_summary_total|money }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+      <div class="farmer-financial-block__title">Goods issues</div>
+      <div>
+        <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th>Receipt</th>
+              <th class="text-end">Lines</th>
+              <th class="text-end">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for receipt in farmer_goods_receipts %}
+            <tr class="{% if receipt.settlement_status == 'settled' %}farmer-financial-row--settled{% endif %}">
+              <td class="text-nowrap">{{ receipt.date|date:"Y-m-d" }}</td>
+              <td class="font-monospace text-muted">{{ receipt.batch_ref|slice:":8"|upper|default:"—" }}</td>
+              <td class="text-end">{{ receipt.line_count }}</td>
+              <td class="text-end">{{ receipt.amount|money }}</td>
+              <td>{% include "suppliers/_goods_issue_settlement_badge.html" with settlement_status=receipt.settlement_status settled_count=receipt.settled_count line_count=receipt.line_count settled_at=receipt.settled_at %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No goods issues recorded.</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if farmer_goods_receipts %}
+          <tfoot>
+            <tr>
+              <th>Farmer total</th>
+              <th><span class="text-muted fw-normal">{{ farmer_goods_receipts|length }} receipt{{ farmer_goods_receipts|length|pluralize }}</span></th>
+              <th class="text-end">{{ farmer_goods_receipt_line_count }}</th>
+              <th class="text-end">{{ farmer_goods_issued_total|default:0|money }}</th>
+              <th></th>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="farmer-financial-block farmer-goods-split-block">
+      <div class="point-finance-stack">
+          <div class="point-finance-pane">
+          <div class="point-finance-pane__title">Goods issues</div>
+          <div class="point-finance-pane__table">
+          <table
+            class="table table-hover datatable datatable-smart datatable-no-responsive smart-dt-table mb-0 farmer-financial-table point-goods-issues-table point-finance-fit-table w-100"
+            data-empty-table="No goods issues recorded."
+            data-page-length="10"
+            data-smart-order="0,desc"
+            data-print-title="Goods issues"
+          >
+            <thead>
+              <tr>
+                <th class="all">Date</th>
+                <th class="all">Receipt</th>
+                <th class="min-tablet-l text-end">Lines</th>
+                <th class="all text-end">Amount</th>
+                <th class="all">Status</th>
+                <th class="all text-end no-export point-finance-actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for receipt in farmer_goods_receipts %}
+              <tr class="{% if receipt.settlement_status == 'settled' %}farmer-financial-row--settled{% endif %}">
+                <td class="all text-nowrap" data-order="{{ receipt.date|date:'Y-m-d' }}">{{ receipt.date|date:"Y-m-d" }}</td>
+                <td class="all font-monospace text-muted">
+                  {% if receipt.batch_ref %}
+                  <a
+                    href="{% url 'farmer-goods-issue-print' receipt.batch_ref %}"
+                    class="js-payslip-embed-link"
+                    data-embed-url="{% url 'farmer-goods-issue-print' receipt.batch_ref %}?embed=1"
+                    data-embed-title="Receipt {{ receipt.batch_ref|slice:':8'|upper }}"
+                  >{{ receipt.batch_ref|slice:":8"|upper }}</a>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="min-tablet-l text-end">{{ receipt.line_count }}</td>
+                <td class="all text-end" data-order="{{ receipt.amount }}">{{ receipt.amount|money }}</td>
+                <td class="all">{% include "suppliers/_goods_issue_settlement_badge.html" with settlement_status=receipt.settlement_status settled_count=receipt.settled_count line_count=receipt.line_count settled_at=receipt.settled_at %}</td>
+                <td class="all text-end point-finance-actions-col">
+                  <span class="farmer-row-actions">
+                    {% if receipt.batch_ref %}
+                    <a
+                      href="{% url 'farmer-goods-issue-print' receipt.batch_ref %}"
+                      class="btn btn-sm btn-outline-secondary js-payslip-embed-link finance-btn--icon"
+                      data-embed-url="{% url 'farmer-goods-issue-print' receipt.batch_ref %}?embed=1"
+                      data-embed-title="Receipt {{ receipt.batch_ref|slice:':8'|upper }}"
+                      title="View receipt"
+                    ><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">View</span></a>
+                    {% endif %}
+                    {% include "reports/_goods_manual_settle_action.html" with receipt=receipt %}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            {% if farmer_goods_receipts %}
+            <tfoot>
+              <tr>
+                <th class="all">Farmer total</th>
+                <th class="all">
+                  <span class="text-muted fw-normal">{{ farmer_goods_receipts|length }} receipt{{ farmer_goods_receipts|length|pluralize }}</span>
+                </th>
+                <th class="min-tablet-l text-end">{{ farmer_goods_receipt_line_count }}</th>
+                <th class="all text-end">{{ farmer_goods_issued_total|default:0|money }}</th>
+                <th class="all"></th>
+                <th class="all no-export"></th>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+          </div>
+          </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if can_view_farmer_goods or can_view_farmer_loans %}
+    {% if statement_print %}
+    {% if can_view_farmer_loans %}
+    <div class="farmer-financial-block">
+      <div class="farmer-financial-block__title">Loans</div>
+      <div class="mb-3">
+        <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+          <thead class="table-light">
+            <tr>
+              <th>Loan #</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th class="text-end">Loan amount</th>
+              <th class="text-end">Paid</th>
+              <th class="text-end">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in farmer_loans %}
+            <tr class="{% if loan.balance_total <= 0 and loan.status == 'approved' %}farmer-financial-row--settled{% endif %}">
+              <td>#{{ loan.pk }}</td>
+              <td class="text-nowrap">{{ loan.loan_date|date:"Y-m-d" }}</td>
+              <td>{{ loan.get_status_display }}</td>
+              <td class="text-end">{{ loan.loan_amount|money }}</td>
+              <td class="text-end">{{ loan.paid_total|money }}</td>
+              <td class="text-end">{{ loan.balance_total|money }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-3">No loans recorded.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="farmer-financial-block__subtitle">Loan instalments</div>
+      <div>
+        <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+          <thead class="table-light">
+            <tr>
+              <th>Loan #</th>
+              <th>Inst.</th>
+              <th>Due date</th>
+              <th class="text-end">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inst in farmer_loan_instalments %}
+            <tr class="{% if inst.is_paid %}farmer-financial-row--settled{% endif %}">
+              <td>#{{ inst.loan_id }}</td>
+              <td>{{ inst.installment_number }}</td>
+              <td class="text-nowrap">{{ inst.due_date|date:"Y-m-d" }}</td>
+              <td class="text-end">{{ inst.installment_amount|money }}</td>
+              {% include "reports/_payslip_recovery_status.html" with is_paid=inst.is_paid paid_on=inst.paid_on %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No loan instalments.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="farmer-financial-block farmer-goods-split-block">
+      <div class="point-finance-stack">
+        {% if can_view_farmer_goods %}
+          <div class="point-finance-pane">
+          <div id="farmer-goods-summary-heading" class="d-none point-finance-heading">
+            <span class="point-finance-heading__title">Farmer goods summary</span>
+            {% if farmer_goods_summary_rows %}
+            <span class="point-finance-heading__amount">{{ farmer_goods_summary_total|money }}</span>
+            {% endif %}
+            <span class="point-finance-heading__note" title="Same product is listed separately when issue prices differ. 0.00 means no GRN issue price was found.">Same product is listed separately when issue prices differ. 0.00 means no GRN issue price was found.</span>
+          </div>
+          {% if farmer_goods_summary_report_query %}
+          <div id="farmer-goods-summary-report" class="d-none">
+            <a
+              class="btn btn-sm btn-outline-primary"
+              href="{% url 'farmer-goods-summary-report' %}?{{ farmer_goods_summary_report_query }}"
+              target="_blank"
+              rel="noopener"
+            ><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Open report</a>
+          </div>
+          {% endif %}
+          <div class="point-finance-pane__table">
+          <table
+            class="table table-hover datatable datatable-smart datatable-no-responsive smart-dt-table mb-0 farmer-financial-table point-goods-summary-table point-finance-fit-table w-100"
+            data-empty-table="No goods issued for this farmer."
+            data-page-length="10"
+            data-smart-order="1,asc"
+            data-filters-target="farmer-goods-summary-heading"
+            data-print-title="Farmer goods summary"
+            {% if farmer_goods_summary_report_query %}data-tabs-target="farmer-goods-summary-report"{% endif %}
+          >
+            <thead>
+              <tr>
+                <th class="min-tablet-l dt-seq">#</th>
+                <th class="all">Product</th>
+                <th class="min-tablet-l">Category</th>
+                <th class="min-tablet-l text-end">Qty</th>
+                <th class="min-tablet-l text-end">Unit price</th>
+                <th class="all text-end">Amount</th>
+                <th class="all text-end no-export point-finance-actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in farmer_goods_summary_rows %}
+              <tr class="{% if not row.unsettled_count %}farmer-financial-row--settled{% endif %}">
+                <td class="fw-medium min-tablet-l dt-seq"></td>
+                <td class="all">{{ row.product_name }}</td>
+                <td class="min-tablet-l">{{ row.category_bucket|default:"—" }}</td>
+                <td class="min-tablet-l text-end" data-order="{{ row.quantity }}">{{ row.quantity|money }}</td>
+                <td class="min-tablet-l text-end{% if not row.unit_price %} text-muted{% endif %}" data-order="{{ row.unit_price }}">{{ row.unit_price|money }}</td>
+                <td class="all text-end" data-order="{{ row.amount }}">{{ row.amount|money }}</td>
+                <td class="all text-end point-finance-actions-col">
+                  {% if row.receipt_lines %}
+                  <span class="farmer-row-actions">
+                      {% if row.receipt_lines|length == 1 %}
+                      {% with line=row.receipt_lines.0 %}
+                      {% if line.batch_ref %}
+                      <a
+                        class="btn btn-sm btn-outline-secondary js-payslip-embed-link finance-btn--icon"
+                        href="{% url 'farmer-goods-issue-print' line.batch_ref %}"
+                        data-embed-url="{% url 'farmer-goods-issue-print' line.batch_ref %}?embed=1"
+                        data-embed-title="Receipt {{ line.batch_ref|slice:':8'|upper }}"
+                        title="View receipt"
+                      ><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">View</span></a>
+                      {% endif %}
+                      {% endwith %}
+                      {% else %}
+                      <div class="dropdown d-inline-block">
+                        <button
+                          class="btn btn-sm btn-outline-secondary dropdown-toggle finance-btn--icon"
+                          type="button"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                          title="{{ row.receipt_line_count }} receipts"
+                        ><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">View {{ row.receipt_line_count }}</span></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                          {% for line in row.receipt_lines %}
+                          {% if line.batch_ref %}
+                          <li>
+                            <a
+                              class="dropdown-item js-payslip-embed-link"
+                              href="{% url 'farmer-goods-issue-print' line.batch_ref %}"
+                              data-embed-url="{% url 'farmer-goods-issue-print' line.batch_ref %}?embed=1"
+                              data-embed-title="Receipt {{ line.batch_ref|slice:':8'|upper }}"
+                            >
+                              {{ line.date|date:"Y-m-d" }}
+                              <span class="text-muted">· {{ line.batch_ref|slice:":8"|upper }}</span>
+                              <span class="text-muted">· {{ line.quantity|money }} @ {{ line.unit_price|money }}</span>
+                              {% if line.is_settled %}<span class="text-success">· Settled</span>{% else %}<span class="text-warning">· Pending</span>{% endif %}
+                            </a>
+                          </li>
+                          {% endif %}
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      {% endif %}
+                    {% if can_delete_farmer_goods %}
+                      {% if row.unsettled_lines|length == 1 %}
+                      {% with line=row.unsettled_lines.0 %}
+                      <form method="post" action="{% url 'farmer-goods-issue-line-delete' line.issue_id %}" class="d-inline js-swal-submit-guard">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button
+                          type="submit"
+                          class="btn btn-sm btn-outline-danger js-swal-submit-trigger finance-btn--icon"
+                          data-swal-title="Delete this product line?"
+                          data-swal-text="Only {{ row.product_name }} will be removed from this receipt. Stock will be restored."
+                          title="Delete unsettled goods line"
+                        ><i class="bi bi-trash3" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+                      </form>
+                      {% endwith %}
+                      {% elif row.unsettled_lines|length > 1 %}
+                      <div class="dropdown d-inline-block">
+                        <button
+                          class="btn btn-sm btn-outline-danger dropdown-toggle finance-btn--icon"
+                          type="button"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                          title="Delete {{ row.unsettled_count }} unsettled lines"
+                        ><i class="bi bi-trash3" aria-hidden="true"></i><span class="visually-hidden">Delete {{ row.unsettled_count }}</span></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                          {% for line in row.unsettled_lines %}
+                          <li>
+                            <form method="post" action="{% url 'farmer-goods-issue-line-delete' line.issue_id %}" class="js-swal-submit-guard">
+                              {% csrf_token %}
+                              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                              <button
+                                type="submit"
+                                class="dropdown-item text-danger js-swal-submit-trigger"
+                                data-swal-title="Delete this product line?"
+                                data-swal-text="Only {{ row.product_name }} will be removed from this receipt. Stock will be restored."
+                              >
+                                {{ line.date|date:"Y-m-d" }}
+                                {% if line.batch_ref %}<span class="text-muted">· {{ line.batch_ref|slice:":8"|upper }}</span>{% endif %}
+                                <span class="text-muted">· {{ line.quantity|money }} @ {{ line.unit_price|money }}</span>
+                              </button>
+                            </form>
+                          </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      {% endif %}
+                    {% endif %}
+                  </span>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            {% if farmer_goods_summary_rows %}
+            <tfoot>
+              <tr>
+                <th class="min-tablet-l"></th>
+                <th colspan="2">
+                  Farmer total
+                  <span class="text-muted fw-normal">({{ farmer_goods_summary_receipt_count }} receipt{{ farmer_goods_summary_receipt_count|pluralize }}, {{ farmer_goods_summary_rows|length }} product{{ farmer_goods_summary_rows|length|pluralize }})</span>
+                </th>
+                <th class="text-end">{{ farmer_goods_summary_qty|money }}</th>
+                <th></th>
+                <th class="text-end">{{ farmer_goods_summary_total|money }}</th>
+                <th></th>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+          </div>
+          </div>
+        {% endif %}
+        {% if can_view_farmer_loans %}
+          <div class="point-finance-pane">
+          <div class="point-finance-pane__title">Loans</div>
+          <div class="point-finance-pane__table">
+          <table
+            class="table table-hover datatable datatable-smart datatable-no-responsive smart-dt-table mb-0 farmer-financial-table point-finance-fit-table point-loan-table w-100"
+            data-empty-table="No loans recorded."
+            data-page-length="10"
+            data-smart-order="0,desc"
+            data-print-title="Loans"
+          >
+            <thead>
+              <tr>
+                <th class="all">Loan</th>
+                <th class="all text-end">Balance</th>
+                <th class="all text-end no-export point-finance-actions-col"> </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for loan in farmer_loans %}
+              <tr class="{% if loan.balance_total <= 0 and loan.status == 'approved' %}farmer-financial-row--settled{% endif %}">
+                <td class="all" data-order="{{ loan.pk }}">
+                  <span class="point-loan-id">#{{ loan.pk }}</span>
+                  <span class="point-loan-id-meta">{{ loan.loan_date|date:"d M Y" }} · {{ loan.get_status_display }} · {{ loan.loan_amount|money }}</span>
+                </td>
+                <td class="all text-end" data-order="{{ loan.balance_total }}">{{ loan.balance_total|money }}</td>
+                <td class="all text-end point-finance-actions-col">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary finance-btn--icon js-point-loan-instalments"
+                    title="View instalments"
+                    data-loan-instalments-modal="farmerLoanInstalmentsModal"
+                    data-loan-id="{{ loan.pk }}"
+                    data-status="{{ loan.get_status_display }}"
+                    data-loan-date="{{ loan.loan_date|date:'Y-m-d' }}"
+                    data-amount="{{ loan.loan_amount|money }}"
+                    data-paid="{{ loan.paid_total|money }}"
+                    data-balance="{{ loan.balance_total|money }}"
+                    data-detail-url="{% url 'farmer-loan-detail' loan.pk %}"
+                  ><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">View instalments</span></button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+{% if not statement_print %}
+  </div>
+</div>
+{% endif %}
+
+    {% if can_view_farmer_payments %}
+    {% if statement_print %}
+    <div class="farmer-financial-block">
+      <div class="farmer-financial-block__title">Payment history</div>
+      <div>
+        <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+          <thead class="table-light">
+            <tr>
+              <th>Period</th>
+              <th class="text-end">Amount paid</th>
+              <th class="text-end">Expected</th>
+              <th>Paid at</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in farmer_period_payments %}
+            <tr class="farmer-financial-row--settled">
+              <td class="text-nowrap">{{ payment.period_start|date:"Y-m-d" }} → {{ payment.period_end|date:"Y-m-d" }}</td>
+              <td class="text-end">{{ payment.amount|money }}</td>
+              <td class="text-end">{{ payment.expected_amount|money }}</td>
+              <td class="text-nowrap">{{ payment.paid_at|date:"Y-m-d H:i" }}</td>
+              <td>{{ payment.note|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No period payments recorded.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="card farmer-collection-card point-collection-card point-financial-card smart-list-card">
+      <div class="card-body">
+      <div class="point-finance-pane">
+      <div class="point-finance-pane__title">Payment history</div>
+      <div class="point-finance-pane__table">
+      <table
+        class="table table-hover datatable datatable-smart datatable-no-responsive smart-dt-table mb-0 farmer-financial-table point-finance-fit-table w-100"
+        data-empty-table="No period payments recorded."
+        data-page-length="10"
+        data-smart-order="3,desc"
+        data-print-title="Payment history"
+      >
+        <thead>
+          <tr>
+            <th class="all">Period</th>
+            <th class="all text-end">Amount paid</th>
+            <th class="min-tablet-l text-end">Expected</th>
+            <th class="all">Paid at</th>
+            <th class="min-desktop">Recorded by</th>
+            <th class="min-tablet-l">Note</th>
+            <th class="all text-end no-export">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in farmer_period_payments %}
+          <tr class="farmer-financial-row--settled">
+            <td class="all text-nowrap" data-order="{{ payment.period_start|date:'Y-m-d' }}">{{ payment.period_start|date:"Y-m-d" }} → {{ payment.period_end|date:"Y-m-d" }}</td>
+            <td class="all text-end" data-order="{{ payment.amount }}">{{ payment.amount|money }}</td>
+            <td class="min-tablet-l text-end" data-order="{{ payment.expected_amount }}">{{ payment.expected_amount|money }}</td>
+            <td class="all text-nowrap" data-order="{{ payment.paid_at|date:'Y-m-d H:i:s' }}">{{ payment.paid_at|date:"Y-m-d H:i" }}</td>
+            <td class="min-desktop">{{ payment.recorded_by }}</td>
+            <td class="min-tablet-l">{{ payment.note|default:"—" }}</td>
+            <td class="all text-end">
+              <span class="farmer-row-actions">
+                <a
+                  href="{% url 'farmer-payslip' farmer.pk %}?start={{ payment.period_start|date:'Y-m-d' }}&amp;end={{ payment.period_end|date:'Y-m-d' }}"
+                  class="icon-action-btn"
+                  target="_blank"
+                  rel="noopener"
+                  title="PaySlip"
+                  aria-label="Open payslip"
+                ><i class="bi bi-receipt" aria-hidden="true"></i></a>
+                <a
+                  href="{% url 'farmer-payment-sheet' %}?start={{ payment.period_start|date:'Y-m-d' }}&amp;end={{ payment.period_end|date:'Y-m-d' }}{% for branch_id in payment.branch_ids %}&amp;branches={{ branch_id }}{% endfor %}"
+                  class="icon-action-btn"
+                  title="Payment sheet"
+                  aria-label="Open payment sheet"
+                ><i class="bi bi-table" aria-hidden="true"></i></a>
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+{% endif %}

@@ -1,0 +1,68 @@
+{% load format_extras %}
+{% if can_view_farmer_advances %}
+<div class="farmer-financial-block{% if aside %} farmer-financial-block--aside{% endif %}">
+  <div class="farmer-financial-block__title">Advance payments</div>
+  {% if statement_print %}
+  <div>
+    <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th class="text-end">Amount</th>
+          {% if not aside %}<th>Note</th>{% endif %}
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for advance in farmer_advances %}
+        <tr class="{% if advance.is_recovered %}farmer-financial-row--settled{% endif %}">
+          <td class="text-nowrap">{{ advance.date|date:"Y-m-d" }}</td>
+          <td class="text-end">{{ advance.amount|money }}</td>
+          {% if not aside %}<td>{{ advance.note|default:"—" }}</td>{% endif %}
+          {% include "reports/_payslip_recovery_status.html" with is_recovered=advance.is_recovered recovered_at=advance.recovered_at %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{% if aside %}3{% else %}4{% endif %}" class="text-center text-muted py-3">No advance payments recorded.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <table
+    class="table table-hover datatable datatable-smart smart-dt-table mb-0 farmer-financial-table w-100"
+    data-empty-table="No advance payments recorded."
+    data-page-length="10"
+    data-smart-order="0,desc"
+  >
+    <thead>
+      <tr>
+        <th class="all">Date</th>
+        <th class="all text-end">Amount</th>
+        {% if not aside %}<th class="min-tablet-l">Note</th>{% endif %}
+        <th class="all">Status</th>
+        {% if not aside %}<th class="min-desktop">Recorded by</th>{% endif %}
+        <th class="all text-end no-export">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for advance in farmer_advances %}
+      <tr class="{% if advance.is_recovered %}farmer-financial-row--settled{% endif %}">
+        <td class="all text-nowrap" data-order="{{ advance.date|date:'Y-m-d' }}">{{ advance.date|date:"Y-m-d" }}</td>
+        <td class="all text-end" data-order="{{ advance.amount }}">{{ advance.amount|money }}</td>
+        {% if not aside %}<td class="min-tablet-l">{{ advance.note|default:"—" }}</td>{% endif %}
+        {% include "reports/_payslip_recovery_status.html" with is_recovered=advance.is_recovered recovered_at=advance.recovered_at %}
+        {% if not aside %}<td class="min-desktop">{{ advance.created_by }}</td>{% endif %}
+        <td class="all text-end">
+          <span class="farmer-row-actions">
+            {% include "reports/_advance_manual_settle_action.html" with advance=advance %}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endif %}

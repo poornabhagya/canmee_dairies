@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Delete role · Canmee Dairies{% endblock %}
+{% block page_heading %}Delete role{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Delete role</h1>
+    <p class="page-subtitle">Users will lose this role; permissions are not deleted.</p>
+  </div>
+</div>
+<div class="card" style="max-width: 32rem;">
+  <div class="card-body">
+    <p>Remove role <strong>{{ role.name }}</strong>?</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete role</button>
+      <a href="{% url 'user_management:group-list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

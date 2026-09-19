@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% load user_tags %}
+{% block title %}Routes · Canmee Dairies{% endblock %}
+{% block page_heading %}Routes{% endblock %}
+{% block topbar_actions %}
+{% if perms.masters.add_route %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#routeQuickAddModal"><i class="bi bi-plus-lg me-1"></i>Add route</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+<style>
+  .route-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .route-list-card .card-body.table-wrap {
+    padding: 1rem;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table route-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--two" aria-label="Route summary">
+      {% include "includes/_smart_stat_dual_qty.html" with label="Milk collected today" kg=route_summary.today_milk_kg liters=route_summary.today_milk_liters %}
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Active routes today</span>
+        <span class="smart-dt-stat-value">{{ route_summary.active_today }} <small>of {{ route_summary.count }}</small></span>
+      </div>
+    </div>
+    <div id="routeDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Route filters">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ route_summary.count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="active-today">
+        Active today<span class="smart-dt-chip-count">{{ route_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="inactive-today">
+        Inactive today<span class="smart-dt-chip-count">{{ route_summary.inactive_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="no-driver">
+        No driver<span class="smart-dt-chip-count">{{ route_summary.no_driver }}</span>
+      </button>
+      {% if route_branch_options|length > 1 %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by branch</span>
+        <select id="routeBranchFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by branch">
+          <option value="all">All branches</option>
+          {% for b in route_branch_options %}
+          <option value="{{ b.id }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+    </div>
+    <table
+      class="table table-hover datatable datatable-smart route-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No routes yet."
+      data-filters-target="routeDtFilters"
+      data-branch-filter-target="routeBranchFilter"
+      data-footer-sum-cols="5"
+      data-default-order-col="1"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Route</th>
+          <th class="min-tablet-l">Branch</th>
+          <th class="min-tablet-l">Driver</th>
+          <th class="min-desktop">Vehicle</th>
+          <th class="min-tablet-l text-end">Today milk (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr
+          data-branch-id="{{ o.branch_id|default:'' }}"
+          class="{% if o.is_active_today %}smart-row--active-today{% endif %}{% if o.is_inactive_today %} smart-row--inactive-today{% endif %}{% if o.has_no_driver %} smart-row--no-driver{% endif %}"
+        >
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">
+            <div class="smart-dt-name-row">
+              <a href="{% url 'route-detail' o.pk %}" class="smart-dt-name-link">{{ o.name }}</a>
+              {% if perms.masters.change_route %}
+              <button
+                type="button"
+                class="smart-dt-edit-btn js-route-edit"
+                title="Edit route"
+                aria-label="Edit {{ o.name }}"
+                data-route-id="{{ o.pk }}"
+                data-route-name="{{ o.name }}"
+                data-route-branch-id="{{ o.branch_id|default:'' }}"
+                data-route-vehicle-name="{{ o.vehicle_name|default:'' }}"
+                data-route-driver-name="{{ o.driver_name|default:'' }}"
+                {% if user|is_admin_or_superuser %}data-route-access-code="{{ o.driver_access_code|default:'' }}"{% endif %}
+                data-route-view-route-summary="{% if o.driver_can_view_route_summary %}1{% else %}0{% endif %}"
+                data-route-view-point-summary="{% if o.driver_can_view_point_summary %}1{% else %}0{% endif %}"
+                data-route-view-farmer-goods="{% if o.driver_can_view_farmer_goods %}1{% else %}0{% endif %}"
+              >
+                <i class="bi bi-pen-fill" aria-hidden="true"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="min-tablet-l">{% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td class="min-tablet-l">{% if o.driver_name %}{{ o.driver_name }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td class="min-desktop">{{ o.vehicle_name|default:"—" }}</td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ o.today_milk_kg|default:'0' }}">{{ o.today_milk_kg }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all text-end">Totals</th>
+          <th class="min-tablet-l"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-desktop"></th>
+          <th class="min-tablet-l text-end dt-foot-total"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% if perms.masters.add_route %}
+<div class="modal fade smart-modal" id="routeQuickAddModal" tabindex="-1" aria-labelledby="routeQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="route-quick-add-form" method="post" action="{% url 'route-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-signpost-split"></i></span>
+            <div>
+              <h5 class="modal-title" id="routeQuickAddModalLabel">Add route</h5>
+              <p class="modal-subtitle">Create a collection route and driver access.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% include "masters/_route_modal_form_add.html" with form=route_create_form %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save route</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if perms.masters.change_route %}
+<div class="modal fade smart-modal" id="routeQuickEditModal" tabindex="-1" aria-labelledby="routeQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="route-quick-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-pen-fill"></i></span>
+            <div>
+              <h5 class="modal-title" id="routeQuickEditModalLabel">Edit route</h5>
+              <p class="modal-subtitle" data-edit-route-subtitle>Update route details and driver access.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="smart-form-sections">
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-signpost-split" aria-hidden="true"></i>Route details</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_route_edit_name">Name</label>
+                  <input id="id_route_edit_name" name="name" type="text" class="form-control" maxlength="120" autocomplete="off" required>
+                  <div class="invalid-feedback" data-modal-error-for="name"></div>
+                </div>
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_route_edit_branch">Branch</label>
+                  <select id="id_route_edit_branch" name="branch" class="form-select">
+                    <option value="">Select branch</option>
+                    {% for b in route_branch_options %}
+                    <option value="{{ b.id }}">{{ b.code }} - {{ b.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback" data-modal-error-for="branch"></div>
+                </div>
+              </div>
+            </section>
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-truck" aria-hidden="true"></i>Vehicle &amp; driver</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="id_route_edit_vehicle_name">Vehicle</label>
+                  <input id="id_route_edit_vehicle_name" name="vehicle_name" type="text" class="form-control" maxlength="120" autocomplete="off" placeholder="Vehicle number or name">
+                  <div class="invalid-feedback" data-modal-error-for="vehicle_name"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_route_edit_driver_name">Driver</label>
+                  <input id="id_route_edit_driver_name" name="driver_name" type="text" class="form-control" maxlength="120" autocomplete="off" placeholder="Driver name">
+                  <div class="invalid-feedback" data-modal-error-for="driver_name"></div>
+                </div>
+                {% if user|is_admin_or_superuser %}
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_route_edit_access_code">Access code</label>
+                  <input id="id_route_edit_access_code" type="text" class="form-control smart-access-code" readonly>
+                </div>
+                <div class="smart-field span-2">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="regenerate_access_code" value="1" id="id_route_edit_regenerate_code">
+                    <label class="form-check-label" for="id_route_edit_regenerate_code">Generate new access code</label>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </section>
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-shield-lock" aria-hidden="true"></i>Driver portal access</h6>
+              <div class="smart-permissions-box">
+                <div class="smart-permission-item">
+                  <input type="hidden" name="driver_can_view_route_summary" value="0">
+                  <input class="form-check-input" type="checkbox" name="driver_can_view_route_summary" value="1" id="id_route_edit_view_route_summary">
+                  <label class="form-check-label mb-0" for="id_route_edit_view_route_summary">Route milk summary</label>
+                </div>
+                <div class="smart-permission-item">
+                  <input type="hidden" name="driver_can_view_point_summary" value="0">
+                  <input class="form-check-input" type="checkbox" name="driver_can_view_point_summary" value="1" id="id_route_edit_view_point_summary">
+                  <label class="form-check-label mb-0" for="id_route_edit_view_point_summary">Point milk collection</label>
+                </div>
+                <div class="smart-permission-item">
+                  <input type="hidden" name="driver_can_view_farmer_goods" value="0">
+                  <input class="form-check-input" type="checkbox" name="driver_can_view_farmer_goods" value="1" id="id_route_edit_view_farmer_goods">
+                  <label class="form-check-label mb-0" for="id_route_edit_view_farmer_goods">Issued farmer goods</label>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Update route</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.masters.add_route or perms.masters.change_route %}
+<script>
+(function () {
+  var $ = window.jQuery;
+  var form = document.getElementById("route-quick-add-form");
+  var modalEl = document.getElementById("routeQuickAddModal");
+  var editForm = document.getElementById("route-quick-edit-form");
+  var editModalEl = document.getElementById("routeQuickEditModal");
+  var modal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  var submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+  var editSubmitBtn = editForm ? editForm.querySelector('button[type="submit"]') : null;
+  var branchSelect = form ? form.querySelector('[name="branch"]') : null;
+  var editBranchSelect = editForm ? editForm.querySelector('[name="branch"]') : null;
+
+  function initModalBranchSelect2(selectEl, parentEl) {
+    if (!$ || !$.fn || !$.fn.select2 || !selectEl || !parentEl) return;
+    var $branch = $(selectEl);
+    if ($branch.hasClass("select2-hidden-accessible")) {
+      $branch.select2("destroy");
+    }
+    $branch.select2({
+      width: "100%",
+      dropdownParent: $(parentEl),
+      placeholder: "Select branch",
+      allowClear: true
+    });
+  }
+
+  function clearErrors(targetForm) {
+    if (!targetForm) return;
+    targetForm.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    targetForm.querySelectorAll("[data-modal-error-for]").forEach(function (el) { el.textContent = ""; });
+  }
+
+  function setErrors(targetForm, errors) {
+    if (!targetForm) return;
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = targetForm.querySelector('[name="' + field + '"]');
+      var msg = targetForm.querySelector('[data-modal-error-for="' + field + '"]');
+      if (input) input.classList.add("is-invalid");
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  function submitForm(targetForm, submitButton, onSuccess) {
+    clearErrors(targetForm);
+    if (submitButton) submitButton.disabled = true;
+    fetch(targetForm.action, {
+      method: "POST",
+      body: new FormData(targetForm),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+      })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErrors(targetForm, (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: "Could not save route." });
+          }
+          return;
+        }
+        onSuccess(res.data);
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") {
+          Swal.fire({ icon: "error", title: "Could not save route." });
+        }
+      })
+      .finally(function () {
+        if (submitButton) submitButton.disabled = false;
+      });
+  }
+
+  if (form && modalEl) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      submitForm(form, submitBtn, function (data) {
+        if (modal) modal.hide();
+        var detailUrl = data.route && data.route.detail_url;
+        if (detailUrl) {
+          window.location.href = detailUrl;
+          return;
+        }
+        window.location.reload();
+      });
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      submitForm(editForm, editSubmitBtn, function (data) {
+        if (editModal) editModal.hide();
+        if (data.route && data.route.driver_access_code) {
+          var activeLink = document.querySelector('.js-route-edit[data-route-id="' + data.route.id + '"]');
+          if (activeLink) {
+            activeLink.setAttribute("data-route-access-code", data.route.driver_access_code);
+          }
+        }
+        window.location.reload();
+      });
+    });
+  }
+
+  document.querySelectorAll(".js-route-edit").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      if (!editForm || !editModal) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var link = btn;
+      var routeId = link.getAttribute("data-route-id");
+      var name = link.getAttribute("data-route-name") || "";
+      var subtitleEl = editModalEl.querySelector("[data-edit-route-subtitle]");
+      if (subtitleEl) {
+        subtitleEl.textContent = name ? "Updating " + name + " — vehicle, driver, and portal access." : "Update route details and driver access.";
+      }
+      var branchId = link.getAttribute("data-route-branch-id") || "";
+      var vehicleName = link.getAttribute("data-route-vehicle-name") || "";
+      var driverName = link.getAttribute("data-route-driver-name") || "";
+      var accessCode = link.getAttribute("data-route-access-code") || "";
+      editForm.action = "{% url 'route-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + routeId + "/quick-edit/");
+      editForm.querySelector('[name="name"]').value = name;
+      editForm.querySelector('[name="branch"]').value = branchId;
+      editForm.querySelector('[name="vehicle_name"]').value = vehicleName;
+      editForm.querySelector('[name="driver_name"]').value = driverName;
+      var accessInput = document.getElementById("id_route_edit_access_code");
+      if (accessInput) accessInput.value = accessCode;
+      var regen = document.getElementById("id_route_edit_regenerate_code");
+      if (regen) regen.checked = false;
+      document.getElementById("id_route_edit_view_route_summary").checked =
+        link.getAttribute("data-route-view-route-summary") === "1";
+      document.getElementById("id_route_edit_view_point_summary").checked =
+        link.getAttribute("data-route-view-point-summary") === "1";
+      document.getElementById("id_route_edit_view_farmer_goods").checked =
+        link.getAttribute("data-route-view-farmer-goods") === "1";
+      clearErrors(editForm);
+      if ($ && $.fn && $.fn.select2 && editBranchSelect && $(editBranchSelect).hasClass("select2-hidden-accessible")) {
+        $(editBranchSelect).val(branchId).trigger("change");
+      }
+      editModal.show();
+    });
+  });
+
+  if (modalEl && form) {
+    modalEl.addEventListener("shown.bs.modal", function () {
+      initModalBranchSelect2(branchSelect, modalEl);
+      var first = form.querySelector('[name="name"]');
+      if (first) first.focus();
+    });
+
+    modalEl.addEventListener("hidden.bs.modal", function () {
+      if ($ && $.fn && $.fn.select2 && branchSelect) {
+        var $branch = $(branchSelect);
+        if ($branch.hasClass("select2-hidden-accessible")) {
+          $branch.select2("destroy");
+        }
+      }
+      form.reset();
+      clearErrors(form);
+    });
+  }
+
+  if (editModalEl && editForm) {
+    editModalEl.addEventListener("shown.bs.modal", function () {
+      initModalBranchSelect2(editBranchSelect, editModalEl);
+      var first = editForm.querySelector('[name="name"]');
+      if (first) first.focus();
+    });
+
+    editModalEl.addEventListener("hidden.bs.modal", function () {
+      if ($ && $.fn && $.fn.select2 && editBranchSelect) {
+        var $branch = $(editBranchSelect);
+        if ($branch.hasClass("select2-hidden-accessible")) {
+          $branch.select2("destroy");
+        }
+      }
+      editForm.reset();
+      clearErrors(editForm);
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

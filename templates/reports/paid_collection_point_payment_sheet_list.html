@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}Paid Collection Point Payment Sheets{% endblock %}
+{% block page_heading %}Paid Collection Point Payment Sheets{% endblock %}
+
+{% block content %}
+<div class="card card-table mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div>
+        <div class="fw-semibold">Recorded payment sheets</div>
+        <div class="small text-muted">Open a previous period to view rates, collector fees, and totals as they were when points were paid.</div>
+      </div>
+      <a href="{% url 'collection-point-payment-sheet' %}" class="btn btn-outline-secondary btn-sm">Current sheet</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Branches</th>
+            <th class="text-end">Points</th>
+            <th class="text-end">Gross</th>
+            <th class="text-end">Paid</th>
+            <th>Last paid</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in records %}
+          <tr>
+            <td class="text-nowrap">{{ record.period_start|date:"Y-m-d" }} → {{ record.period_end|date:"Y-m-d" }}</td>
+            <td class="small">
+              {% for branch_id in record.branch_ids %}
+                {% with branch=branch_lookup|get_item:branch_id %}
+                  {% if branch %}{{ branch.code }}{% if not forloop.last %}, {% endif %}{% endif %}
+                {% endwith %}
+              {% empty %}
+              —
+              {% endfor %}
+            </td>
+            <td class="text-end">{{ record.point_count }}</td>
+            <td class="text-end">{{ record.total_gross|money }}</td>
+            <td class="text-end">{{ record.total_paid|money }}</td>
+            <td class="text-nowrap">{{ record.last_paid_at|date:"Y-m-d H:i" }}</td>
+            <td class="text-end text-nowrap">
+              <a
+                class="btn btn-sm btn-outline-primary"
+                href="{% url 'collection-point-payment-sheet' %}?start={{ record.period_start|date:'Y-m-d' }}&amp;end={{ record.period_end|date:'Y-m-d' }}{% for branch_id in record.branch_ids %}&amp;branches={{ branch_id }}{% endfor %}"
+              >Open sheet</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">No paid payment sheets recorded yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="mt-3" aria-label="Paid sheets pages">
+      <ul class="pagination pagination-sm mb-0 justify-content-end">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

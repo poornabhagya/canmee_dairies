@@ -1,0 +1,78 @@
+<style>
+  #rawMilkEditModal .bulk-form-grid-three {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 0.85rem;
+  }
+  #rawMilkEditModal .bulk-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0.85rem;
+  }
+  #rawMilkEditModal .bulk-form-grid .full {
+    grid-column: 1 / -1;
+  }
+  #rawMilkEditModal .qty-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  #rawMilkEditModal .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+  }
+  #rawMilkEditModal .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  @media (max-width: 767.98px) {
+    #rawMilkEditModal .bulk-form-grid-three,
+    #rawMilkEditModal .bulk-form-grid {
+      grid-template-columns: 1fr;
+    }
+    #rawMilkEditModal .bulk-form-grid .full {
+      grid-column: auto;
+    }
+  }
+</style>
+<div
+  class="modal fade"
+  id="rawMilkEditModal"
+  tabindex="-1"
+  aria-labelledby="rawMilkEditModalLabel"
+  aria-hidden="true"
+  data-kg-to-liters="{{ MILK_LITER_FACTOR_JS }}"
+>
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <form method="post" id="rawMilkEditForm" class="modal-content" action="">
+      {% csrf_token %}
+      <input type="hidden" name="next" id="rawMilkEditNext" value="{{ request.get_full_path }}">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="rawMilkEditModalLabel">Edit collection</h5>
+          <p class="text-muted small mb-0" id="rawMilkEditSubtitle"></p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="rawMilkEditModalBody">
+        <div class="text-center text-muted py-5" id="rawMilkEditLoading">Loading…</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="rawMilkEditSubmit" disabled>
+          <i class="bi bi-check2 me-1"></i>Save
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

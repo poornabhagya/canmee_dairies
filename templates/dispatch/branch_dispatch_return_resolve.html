@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Return request · Canmee Dairies{% endblock %}
+{% block page_heading %}Accept branch return{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form method="post" class="branch-dispatch-return-form">
+      {% csrf_token %}
+      <input type="hidden" name="redirect_query" value="{{ redirect_query|default:request.GET.urlencode }}">
+      {% include "dispatch/_branch_dispatch_return_fields.html" %}
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">Save decision</button>
+        <a href="{% url 'distribution-list' %}?{{ request.GET.urlencode }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,2620 @@
+﻿{% extends "base.html" %}
+{% load loan_extras static %}
+{% block title %}Collection Point Payment Sheet{% endblock %}
+{% block page_heading %}Collection Point Payment Sheet{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "reports/_payment_sheet_period_filter_styles.html" %}
+<style>
+  .payment-sheet-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .payment-sheet-card .card-body {
+    padding: 1rem 1.1rem;
+  }
+  .payment-sheet-card__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.15rem;
+  }
+  .payment-sheet-card__title-period {
+    font-weight: 600;
+    color: #64748b;
+  }
+  #payment-sheet-print-route-select.form-select-sm {
+    height: 31px;
+    min-height: 31px;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.8125rem;
+    line-height: 1.2;
+  }
+  .payment-sheet-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .payment-sheet-toolbar .btn,
+  .payment-sheet-toolbar .form-select {
+    flex: 0 0 auto;
+  }
+  .payment-sheet-toolbar .btn {
+    white-space: nowrap;
+  }
+  #payment-sheet-print-route-select.form-select-sm {
+    width: auto;
+    min-width: 8rem;
+    max-width: 11rem;
+  }
+  .payment-sheet-card__hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 0.85rem;
+  }
+  .payment-sheet-summary {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin: 0 0 0.65rem;
+  }
+  .payment-sheet-summary__item {
+    min-width: 0;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  }
+  .payment-sheet-summary__label {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .payment-sheet-summary__value {
+    display: block;
+    font-size: 0.84rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .payment-sheet-summary__value--dual {
+    font-size: 0.72rem;
+  }
+  .payment-sheet-summary__hint {
+    display: block;
+    margin-top: 0.08rem;
+    font-size: 0.62rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .payment-sheet-summary__item--cash .payment-sheet-summary__value {
+    color: #047857;
+  }
+  .payment-sheet-summary__item--bank .payment-sheet-summary__value {
+    color: #1d4ed8;
+  }
+  .payment-sheet-summary__item--points .payment-sheet-summary__value {
+    color: #0f766e;
+  }
+  .payment-sheet-summary--compact {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  @media (max-width: 1199.98px) {
+    .payment-sheet-summary {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 767.98px) {
+    .payment-sheet-summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 575.98px) {
+    .payment-sheet-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+  .payment-sheet-table-card {
+    --ps-table-max-height: calc(100dvh - 17rem);
+  }
+  .payment-sheet-table-card .card-body.table-wrap {
+    padding: 0.85rem 1rem 1rem;
+    overflow: visible;
+  }
+  .payment-sheet-table-card .table-wrap,
+  .payment-sheet-table-card .payment-sheet-scroll {
+    width: 100%;
+    max-width: 100%;
+  }
+  .payment-sheet-scroll {
+    overflow: auto;
+    max-height: var(--ps-table-max-height);
+    -webkit-overflow-scrolling: touch;
+  }
+  .payment-sheet-table {
+    --ps-sticky-select-width: 1.65rem;
+    --ps-sticky-farmer-width: 8.5rem;
+    --ps-sticky-rate-width: 5rem;
+  }
+  .payment-sheet-table col.payment-sheet-col-select {
+    width: var(--ps-sticky-select-width);
+  }
+  .payment-sheet-select-col {
+    width: var(--ps-sticky-select-width) !important;
+    min-width: var(--ps-sticky-select-width) !important;
+    max-width: var(--ps-sticky-select-width) !important;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.45rem 0.1rem !important;
+    box-sizing: border-box;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: #fff;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .payment-sheet-table thead .payment-sheet-select-col {
+    top: 0;
+    z-index: 7;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  }
+  .payment-sheet-table tbody tr:hover .payment-sheet-select-col {
+    background: #f8fafc;
+  }
+  .payment-sheet-select-col .form-check-input {
+    margin: 0;
+    float: none;
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+  .payment-sheet-table .sticky-col-farmer {
+    position: sticky;
+    left: var(--ps-sticky-select-width);
+    z-index: 2;
+    min-width: var(--ps-sticky-farmer-width);
+    max-width: var(--ps-sticky-farmer-width);
+    background: #fff;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .payment-sheet-table .sticky-col-rate {
+    position: sticky;
+    left: calc(var(--ps-sticky-select-width) + var(--ps-sticky-farmer-width));
+    z-index: 2;
+    min-width: var(--ps-sticky-rate-width);
+    max-width: var(--ps-sticky-rate-width);
+    background: #fff;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .payment-sheet-table thead .sticky-col-farmer,
+  .payment-sheet-table thead .sticky-col-rate {
+    top: 0;
+    z-index: 6;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  }
+  .payment-sheet-bulk-actions .btn {
+    white-space: nowrap;
+  }
+  .payment-sheet-table .payment-sheet-method-col {
+    width: 1%;
+    min-width: 8.75rem;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .payment-sheet-method-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    padding: 2px;
+    gap: 2px;
+    background: #f1f5f9;
+    border: 1px solid #dbe3ef;
+    border-radius: 999px;
+  }
+  .payment-sheet-method-toggle__btn {
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .payment-sheet-method-toggle__btn.is-active {
+    background: #fff;
+    color: #0f766e;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .payment-sheet-method-toggle__btn.is-active[data-payment-method="bank_transfer"] {
+    color: #1d4ed8;
+  }
+  .payment-sheet-method-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+  }
+  .payment-sheet-table .payment-sheet-actions-col {
+    white-space: nowrap;
+    width: 1%;
+    min-width: 9.5rem;
+  }
+  .payment-sheet-row-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .payment-sheet-row-actions .btn,
+  .payment-sheet-row-actions .badge {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .payment-sheet-row--settled {
+    background-color: #f8fafc;
+  }
+  .payment-sheet-cell--settled {
+    color: #64748b;
+  }
+  .payment-sheet-table thead th.previous-outstanding-col {
+    background: #fffbeb;
+    color: #b45309;
+  }
+  .previous-outstanding-cell.is-open {
+    background: #fffbeb;
+    color: #b91c1c;
+    font-weight: 700;
+  }
+  .payment-sheet-settled-mark {
+    display: inline-block;
+    margin-left: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #16a34a;
+    vertical-align: super;
+  }
+  .payment-sheet-day-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.65rem;
+  }
+  .payment-sheet-day-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .payment-sheet-day-legend__swatch {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 0.2rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+  }
+  .payment-sheet-day-legend__swatch--paid { background: #ecfdf5; }
+  .payment-sheet-day-legend__swatch--unpaid { background: #fef2f2; }
+  .payment-sheet-day-legend__swatch--partial { background: #fffbeb; }
+  .payment-sheet-paid-col {
+    min-width: 5.25rem;
+    vertical-align: middle;
+  }
+  .payment-sheet-paid-popover {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-popover:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+    border-radius: 0.15rem;
+  }
+  .payment-sheet-paid-total {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-note {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.65rem;
+    line-height: 1.4;
+  }
+  .payment-sheet-paid-popover-pop {
+    --bs-popover-max-width: 15rem;
+    font-size: 0.8125rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-header {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.45rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-body {
+    padding: 0.5rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-body__hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .payment-sheet-paid-popover-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.45;
+  }
+  .payment-sheet-paid-popover-row--total {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid #e2e8f0;
+    font-weight: 700;
+  }
+  .payment-sheet-table .day-col--paid {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .payment-sheet-table .day-col--unpaid {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+  .payment-sheet-table .day-col--partial {
+    background: #fffbeb;
+    color: #b45309;
+  }
+  .payment-sheet-table tbody tr:hover .day-col--paid,
+  .payment-sheet-table tbody tr:hover .day-col--unpaid,
+  .payment-sheet-table tbody tr:hover .day-col--partial {
+    filter: brightness(0.98);
+  }
+  .payment-sheet-table tbody tr.payment-sheet-row--has-unpaid .sticky-col-farmer {
+    box-shadow: inset 3px 0 0 #f59e0b;
+  }
+  .payment-sheet-table tbody tr:hover .sticky-col-farmer,
+  .payment-sheet-table tbody tr:hover .sticky-col-rate {
+    background: #f8fafc;
+  }
+  .payment-sheet-advance .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+  }
+  .payment-sheet-advance .form-control,
+  .payment-sheet-advance .form-select {
+    font-size: 0.875rem;
+  }
+  .payment-sheet-advance .advance-amount-input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-correction-input {
+    width: 6.5rem;
+    max-width: 100%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    height: 30px;
+    min-height: 30px;
+    padding: 0.2rem 0.35rem;
+  }
+  .payment-correction-cell.is-negative {
+    color: #dc2626;
+  }
+  .payment-sheet-advance .advance-form-actions .btn {
+    min-width: 9rem;
+    white-space: nowrap;
+  }
+  .advance-balance-panel {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.85rem;
+    font-size: 0.8125rem;
+  }
+  .advance-balance-panel .advance-balance-net {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #059669;
+    font-variant-numeric: tabular-nums;
+  }
+  .advance-balance-panel .advance-balance-net.is-negative {
+    color: #dc2626;
+  }
+  .advance-balance-panel .advance-balance-after {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-sheet-table {
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+  }
+  .payment-sheet-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f8fafc;
+    box-shadow: 0 1px 0 #e2e8f0;
+    white-space: nowrap;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #64748b;
+    padding: 0.45rem 0.35rem;
+    vertical-align: bottom;
+    border-bottom-width: 1px;
+  }
+  .payment-sheet-table tbody td {
+    padding: 0.45rem 0.35rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .payment-sheet-table tbody td.sticky-col-farmer {
+    white-space: normal;
+    word-break: break-word;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .payment-sheet-table tbody td:first-child:not(.sticky-col-farmer) {
+    white-space: normal;
+    min-width: 7rem;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .payment-sheet-table .day-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #475569;
+  }
+  .payment-sheet-table .money-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .payment-sheet-table .net-amount-cell {
+    font-weight: 700;
+    color: #059669;
+  }
+  .loan-deduct-cell {
+    min-width: 6.5rem;
+    text-align: right;
+  }
+  .loan-deduct-cell .loan-deduct-amount {
+    font-variant-numeric: tabular-nums;
+  }
+  .loan-deduct-cell .loan-deduct-amount.is-skipped {
+    text-decoration: line-through;
+    color: #94a3b8;
+  }
+  .loan-deduct-cell .loan-deduct-hint {
+    display: block;
+    font-size: 0.65rem;
+    color: #64748b;
+    line-height: 1.2;
+    text-align: right;
+  }
+  .loan-deduct-toggle {
+    margin-right: 0.35rem;
+  }
+  .payment-sheet-table thead th.day-col,
+  .payment-sheet-table thead th.text-end {
+    text-align: right;
+  }
+  .payment-sheet-table tfoot th,
+  .payment-sheet-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #f8fafc;
+    font-weight: 700;
+    color: #0f172a;
+    border-top: 2px solid #e2e8f0;
+    box-shadow: 0 -1px 0 #e2e8f0;
+    white-space: nowrap;
+    padding: 0.5rem 0.35rem;
+    vertical-align: middle;
+  }
+  .payment-sheet-table tfoot .sticky-col-farmer,
+  .payment-sheet-table tfoot .sticky-col-rate,
+  .payment-sheet-table tfoot .payment-sheet-select-col {
+    z-index: 5;
+    background: #f8fafc;
+  }
+  .payment-sheet-table tfoot .net-amount-cell {
+    color: #059669;
+  }
+  @media (max-width: 767.98px) {
+    .payment-sheet-card .card-body {
+      padding: 0.85rem;
+    }
+    .payment-sheet-filter .filter-actions {
+      width: 100%;
+    }
+    .payment-sheet-filter .filter-actions .btn {
+      flex: 1 1 calc(50% - 0.25rem);
+      min-width: 7.5rem;
+    }
+    .payment-sheet-advance .advance-form-actions {
+      width: 100%;
+    }
+    .payment-sheet-advance .advance-form-actions .btn {
+      width: 100%;
+    }
+    .payment-sheet-table-card {
+      --ps-table-max-height: calc(100dvh - 14rem);
+    }
+    .payment-sheet-table-card .card-body.table-wrap {
+      padding: 0.65rem;
+    }
+  }
+  .loan-deduct-cell .loan-deduct-amount {
+    font-variant-numeric: tabular-nums;
+  }
+  .deduction-picker-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .deduction-picker-trigger:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+  }
+  #pointDeductionPickerModal.is-readonly .form-check-input {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .deduction-picker-items-table,
+  .deduction-picker-products-table {
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+  }
+  .deduction-picker-items-table th,
+  .deduction-picker-items-table td,
+  .deduction-picker-products-table th,
+  .deduction-picker-products-table td {
+    padding: 0.35rem 0.45rem;
+    vertical-align: middle;
+  }
+  .deduction-picker-receipt-row td {
+    background: #f1f5f9;
+    font-weight: 600;
+    border-top: 1px solid #e2e8f0;
+  }
+  .deduction-picker-product-row.is-nested td:nth-child(2) {
+    padding-left: 1.35rem;
+  }
+  .deduction-picker-deduct-input {
+    width: 7.5rem;
+    max-width: 100%;
+    display: inline-block;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #pointDeductionPickerModal.is-readonly .deduction-picker-deduct-input {
+    background: #f8fafc;
+    pointer-events: none;
+  }
+  .deduction-picker-timing {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .deduction-picker-timing.is-previous { color: #b45309; }
+  .deduction-picker-timing.is-future { color: #1d4ed8; }
+  #deduction-picker-loan-add-wrap .form-select {
+    min-width: 16rem;
+    flex: 1 1 16rem;
+  }
+  .payment-sheet-route-header,
+  .payment-sheet-route-total-row,
+  .payment-sheet-print-section {
+    display: none;
+  }
+  .payment-sheet-print-value {
+    display: none;
+  }
+  .payment-sheet-th-short {
+    display: none;
+  }
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+    html, body {
+      width: 100% !important;
+      height: auto !important;
+      background: #fff !important;
+      color: #111 !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+      font-size: 7pt !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    .payment-sheet-no-print,
+    .payment-sheet-summary,
+    .payment-sheet-day-legend,
+    .payment-sheet-paid-note,
+    .alert,
+    .payment-sheet-card__title,
+    #collection-point-payment-sheet-table,
+    .payment-sheet-table {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    .app-main,
+    .content-wrap {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .payment-sheet-table-card {
+      border: none !important;
+      box-shadow: none !important;
+      width: 100% !important;
+      background: transparent !important;
+    }
+    .payment-sheet-table-card .card-header,
+    .payment-sheet-table-card .card-body {
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+    }
+    .table-wrap,
+    .payment-sheet-scroll {
+      max-height: none !important;
+      overflow: visible !important;
+      width: 100% !important;
+    }
+    .payment-sheet-print-section {
+      display: block !important;
+      width: 100% !important;
+    }
+    .payment-sheet-print-route-pack {
+      display: none !important;
+    }
+    body.payment-sheet-print-route-mode .payment-sheet-print-all-pack {
+      display: none !important;
+    }
+    body.payment-sheet-print-route-mode .payment-sheet-print-route-pack.is-print-active {
+      display: block !important;
+    }
+    .payment-sheet-print-summary-sheet,
+    .payment-sheet-print-details-sheet,
+    .payment-sheet-print-final {
+      page-break-after: auto;
+      break-after: auto;
+      page-break-before: auto;
+      break-before: auto;
+      margin-bottom: 10mm;
+    }
+    .payment-sheet-print-route-pack .payment-sheet-print-final {
+      page-break-before: auto;
+      break-before: auto;
+    }
+    .payment-sheet-print-summary-sheet,
+    .payment-sheet-print-details-sheet {
+      page-break-inside: auto;
+    }
+    .payment-sheet-print-table {
+      page-break-inside: auto;
+    }
+    .payment-sheet-print-signatures {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .payment-sheet-print-heading {
+      font-size: 11pt !important;
+      font-weight: 700 !important;
+      margin: 0 0 6pt !important;
+      text-align: center !important;
+      color: #111 !important;
+    }
+    .payment-sheet-print-meta {
+      font-size: 8pt !important;
+      color: #333 !important;
+      margin: 0 0 6pt !important;
+      text-align: center !important;
+    }
+    .payment-sheet-print-table {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      font-size: 6.5pt !important;
+      line-height: 1.15 !important;
+      margin: 0 !important;
+      color: #111 !important;
+      background: #fff !important;
+    }
+    .payment-sheet-print-table--summary {
+      font-size: 6pt !important;
+    }
+    .payment-sheet-print-table--details {
+      font-size: 5.75pt !important;
+    }
+    .payment-sheet-print-table--details .ps-print-col-point {
+      width: 11% !important;
+    }
+    .payment-sheet-print-table--details .ps-print-col-rate {
+      width: 4% !important;
+    }
+    .payment-sheet-print-table--details .ps-print-col-qty,
+    .payment-sheet-print-table--details .ps-print-col-gross {
+      width: 6% !important;
+    }
+    .payment-sheet-print-table--summary .ps-print-col-point {
+      width: 14% !important;
+    }
+    .payment-sheet-print-table th,
+    .payment-sheet-print-table td {
+      border: 0.6pt solid #333 !important;
+      padding: 2px 3px !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      background: #fff !important;
+      color: #111 !important;
+      box-sizing: border-box !important;
+    }
+    .payment-sheet-print-table thead th {
+      background: #4b5563 !important;
+      color: #fff !important;
+      font-weight: 700 !important;
+      text-align: right !important;
+      font-size: inherit !important;
+      text-transform: none !important;
+      letter-spacing: 0 !important;
+    }
+    .payment-sheet-print-table thead th.ps-print-col-point,
+    .payment-sheet-print-table td.ps-print-col-point,
+    .payment-sheet-print-table th.ps-print-col-point {
+      text-align: left !important;
+    }
+    .payment-sheet-print-table tbody tr.payment-sheet-print-row--alt td {
+      background: #eef2f7 !important;
+    }
+    .payment-sheet-print-table .text-end {
+      text-align: right !important;
+      font-variant-numeric: tabular-nums;
+    }
+    .payment-sheet-print-table .is-negative {
+      color: #b91c1c !important;
+    }
+    .payment-sheet-print-total-row th,
+    .payment-sheet-print-total-row td {
+      background: #e5e7eb !important;
+      font-weight: 700 !important;
+      color: #111 !important;
+    }
+    .payment-sheet-print-final {
+      page-break-before: auto;
+      break-before: auto;
+      page-break-inside: avoid;
+      margin-top: 0;
+      padding-top: 0.25rem;
+    }
+    .payment-sheet-print-summary {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem 0.75rem;
+      border: 0.8pt solid #333;
+      border-radius: 0;
+      padding: 0.55rem 0.65rem;
+      margin-bottom: 0.85rem;
+      font-size: 9pt;
+      background: #fff;
+    }
+    .payment-sheet-print-summary__row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.08rem 0;
+      border-bottom: 0.5pt dotted #999;
+    }
+    .payment-sheet-print-summary__row:last-child {
+      border-bottom: 0;
+    }
+    .payment-sheet-print-summary__label {
+      color: #333;
+      font-weight: 600;
+    }
+    .payment-sheet-print-summary__value {
+      font-weight: 700;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .payment-sheet-print-signatures {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+      padding-top: 0.35rem;
+      page-break-inside: avoid;
+    }
+    .payment-sheet-print-sign {
+      text-align: center;
+      min-height: 3.25rem;
+    }
+    .payment-sheet-print-sign__line {
+      border-top: 1px solid #333;
+      margin: 2.1rem 0.75rem 0.35rem;
+    }
+    .payment-sheet-print-sign__title {
+      font-size: 9pt;
+      font-weight: 700;
+      color: #111;
+    }
+    .payment-sheet-print-sign__hint {
+      font-size: 7pt;
+      color: #555;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% url 'collection-point-payment-sheet' as cp_payment_sheet_reset_url %}
+{% url 'paid-collection-point-payment-sheet-list' as cp_paid_sheets_url %}
+{% include "reports/_payment_sheet_period_filter.html" with sheet_kind="collection_point" reset_url=cp_payment_sheet_reset_url paid_sheets_url=cp_paid_sheets_url %}
+
+{% if paid_sheet_record %}
+<div class="alert alert-info py-2 px-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <span class="small mb-0">
+    <i class="bi bi-clock-history me-1"></i>
+    Paid payment sheet — {{ paid_sheet_record.point_count }} point(s), last paid {{ paid_sheet_record.last_paid_at|date:"Y-m-d H:i" }}.
+    Rates, collector fees, and totals reflect values recorded at payment time.
+  </span>
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'paid-collection-point-payment-sheet-list' %}">All paid sheets</a>
+</div>
+{% endif %}
+
+<div class="card card-table payment-sheet-table-card">
+  <div class="card-body table-wrap">
+    <div class="mb-2">
+      <div class="payment-sheet-card__title mb-2">
+        Payment details
+        <span class="payment-sheet-card__title-period">: {{ start|date:"Y-m-d" }} → {{ end|date:"Y-m-d" }}</span>
+      </div>
+      {% if rows %}
+      <div
+        class="payment-sheet-toolbar payment-sheet-no-print"
+        id="payment-sheet-bulk-print"
+        data-bulk-url="{% url 'collection-point-payslip-bulk' %}"
+        data-bulk-pay-url="{% url 'collection-point-bulk-period-payment-record' %}"
+        data-start="{{ start|date:'Y-m-d' }}"
+        data-end="{{ end|date:'Y-m-d' }}"
+        data-branches="{{ selected_branches|join:',' }}"
+      >
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="payment-sheet-print-table" title="Print full payment sheet">
+          <i class="bi bi-printer me-1"></i>Print sheet
+        </button>
+        {% if route_groups %}
+        <label class="visually-hidden" for="payment-sheet-print-route-select">Route</label>
+        <select
+          id="payment-sheet-print-route-select"
+          class="form-select form-select-sm"
+          style="width: auto; min-width: 8rem; max-width: 11rem;"
+          title="Select route to print"
+        >
+          <option value="">Select route…</option>
+          {% for group in route_groups %}
+          <option value="{{ group.route_id }}">{% if group.route %}{{ group.route.name }}{% else %}{{ group.route_label }}{% endif %}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="payment-sheet-print-route" disabled title="Print selected route">
+          <i class="bi bi-printer me-1"></i>Print route
+        </button>
+        {% endif %}
+        <a
+          class="btn btn-sm btn-outline-success"
+          href="{% url 'collection-point-payment-sheet-export-excel' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+          title="Download Excel"
+        >
+          <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          id="payment-sheet-bank-file"
+          title="Download CEFT bank payment file for Bank method rows"
+        >
+          <i class="bi bi-bank me-1"></i>Bank file
+        </button>
+        <a
+          class="btn btn-sm btn-outline-danger"
+          href="{% url 'collection-point-payment-sheet-export-pdf' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+          title="Download PDF"
+        >
+          <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="payment-sheet-print-all">
+          <i class="bi bi-printer me-1"></i>Print all payslips
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="payment-sheet-print-selected" disabled>
+          <i class="bi bi-printer me-1"></i>Print selected
+        </button>
+        {% if can_record_point_payment %}
+        <button type="button" class="btn btn-sm btn-success" id="payment-sheet-pay-selected" disabled>
+          <i class="bi bi-cash-stack me-1"></i>Pay selected
+        </button>
+        {% endif %}
+      </div>
+      <form
+        id="payment-sheet-bank-file-form"
+        method="post"
+        action="{% url 'collection-point-payment-sheet-export-bank-file' %}"
+        class="d-none"
+      >
+        {% csrf_token %}
+        <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+        <input type="hidden" name="debit_account_id" id="payment-sheet-bank-file-debit-account-id" value="">
+        <input type="hidden" name="value_date" id="payment-sheet-bank-file-value-date-hidden" value="">
+        {% for branch_id in selected_branches %}
+        <input type="hidden" name="branches" value="{{ branch_id }}">
+        {% endfor %}
+        <div id="payment-sheet-bank-file-points"></div>
+      </form>
+      {% include "reports/_payment_sheet_debit_account_modal.html" %}
+      {% endif %}
+    </div>
+    {% if rows %}
+    <div class="payment-sheet-summary" aria-label="Payment sheet management totals">
+      <div class="payment-sheet-summary__item payment-sheet-summary__item--points">
+        <span class="payment-sheet-summary__label">Point</span>
+        <span class="payment-sheet-summary__value">{{ sheet_totals.point_count }}</span>
+        <span class="payment-sheet-summary__hint">{{ sheet_totals.day_count }} day{{ sheet_totals.day_count|pluralize }} in period</span>
+      </div>
+      {% if can_view_payment_settlement %}
+      <div class="payment-sheet-summary__item payment-sheet-summary__item--cash">
+        <span class="payment-sheet-summary__label">Cash payments</span>
+        <span class="payment-sheet-summary__value" id="payment-sheet-cash-total">{{ sheet_totals.cash_method_total|money }}</span>
+        <span class="payment-sheet-summary__hint" id="payment-sheet-cash-hint">{{ sheet_totals.cash_method_count }} point{{ sheet_totals.cash_method_count|pluralize }} · by method</span>
+      </div>
+      <div class="payment-sheet-summary__item payment-sheet-summary__item--bank">
+        <span class="payment-sheet-summary__label">Bank payments</span>
+        <span class="payment-sheet-summary__value" id="payment-sheet-bank-total">{{ sheet_totals.bank_method_total|money }}</span>
+        <span class="payment-sheet-summary__hint" id="payment-sheet-bank-hint">{{ sheet_totals.bank_method_count }} point{{ sheet_totals.bank_method_count|pluralize }} · by method</span>
+      </div>
+      <div class="payment-sheet-summary__item">
+        <span class="payment-sheet-summary__label">Total payment</span>
+        <span class="payment-sheet-summary__value" id="payment-sheet-total-payment">{{ sheet_totals.total_payment|money }}</span>
+        <span class="payment-sheet-summary__hint">Cash + bank method totals</span>
+      </div>
+      {% endif %}
+      <div class="payment-sheet-summary__item">
+        <span class="payment-sheet-summary__label">Total quantity</span>
+        <span class="payment-sheet-summary__value payment-sheet-summary__value--dual">
+          {{ sheet_totals.total_liters|money }} L
+          · {{ sheet_totals.total_kg|money }} kg
+        </span>
+        <span class="payment-sheet-summary__hint">Period total · {{ sheet_totals.point_count }} point{{ sheet_totals.point_count|pluralize }}</span>
+      </div>
+      <div class="payment-sheet-summary__item">
+        <span class="payment-sheet-summary__label">Avg point rate</span>
+        <span class="payment-sheet-summary__value payment-sheet-summary__value--dual">
+          {% if sheet_totals.avg_point_rate_per_liter is not None %}
+            {{ sheet_totals.avg_point_rate_per_liter|money }}/L
+            · {{ sheet_totals.avg_point_rate_per_kg|money }}/kg
+          {% else %}
+            —
+          {% endif %}
+        </span>
+        <span class="payment-sheet-summary__hint">Weighted · gross ÷ quantity</span>
+      </div>
+      <div class="payment-sheet-summary__item">
+        <span class="payment-sheet-summary__label">Avg daily point collection</span>
+        <span class="payment-sheet-summary__value payment-sheet-summary__value--dual">
+          {% if sheet_totals.avg_daily_point_collection_liters is not None %}
+            {{ sheet_totals.avg_daily_point_collection_liters|money }} L
+            · {{ sheet_totals.avg_daily_point_collection_kg|money }} kg
+          {% else %}
+            —
+          {% endif %}
+        </span>
+        <span class="payment-sheet-summary__hint">Total ÷ {{ sheet_totals.point_count }} pts ÷ {{ sheet_totals.day_count }} days</span>
+      </div>
+    </div>
+    {% endif %}
+    <div class="payment-sheet-scroll" id="payment-sheet-root" data-period-start="{{ start|date:'Y-m-d' }}" data-period-end="{{ end|date:'Y-m-d' }}" data-branches="{{ selected_branches|join:',' }}">
+      {% if rows and can_view_payment_settlement %}
+      <div class="payment-sheet-day-legend" aria-label="Daily collection payment status">
+        <span class="payment-sheet-day-legend__item"><span class="payment-sheet-day-legend__swatch payment-sheet-day-legend__swatch--paid"></span>Paid collection</span>
+        <span class="payment-sheet-day-legend__item"><span class="payment-sheet-day-legend__swatch payment-sheet-day-legend__swatch--unpaid"></span>Unpaid collection</span>
+        <span class="payment-sheet-day-legend__item"><span class="payment-sheet-day-legend__swatch payment-sheet-day-legend__swatch--partial"></span>Partly paid</span>
+      </div>
+      <p class="payment-sheet-paid-note mb-0">
+        <strong>Paid</strong> = collector fee from collection days marked paid.
+        <strong>Balance</strong> = remaining payable on unpaid milk (linked farmer deductions + previous outstanding + collector fee).
+      </p>
+      {% endif %}
+      {% if rows %}
+      {% include "reports/_collection_point_payment_sheet_print_summary.html" %}
+      {% include "reports/_collection_point_payment_sheet_print_details.html" %}
+      {% for group in route_groups %}
+      {% include "reports/_collection_point_payment_sheet_print_route.html" with group=group %}
+      {% endfor %}
+      {% endif %}
+      <table
+        class="table table-sm table-hover align-middle payment-sheet-table payment-sheet-table--print-fit{% if date_cols|length > 20 %} payment-sheet-table--print-dense{% elif date_cols|length > 14 %} payment-sheet-table--print-medium{% endif %}"
+        id="collection-point-payment-sheet-table"
+        style="--ps-day-count: {{ date_cols|length }};"
+      >
+        {% if rows %}
+        <colgroup>
+          <col class="payment-sheet-col-select">
+        </colgroup>
+        {% endif %}
+        <thead>
+          <tr>
+            {% if rows %}
+            <th class="payment-sheet-select-col">
+              <input type="checkbox" class="form-check-input" id="payment-sheet-select-all" title="Select all collection points" aria-label="Select all collection points">
+            </th>
+            {% endif %}
+            <th class="sticky-col-farmer">Collection point</th>
+            <th class="sticky-col-rate text-end">Rate</th>
+            {% for d in date_cols %}
+            <th class="day-col">{{ d|date:"m-d" }}</th>
+            {% endfor %}
+            <th class="text-end">Total {% if sheet_totals.unit_label %}{{ sheet_totals.unit_label }}{% else %}qty{% endif %}</th>
+            <th class="text-end">Gross</th>
+            {% if can_view_payment_settlement %}
+            <th class="text-end payment-sheet-print-settlement-col">Advance</th>
+            <th class="text-end payment-sheet-print-settlement-col">Goods Ded.</th>
+            <th class="text-end payment-sheet-print-settlement-col">Bank Loan</th>
+            <th class="text-end previous-outstanding-col payment-sheet-print-settlement-col" title="Carried from an earlier period"><span class="payment-sheet-th-full">Prev. outstanding</span><span class="payment-sheet-th-short">Prev OS</span></th>
+            <th class="text-end payment-sheet-print-settlement-col"><span class="payment-sheet-th-full">Payment corrections</span><span class="payment-sheet-th-short">Pay corr.</span></th>
+            <th class="text-end payment-sheet-print-settlement-col"><span class="payment-sheet-th-full">Collector fee</span><span class="payment-sheet-th-short">Coll. fee</span></th>
+            {% if sheet_totals.show_additional_column %}
+            <th class="text-end payment-sheet-print-settlement-col">Additional</th>
+            {% endif %}
+            <th class="text-end payment-sheet-print-settlement-col">Net</th>
+            <th class="text-end payment-sheet-print-settlement-col">Paid</th>
+            <th class="text-end payment-sheet-print-settlement-col">Balance</th>
+            {% if can_record_point_payment %}
+            <th class="payment-sheet-method-col">Method</th>
+            {% endif %}
+            {% endif %}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for group in route_groups %}
+          <tr class="payment-sheet-route-header">
+            <td colspan="999" class="payment-sheet-route-header__cell">
+              Route: {{ group.route_label }}{% if group.branch %} · {{ group.branch.code }}{% endif %}
+              · {{ group.totals.point_count }} point{{ group.totals.point_count|pluralize }}
+            </td>
+          </tr>
+          {% for r in group.rows %}
+          <tr
+            class="{% if r.is_fully_settled %}payment-sheet-row--settled{% endif %}{% if r.has_unpaid_collections %} payment-sheet-row--has-unpaid{% endif %}"
+            data-point-id="{{ r.point.pk }}"
+            data-point-name="{{ r.point.number }} — {{ r.point.name }}"
+            data-balance="{{ r.balance_amount }}"
+            data-can-pay="{% if r.can_make_payment and can_record_point_payment %}1{% else %}0{% endif %}"
+            data-carry-forward="{% if r.needs_carry_forward %}1{% else %}0{% endif %}"
+            data-carry-amount="{{ r.carry_forward_amount }}"
+            data-primary-bank-id="{{ r.primary_bank_account_id|default:'' }}"
+            data-bank-accounts="{{ r.bank_accounts_json|default:'[]' }}"
+            data-ceft-ready="{% if r.primary_bank_ceft_ready %}1{% else %}0{% endif %}"
+            data-payment-method="{% if r.period_payment %}{{ r.period_payment.payment_method }}{% elif r.primary_bank_account_id %}bank_transfer{% else %}cash{% endif %}"
+            data-gross="{{ r.gross_amount }}"
+            data-advance="{{ r.advance_amount }}"
+            data-goods="{{ r.goods_deduction }}"
+            data-paid="{{ r.paid_amount }}"
+            data-cash-paid="{{ r.cash_paid }}"
+            data-has-unpaid-collections="{% if r.has_unpaid_collections %}1{% else %}0{% endif %}"
+          >
+            {% if rows %}
+            <td class="payment-sheet-select-col">
+              <input type="checkbox" class="form-check-input payment-sheet-row-select" value="{{ r.point.pk }}" aria-label="Select {{ r.point.number }} — {{ r.point.name }}">
+            </td>
+            {% endif %}
+            <td class="sticky-col-farmer">
+              <a
+                href="{% url 'point-detail' r.point.pk %}?from={{ start|date:'Y-m-d' }}&amp;to={{ end|date:'Y-m-d' }}"
+                target="_blank"
+                rel="noopener"
+                title="Open collection point details for {{ start|date:'Y-m-d' }} → {{ end|date:'Y-m-d' }}"
+              >{{ r.point.number }} — {{ r.point.name }}</a>
+            </td>
+            <td class="sticky-col-rate money-col"{% if r.uses_payment_snapshot %} title="Rate recorded at payment"{% endif %}>{{ r.rate|money }}</td>
+            {% for day in r.day_cols %}
+            <td class="day-col{% if can_view_payment_settlement %} day-col--{{ day.status }}{% endif %}" title="{% if can_view_payment_settlement %}{% if day.status == 'paid' %}Collection paid{% elif day.status == 'unpaid' %}Collection unpaid{% elif day.status == 'partial' %}Partly paid ({{ day.paid_quantity|money }} / {{ day.quantity|money }}){% else %}No collection{% endif %}{% endif %}">{% if day.quantity %}{{ day.quantity|money }}{% else %}—{% endif %}</td>
+            {% endfor %}
+            <td class="money-col">{{ r.total_quantity|money }}</td>
+            <td class="money-col">{{ r.gross_amount|money }}</td>
+            {% if can_view_payment_settlement %}
+            <td class="money-col advance-deduct-cell payment-sheet-print-settlement-col{% if r.advance_amount > 0 and r.advance_pending <= 0 %} payment-sheet-cell--settled{% endif %}"{% if r.advance_amount > 0 and r.advance_pending <= 0 %} title="Advance recovered"{% endif %}>
+              {% if r.is_fully_settled and can_view_payment_settlement and r.advance_amount > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-point-id="{{ r.point.pk }}" data-point-name="{{ r.point.number }} — {{ r.point.name }}" data-focus="advance" data-readonly="1" title="View deducted advances">{{ r.advance_amount|money }}{% if r.advance_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}<i class="bi bi-eye small"></i></button>
+              {% elif can_manage_payment_deductions and r.advance_pending > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-point-id="{{ r.point.pk }}" data-point-name="{{ r.point.number }} — {{ r.point.name }}" data-focus="advance" title="Select advances to deduct">{{ r.advance_amount|money }}<i class="bi bi-ui-checks small"></i></button>
+              {% else %}
+              {{ r.advance_amount|money }}{% if r.advance_amount > 0 and r.advance_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}
+              {% endif %}
+            </td>
+            <td class="money-col goods-deduct-cell payment-sheet-print-settlement-col{% if r.goods_deduction > 0 and r.goods_pending <= 0 %} payment-sheet-cell--settled{% endif %}"{% if r.goods_deduction > 0 and r.goods_pending <= 0 %} title="Goods settled"{% endif %}>
+              {% if r.is_fully_settled and can_view_payment_settlement and r.goods_deduction > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-point-id="{{ r.point.pk }}" data-point-name="{{ r.point.number }} — {{ r.point.name }}" data-focus="goods" data-readonly="1" title="View deducted goods">{{ r.goods_deduction|money }}{% if r.goods_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}<i class="bi bi-eye small"></i></button>
+              {% elif can_manage_payment_deductions and r.goods_pending > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-point-id="{{ r.point.pk }}" data-point-name="{{ r.point.number }} — {{ r.point.name }}" data-focus="goods" title="Select products to deduct">{{ r.goods_deduction|money }}<i class="bi bi-ui-checks small"></i></button>
+              {% else %}
+              {{ r.goods_deduction|money }}{% if r.goods_deduction > 0 and r.goods_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}
+              {% endif %}
+            </td>
+            <td class="loan-deduct-cell payment-sheet-print-settlement-col{% if r.loan_deduction_calculated > 0 and r.loan_pending_calculated <= 0 %} payment-sheet-cell--settled{% endif %}">
+              {% if r.is_fully_settled and can_view_payment_settlement and r.loan_deduction_calculated > 0 or r.is_fully_settled and can_view_payment_settlement and r.cp_loan_in_period > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-point-id="{{ r.point.pk }}" data-point-name="{{ r.point.number }} — {{ r.point.name }}" data-focus="loan" data-readonly="1" title="View deducted loan instalments">
+                <span class="loan-deduct-amount">{{ r.loan_deduction_calculated|money }}</span>{% if r.loan_deduction_calculated > 0 and r.loan_pending_calculated <= 0 %}<span class="payment-sheet-settled-mark" title="Loan instalments paid" aria-hidden="true">✓</span>{% endif %}<i class="bi bi-eye small"></i>
+              </button>
+              {% elif can_manage_payment_deductions and r.loan_pending_calculated > 0 or can_manage_payment_deductions and r.has_unpaid_cp_loan %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-point-id="{{ r.point.pk }}" data-point-name="{{ r.point.number }} — {{ r.point.name }}" data-focus="loan" title="Select or add loan instalments to deduct">
+                <span class="loan-deduct-amount">{{ r.loan_deduction_calculated|money }}</span><i class="bi bi-ui-checks small"></i>
+              </button>
+              {% if not r.deduct_loan and r.cp_loan_in_period > 0 %}
+              <span class="loan-deduct-hint">Point loans skipped</span>
+              {% endif %}
+              {% elif can_manage_cp_loan_deduction and r.cp_loan_in_period > 0 %}
+              <label class="mb-0 d-inline-flex align-items-center justify-content-end">
+                <input
+                  type="checkbox"
+                  class="form-check-input loan-deduct-toggle cp-loan-deduct-toggle"
+                  data-toggle-url="{% url 'collection-point-payment-loan-deduction-toggle' %}"
+                  data-start="{{ start|date:'Y-m-d' }}"
+                  data-end="{{ end|date:'Y-m-d' }}"
+                  {% if r.deduct_loan %}checked{% endif %}
+                  title="Deduct collection point loans from this payment"
+                >
+                <span class="loan-deduct-amount{% if not r.deduct_loan %} is-skipped{% endif %}">{{ r.loan_pending_calculated|money }}</span>
+              </label>
+              {% if not r.deduct_loan %}
+              <span class="loan-deduct-hint">Point loans skipped</span>
+              {% endif %}
+              {% else %}
+              <span class="loan-deduct-amount">{{ r.loan_deduction_calculated|money }}</span>{% if r.loan_deduction_calculated > 0 and r.loan_pending_calculated <= 0 %}<span class="payment-sheet-settled-mark" title="Loan instalments paid" aria-hidden="true">✓</span>{% endif %}
+              {% endif %}
+            </td>
+            <td class="money-col previous-outstanding-cell payment-sheet-print-settlement-col{% if r.previous_outstanding_amount > 0 and r.previous_outstanding_pending <= 0 %} payment-sheet-cell--settled{% elif r.previous_outstanding_amount > 0 %} is-open{% endif %}" title="Carried from an earlier period{% if r.previous_outstanding_amount > 0 and r.previous_outstanding_pending <= 0 %} · recovered{% endif %}">
+              {{ r.previous_outstanding_amount|money }}{% if r.previous_outstanding_amount > 0 and r.previous_outstanding_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}
+            </td>
+            <td class="money-col payment-correction-cell payment-sheet-print-settlement-col{% if r.payment_correction_amount < 0 %} is-negative{% endif %}">
+              {% if can_edit_payment_corrections and not r.is_fully_settled %}
+              <input
+                type="text"
+                class="form-control form-control-sm payment-correction-input js-payment-correction-input"
+                value="{{ r.payment_correction_amount|money }}"
+                data-point-id="{{ r.point.pk }}"
+                data-save-url="{% url 'collection-point-payment-correction-save' %}"
+                data-start="{{ start|date:'Y-m-d' }}"
+                data-end="{{ end|date:'Y-m-d' }}"
+                inputmode="decimal"
+                aria-label="Payment correction for {{ r.point.number }} — {{ r.point.name }}"
+                title="Manual adjustment to net pay (+ or −)"
+              >
+              <span class="payment-sheet-print-value">{% if r.payment_correction_amount != 0 %}{{ r.payment_correction_amount|money }}{% else %}—{% endif %}</span>
+              {% else %}
+              {% if r.payment_correction_amount != 0 %}{{ r.payment_correction_amount|money }}{% else %}—{% endif %}
+              {% endif %}
+            </td>
+            <td class="money-col payment-sheet-print-settlement-col">{{ r.collector_fee_amount|money }}</td>
+            {% if sheet_totals.show_additional_column %}
+            <td class="money-col payment-sheet-print-settlement-col">{% if r.additional_amount > 0 %}{{ r.additional_amount|money }}{% else %}—{% endif %}</td>
+            {% endif %}
+            <td class="money-col net-amount-cell payment-sheet-print-settlement-col{% if r.net_amount < 0 %} text-danger{% endif %}" title="Farmer gross − deductions − previous outstanding + collector fee{% if sheet_totals.show_additional_column %} + additional{% endif %}{% if r.needs_carry_forward %} · Settle to carry {{ r.carry_forward_amount|money }} as previous outstanding{% endif %}">{{ r.net_amount|money }}</td>
+            {% include "reports/_collection_point_payment_paid_cell.html" with amount=r.paid_amount cash=r.cash_paid advance=r.paid_advance goods=r.paid_goods loan=r.paid_loan outstanding=r.paid_outstanding method=r.period_payment.get_payment_method_display|default:"" bank_label=r.period_payment.bank_label|default:"" %}
+            <td class="money-col balance-amount-cell payment-sheet-print-settlement-col{% if r.balance_amount > 0 %} text-danger{% elif r.is_fully_settled %} text-success{% endif %}" title="Remaining payable on unpaid collections">{{ r.balance_amount|money }}</td>
+            {% if can_record_point_payment %}
+            <td class="payment-sheet-method-col">
+              {% if r.can_make_payment %}
+                {% if r.period_payment.payment_method == "bank_transfer" or not r.period_payment and r.primary_bank_account_id %}
+                {% include "reports/_collection_point_payment_method_toggle.html" with method="bank_transfer" %}
+                {% else %}
+                {% include "reports/_collection_point_payment_method_toggle.html" with method="cash" %}
+                {% endif %}
+              {% elif r.period_payment %}
+              <span class="payment-sheet-method-label">{{ r.period_payment.get_payment_method_display }}</span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            {% endif %}
+            {% endif %}
+            <td class="payment-sheet-actions-col text-nowrap">
+              <div class="payment-sheet-row-actions">
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="{% url 'collection-point-payslip' r.point.pk %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}">PaySlip</a>
+                {% if can_view_payment_settlement %}
+                {% if r.can_make_payment and can_record_point_payment %}
+                <button
+                  type="button"
+                  class="btn btn-sm {% if r.needs_carry_forward %}btn-outline-success{% else %}btn-success{% endif %} js-open-period-payment"
+                  data-payment-type="collection_point"
+                  data-entity-id="{{ r.point.pk }}"
+                  data-entity-name="{{ r.point.number }} — {{ r.point.name }}"
+                  data-amount="{{ r.payment_amount }}"
+                  data-payment-basis="balance"
+                  data-carry-forward="{% if r.needs_carry_forward %}1{% else %}0{% endif %}"
+                  data-carry-amount="{{ r.carry_forward_amount }}"
+                  data-bank-accounts="{{ r.bank_accounts_json|default:'[]' }}"
+                  data-primary-bank-id="{{ r.primary_bank_account_id|default:'' }}"
+                >{% if r.needs_carry_forward %}Settle{% else %}Pay{% endif %}</button>
+                {% elif r.is_fully_settled %}
+                <span class="badge text-bg-success-subtle text-success-emphasis">Settled</span>
+                {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% include "reports/_collection_point_payment_sheet_total_row.html" with totals=group.totals label="Route total" route_total=1 date_cols=date_cols sheet_totals=sheet_totals can_view_payment_settlement=can_view_payment_settlement can_record_point_payment=can_record_point_payment %}
+          {% empty %}
+          <tr><td colspan="20" class="text-center text-muted py-4">No collection point milk entries in the selected period.</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if rows %}
+        <tfoot>
+          {% include "reports/_collection_point_payment_sheet_total_row.html" with totals=sheet_totals label="Total" date_cols=date_cols sheet_totals=sheet_totals can_view_payment_settlement=can_view_payment_settlement can_record_point_payment=can_record_point_payment %}
+        </tfoot>
+        {% endif %}
+      </table>
+      {% if rows %}
+      {% include "reports/_collection_point_payment_sheet_print_final.html" %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if can_record_point_payment %}
+{% include "reports/_period_payment_modal.html" %}
+<form method="post" action="{% url 'collection-point-bulk-period-payment-record' %}" id="payment-sheet-bulk-pay-form" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+  <input type="hidden" name="return_url" value="">
+  <input type="hidden" name="payment_date" value="">
+  {% for branch_id in selected_branches %}
+  <input type="hidden" name="branches" value="{{ branch_id }}">
+  {% endfor %}
+  <div id="payment-sheet-bulk-pay-point-ids"></div>
+</form>
+{% endif %}
+{% if can_view_payment_settlement %}
+{% include "reports/_collection_point_payment_deduction_modal.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% include "reports/_payment_sheet_period_filter_script.html" %}
+<script>
+(function () {
+  function parseAmount(value) {
+    var n = Number(String(value || "0").replace(/,/g, ""));
+    return isFinite(n) ? n : 0;
+  }
+
+  function formatAmount(value) {
+    return parseAmount(value).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  document.querySelectorAll(".payment-sheet-method-toggle").forEach(function (toggle) {
+    toggle.addEventListener("click", function (event) {
+      var btn = event.target.closest("[data-payment-method]");
+      if (!btn || !toggle.contains(btn)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      var method = btn.getAttribute("data-payment-method") === "bank_transfer" ? "bank_transfer" : "cash";
+      toggle.querySelectorAll("[data-payment-method]").forEach(function (item) {
+        var on = item === btn;
+        item.classList.toggle("is-active", on);
+        item.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      var row = toggle.closest("tr");
+      if (row) row.setAttribute("data-payment-method", method);
+      refreshMethodTotals();
+    });
+  });
+
+  function rowMethodAmount(tr) {
+    if (!tr) return 0;
+    if (tr.dataset.canPay === "1") {
+      if (tr.dataset.carryForward === "1") return 0;
+      return parseAmount(tr.dataset.balance);
+    }
+    return parseAmount(tr.dataset.cashPaid);
+  }
+
+  function refreshMethodTotals() {
+    var cashEl = document.getElementById("payment-sheet-cash-total");
+    var bankEl = document.getElementById("payment-sheet-bank-total");
+    if (!cashEl || !bankEl) return;
+    var checks = Array.from(document.querySelectorAll(".payment-sheet-row-select"));
+    var selectedChecks = checks.filter(function (cb) { return cb.checked; });
+    var rows;
+    if (selectedChecks.length) {
+      rows = selectedChecks.map(function (cb) { return cb.closest("tr"); }).filter(Boolean);
+    } else {
+      rows = Array.from(document.querySelectorAll("#collection-point-payment-sheet-table tbody tr[data-point-id]"));
+    }
+    var cashTotal = 0;
+    var bankTotal = 0;
+    var cashCount = 0;
+    var bankCount = 0;
+    rows.forEach(function (tr) {
+      var amount = rowMethodAmount(tr);
+      if (!(amount > 0)) return;
+      if ((tr.getAttribute("data-payment-method") || "") === "bank_transfer") {
+        bankTotal += amount;
+        bankCount += 1;
+      } else {
+        cashTotal += amount;
+        cashCount += 1;
+      }
+    });
+    cashEl.textContent = formatAmount(cashTotal);
+    bankEl.textContent = formatAmount(bankTotal);
+    var totalEl = document.getElementById("payment-sheet-total-payment");
+    if (totalEl) totalEl.textContent = formatAmount(cashTotal + bankTotal);
+    var printCash = document.getElementById("payment-sheet-print-cash-total");
+    var printBank = document.getElementById("payment-sheet-print-bank-total");
+    var printTotal = document.getElementById("payment-sheet-print-total-payment");
+    if (printCash) printCash.textContent = formatAmount(cashTotal);
+    if (printBank) printBank.textContent = formatAmount(bankTotal);
+    if (printTotal) printTotal.textContent = formatAmount(cashTotal + bankTotal);
+    var scope = selectedChecks.length ? "selected" : "by method";
+    var cashHint = document.getElementById("payment-sheet-cash-hint");
+    var bankHint = document.getElementById("payment-sheet-bank-hint");
+    if (cashHint) cashHint.textContent = cashCount + " point" + (cashCount === 1 ? "" : "s") + " · " + scope;
+    if (bankHint) bankHint.textContent = bankCount + " point" + (bankCount === 1 ? "" : "s") + " · " + scope;
+  }
+
+  refreshMethodTotals();
+
+  var bankFileBtn = document.getElementById("payment-sheet-bank-file");
+  var bankFileForm = document.getElementById("payment-sheet-bank-file-form");
+  var bankFilePoints = document.getElementById("payment-sheet-bank-file-points");
+  var debitModalEl = document.getElementById("paymentSheetDebitAccountModal");
+  var debitSelect = document.getElementById("payment-sheet-debit-account-id");
+  var debitConfirm = document.getElementById("payment-sheet-debit-account-confirm");
+  var debitHidden = document.getElementById("payment-sheet-bank-file-debit-account-id");
+  var valueDateInput = document.getElementById("payment-sheet-bank-file-value-date");
+  var valueDateHidden = document.getElementById("payment-sheet-bank-file-value-date-hidden");
+  if (bankFileBtn && bankFileForm && bankFilePoints) {
+    bankFileBtn.addEventListener("click", function () {
+      var checks = Array.from(document.querySelectorAll(".payment-sheet-row-select"));
+      var selectedChecks = checks.filter(function (cb) { return cb.checked; });
+      var rows;
+      if (selectedChecks.length) {
+        rows = selectedChecks.map(function (cb) { return cb.closest("tr"); }).filter(Boolean);
+      } else {
+        rows = Array.from(document.querySelectorAll("#collection-point-payment-sheet-table tbody tr[data-point-id]"));
+      }
+      var pointIds = [];
+      var missingCodes = [];
+      rows.forEach(function (tr) {
+        if (!tr) return;
+        if ((tr.getAttribute("data-payment-method") || "") !== "bank_transfer") return;
+        if (!(rowMethodAmount(tr) > 0)) return;
+        var pointId = tr.getAttribute("data-point-id");
+        if (!pointId) return;
+        if (tr.getAttribute("data-ceft-ready") !== "1") {
+          missingCodes.push(tr.getAttribute("data-point-name") || pointId);
+          return;
+        }
+        pointIds.push(pointId);
+      });
+      if (!pointIds.length) {
+        var msg = missingCodes.length
+          ? "Bank accounts need bank code and branch code before download.\n" + missingCodes.slice(0, 5).join("\n")
+          : "No Bank-method payable rows to include. Select Bank on rows (and select rows if needed).";
+        if (window.Swal) {
+          Swal.fire({ icon: "warning", title: "Bank file", text: msg });
+        } else {
+          alert(msg);
+        }
+        return;
+      }
+      bankFilePoints.innerHTML = "";
+      pointIds.forEach(function (id) {
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "point_ids";
+        input.value = id;
+        bankFilePoints.appendChild(input);
+      });
+      if (!debitSelect || !debitSelect.options.length) {
+        if (debitModalEl && window.bootstrap) {
+          bootstrap.Modal.getOrCreateInstance(debitModalEl).show();
+        } else {
+          var noAcct = "Add a company bank account under Setup → Company before generating the bank file.";
+          if (window.Swal) Swal.fire({ icon: "warning", title: "Bank file", text: noAcct });
+          else alert(noAcct);
+        }
+        return;
+      }
+      if (debitModalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(debitModalEl).show();
+      } else if (debitHidden) {
+        debitHidden.value = debitSelect.value;
+        if (valueDateInput && valueDateHidden) valueDateHidden.value = valueDateInput.value;
+        bankFileForm.submit();
+      }
+    });
+    if (debitConfirm) {
+      debitConfirm.addEventListener("click", function () {
+        if (!debitSelect || !debitSelect.value) {
+          var need = "Select a company debit account.";
+          if (window.Swal) Swal.fire({ icon: "warning", title: "Bank file", text: need });
+          else alert(need);
+          return;
+        }
+        if (debitHidden) debitHidden.value = debitSelect.value;
+        if (valueDateInput && valueDateHidden) {
+          if (!valueDateInput.value) {
+            var needDate = "Enter the payment date.";
+            if (window.Swal) Swal.fire({ icon: "warning", title: "Bank file", text: needDate });
+            else alert(needDate);
+            return;
+          }
+          valueDateHidden.value = valueDateInput.value;
+        }
+        if (debitModalEl && window.bootstrap) {
+          var modal = bootstrap.Modal.getInstance(debitModalEl);
+          if (modal) modal.hide();
+        }
+        bankFileForm.submit();
+      });
+    }
+  }
+
+  document.querySelectorAll(".js-no-enter-submit").forEach(function (form) {
+    form.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      var tag = (event.target && event.target.tagName) || "";
+      if (tag === "TEXTAREA") return;
+      if (event.target && event.target.type === "submit") return;
+      event.preventDefault();
+    });
+  });
+
+  var bulkPrintWrap = document.getElementById("payment-sheet-bulk-print");
+  if (bulkPrintWrap) {
+    var selectAll = document.getElementById("payment-sheet-select-all");
+    var printAllBtn = document.getElementById("payment-sheet-print-all");
+    var printSelectedBtn = document.getElementById("payment-sheet-print-selected");
+    var paySelectedBtn = document.getElementById("payment-sheet-pay-selected");
+    var rowChecks = Array.from(document.querySelectorAll(".payment-sheet-row-select"));
+    var bulkPayForm = document.getElementById("payment-sheet-bulk-pay-form");
+    var bulkPayPointIds = document.getElementById("payment-sheet-bulk-pay-point-ids");
+
+    function bulkPayslipUrl(printAll, pointIds) {
+      var params = new URLSearchParams();
+      params.set("start", bulkPrintWrap.dataset.start || "");
+      params.set("end", bulkPrintWrap.dataset.end || "");
+      (bulkPrintWrap.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        params.append("branches", id);
+      });
+      if (printAll) {
+        params.set("print_all", "1");
+      } else {
+        pointIds.forEach(function (id) {
+          params.append("points", id);
+        });
+      }
+      return bulkPrintWrap.dataset.bulkUrl + "?" + params.toString();
+    }
+
+    function payableSelectedRows() {
+      return rowChecks
+        .filter(function (cb) { return cb.checked; })
+        .map(function (cb) { return cb.closest("tr"); })
+        .filter(function (tr) { return tr && tr.dataset.canPay === "1"; });
+    }
+
+    function updateBulkActionState() {
+      var selected = rowChecks.filter(function (cb) { return cb.checked; });
+      if (printSelectedBtn) {
+        printSelectedBtn.disabled = selected.length === 0;
+      }
+      if (paySelectedBtn) {
+        paySelectedBtn.disabled = payableSelectedRows().length === 0;
+      }
+      if (selectAll) {
+        selectAll.indeterminate = selected.length > 0 && selected.length < rowChecks.length;
+        selectAll.checked = rowChecks.length > 0 && selected.length === rowChecks.length;
+      }
+      refreshMethodTotals();
+    }
+
+    function rowPaymentMethod(tr) {
+      if (!tr || typeof tr.getAttribute !== "function") return "cash";
+      return tr.getAttribute("data-payment-method") === "bank_transfer" ? "bank_transfer" : "cash";
+    }
+
+    function submitBulkPayment(rows, paymentDate) {
+      if (!bulkPayForm) return;
+      var paidOn = paymentDate || (window.periodPaymentTodayYmd ? window.periodPaymentTodayYmd() : "");
+      var total = rows.reduce(function (sum, tr) {
+        return sum + parseAmount(tr.dataset.balance);
+      }, 0);
+      var payUrl =
+        window.PERIOD_PAYMENT_POINT_URL ||
+        "{% url 'collection-point-period-payment-record' %}";
+      var startVal = (bulkPayForm.querySelector('input[name="start"]') || {}).value || "";
+      var endVal = (bulkPayForm.querySelector('input[name="end"]') || {}).value || "";
+      var branchInputs = bulkPayForm.querySelectorAll('input[name="branches"]');
+      var csrf = getCsrfToken();
+      var items = rows.map(function (tr) {
+        var carry = tr.dataset.carryForward === "1";
+        return {
+          id: tr.dataset.pointId || "",
+          name: tr.dataset.pointName || ("#" + (tr.dataset.pointId || "")),
+          amount: carry ? "0" : (tr.dataset.balance || "0"),
+          bankAccountId: tr.dataset.primaryBankId || "",
+          method: rowPaymentMethod(tr),
+        };
+      });
+
+      function buildBody(item) {
+        var body = new FormData();
+        body.append("csrfmiddlewaretoken", csrf);
+        body.append("collection_point_id", item.id);
+        body.append("amount", String(item.amount).replace(/,/g, ""));
+        body.append("start", startVal);
+        body.append("end", endVal);
+        body.append("payment_basis", "balance");
+        body.append("payment_method", item.method || "cash");
+        if (item.bankAccountId) body.append("bank_account_id", item.bankAccountId);
+        body.append("note", "");
+        if (paidOn) body.append("payment_date", paidOn);
+        body.append("return_url", window.location.pathname + window.location.search);
+        branchInputs.forEach(function (input) {
+          if (input.value) body.append("branches", input.value);
+        });
+        return body;
+      }
+
+      function fallbackBulkSubmit() {
+        if (!bulkPayPointIds) return;
+        bulkPayPointIds.innerHTML = "";
+        rows.forEach(function (tr) {
+          var input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "collection_point_ids";
+          input.value = tr.dataset.pointId || "";
+          bulkPayPointIds.appendChild(input);
+        });
+        var returnInput = bulkPayForm.querySelector('input[name="return_url"]');
+        if (returnInput) {
+          returnInput.value = window.location.pathname + window.location.search;
+        }
+        var dateInput = bulkPayForm.querySelector('input[name="payment_date"]');
+        if (dateInput) dateInput.value = paidOn;
+        var methodInput = bulkPayForm.querySelector('input[name="payment_method"]');
+        if (!methodInput) {
+          methodInput = document.createElement("input");
+          methodInput.type = "hidden";
+          methodInput.name = "payment_method";
+          bulkPayForm.appendChild(methodInput);
+        }
+        methodInput.value = rowPaymentMethod(rows[0]);
+        var startSubmit = function () {
+          HTMLFormElement.prototype.submit.call(bulkPayForm);
+        };
+        if (typeof window.markPaymentSheetLoading === "function") {
+          window.markPaymentSheetLoading({
+            kind: "collection_point",
+            title: "Reloading payment sheet…",
+          });
+        }
+        if (typeof window.runPaymentWithProgress === "function") {
+          window.runPaymentWithProgress({
+            title: "Paying selected collection points…",
+            subtitle: rows.length + " point(s) · total " + formatAmount(total),
+            detail: "Each point is settled with linked farmer deductions. This can take a while.",
+            steps:
+              (window.PAYMENT_PROGRESS_STEPS &&
+                window.PAYMENT_PROGRESS_STEPS.bulkCollectionPoint) ||
+              undefined,
+            submitFn: startSubmit,
+          });
+          return;
+        }
+        startSubmit();
+      }
+
+      if (typeof window.runSequentialPaymentWithProgress === "function" && payUrl) {
+        window.runSequentialPaymentWithProgress({
+          title: "Paying selected collection points…",
+          subtitle: rows.length + " point(s) · total " + formatAmount(total),
+          detail:
+            "Settling each collection point with linked farmer deductions. Progress updates after each point.",
+          payUrl: payUrl,
+          items: items,
+          buildBody: buildBody,
+          onDone: function () {
+            if (typeof window.navigateWithPaymentSheetProgress === "function") {
+              window.navigateWithPaymentSheetProgress({
+                sheetKind: "collection_point",
+                title: "Reloading payment sheet…",
+                subtitle: "Refreshing paid totals and balances after settlement",
+              });
+            } else {
+              window.location.reload();
+            }
+          },
+        });
+        return;
+      }
+      fallbackBulkSubmit();
+    }
+
+    rowChecks.forEach(function (cb) {
+      cb.addEventListener("change", updateBulkActionState);
+    });
+
+    if (selectAll) {
+      selectAll.addEventListener("change", function () {
+        rowChecks.forEach(function (cb) {
+          cb.checked = selectAll.checked;
+        });
+        updateBulkActionState();
+      });
+    }
+
+    if (printAllBtn) {
+      printAllBtn.addEventListener("click", function () {
+        window.open(bulkPayslipUrl(true, []), "_blank", "noopener");
+      });
+    }
+
+    if (printSelectedBtn) {
+      printSelectedBtn.addEventListener("click", function () {
+        var ids = rowChecks.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
+        if (!ids.length) return;
+        window.open(bulkPayslipUrl(false, ids), "_blank", "noopener");
+      });
+    }
+
+    if (paySelectedBtn) {
+      paySelectedBtn.addEventListener("click", function () {
+        var rows = payableSelectedRows();
+        if (!rows.length) return;
+        var total = rows.reduce(function (sum, tr) {
+          return sum + parseAmount(tr.dataset.balance);
+        }, 0);
+        var preview = rows
+          .slice(0, 6)
+          .map(function (tr) { return tr.dataset.pointName; })
+          .join(", ");
+        if (rows.length > 6) {
+          preview += " …";
+        }
+        var summary =
+          rows.length + " collection point(s) · total " + formatAmount(total) +
+          "<br><span class=\"text-muted\">" + preview + "</span>";
+
+        var today = window.periodPaymentTodayYmd ? window.periodPaymentTodayYmd() : "";
+        var dateHtml =
+          '<label class="form-label text-start d-block mt-3 mb-1" for="bulk-payment-date">Payment date</label>' +
+          '<input type="text" class="form-control js-datepicker js-datepicker-in-modal" id="bulk-payment-date" value="' + today + '" placeholder="YYYY-MM-DD" required autocomplete="off" inputmode="none">' +
+          '<div class="form-text text-start">Date this payment was made.</div>';
+
+        function confirmPay(paymentDate) {
+          paySelectedBtn.disabled = true;
+          submitBulkPayment(rows, paymentDate);
+        }
+
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            title: "Pay selected collection points?",
+            html: summary + "<p class=\"small text-muted mb-0 mt-2\">Each point is paid their full balance using the Cash / Bank method chosen on that row. Linked farmer deductions and collector fee are settled. Bank transfer uses each point's primary account.</p>" + dateHtml,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Record payments",
+            confirmButtonColor: "#059669",
+            buttonsStyling: false,
+            reverseButtons: true,
+            focusConfirm: false,
+            didOpen: function () {
+              var el = document.getElementById("bulk-payment-date");
+              if (el && window.CanmeeDatepicker) {
+                window.CanmeeDatepicker.initSingle(el, { appendTo: document.body });
+              }
+            },
+            willClose: function () {
+              var el = document.getElementById("bulk-payment-date");
+              if (el && window.CanmeeDatepicker) window.CanmeeDatepicker.destroy(el);
+            },
+            customClass: {
+              popup: "app-swal-popup",
+              confirmButton: "btn btn-success",
+              cancelButton: "btn btn-outline-secondary",
+            },
+            preConfirm: function () {
+              var input = document.getElementById("bulk-payment-date");
+              var value = input ? input.value : "";
+              if (!value) {
+                Swal.showValidationMessage("Enter the payment date.");
+                return false;
+              }
+              return value;
+            },
+          }).then(function (result) {
+            if (result.isConfirmed) confirmPay(result.value);
+          });
+          return;
+        }
+        if (typeof window.appConfirm === "function") {
+          window
+            .appConfirm(
+              "Record payment for " +
+                rows.length +
+                " collection point(s), total " +
+                formatAmount(total) +
+                "?",
+              {
+                title: "Pay selected collection points?",
+                confirmText: "Record payments",
+                cancelText: "Cancel",
+                icon: "question",
+              }
+            )
+            .then(function (ok) {
+              if (ok) confirmPay(today);
+            });
+          return;
+        }
+        if (window.confirm("Record payment for " + rows.length + " collection point(s), total " + formatAmount(total) + "?")) {
+          confirmPay(today);
+        }
+      });
+    }
+
+    updateBulkActionState();
+  }
+
+  var printSheetBtn = document.getElementById("payment-sheet-print-table");
+  var printRouteSelect = document.getElementById("payment-sheet-print-route-select");
+  var printRouteBtn = document.getElementById("payment-sheet-print-route");
+
+  function clearPrintRouteMode() {
+    document.body.classList.remove("payment-sheet-is-printing", "payment-sheet-print-route-mode");
+    document.querySelectorAll(".payment-sheet-print-route-pack.is-print-active").forEach(function (el) {
+      el.classList.remove("is-print-active");
+    });
+  }
+
+  if (printSheetBtn) {
+    printSheetBtn.addEventListener("click", function () {
+      clearPrintRouteMode();
+      document.body.classList.add("payment-sheet-is-printing");
+      window.print();
+    });
+  }
+
+  if (printRouteSelect && printRouteBtn) {
+    printRouteSelect.addEventListener("change", function () {
+      printRouteBtn.disabled = !printRouteSelect.value;
+    });
+    printRouteBtn.addEventListener("click", function () {
+      var routeId = printRouteSelect.value;
+      if (!routeId) return;
+      clearPrintRouteMode();
+      var pack = document.querySelector('.payment-sheet-print-route-pack[data-route-id="' + routeId + '"]');
+      if (!pack) return;
+      pack.classList.add("is-print-active");
+      document.body.classList.add("payment-sheet-is-printing", "payment-sheet-print-route-mode");
+      window.print();
+    });
+  }
+
+  window.addEventListener("afterprint", function () {
+    clearPrintRouteMode();
+  });
+
+  {% if can_view_payment_settlement %}
+  function initPaidBreakdownPopovers(root) {
+    if (!window.bootstrap || !bootstrap.Popover) return;
+    (root || document).querySelectorAll(".payment-sheet-paid-popover").forEach(function (trigger) {
+      if (trigger.dataset.popoverReady === "1") return;
+      var template = trigger.nextElementSibling;
+      if (!template || template.tagName !== "TEMPLATE") return;
+      new bootstrap.Popover(trigger, {
+        html: true,
+        sanitize: false,
+        trigger: "focus hover",
+        placement: "left",
+        title: "Paid breakdown",
+        content: template.innerHTML,
+        customClass: "payment-sheet-paid-popover-pop",
+      });
+      trigger.dataset.popoverReady = "1";
+    });
+  }
+  initPaidBreakdownPopovers(document.getElementById("payment-sheet-root"));
+  {% endif %}
+
+  function getCsrfToken() {
+    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : "";
+  }
+
+  function applyRowTotals(pointId, rowData) {
+    if (!rowData) return;
+    var row = document.querySelector('tr[data-point-id="' + pointId + '"]');
+    if (!row) return;
+    function setCell(selector, value) {
+      var cell = row.querySelector(selector);
+      if (!cell) return;
+      var trigger = cell.querySelector(".deduction-picker-trigger");
+      if (trigger) {
+        var amountNode = cell.querySelector(".loan-deduct-amount") || trigger;
+        if (amountNode.classList && amountNode.classList.contains("deduction-picker-trigger")) {
+          amountNode.childNodes[0].textContent = formatAmount(value);
+        } else if (amountNode) {
+          amountNode.textContent = formatAmount(value);
+        }
+      } else {
+        var mark = cell.querySelector(".payment-sheet-settled-mark");
+        cell.childNodes[0].textContent = formatAmount(value);
+        if (mark) cell.appendChild(mark);
+      }
+    }
+    setCell(".advance-deduct-cell", rowData.advance_amount);
+    setCell(".goods-deduct-cell", rowData.goods_deduction);
+    setCell(".loan-deduct-cell", rowData.loan_deduction_calculated);
+    var osCell = row.querySelector(".previous-outstanding-cell");
+    if (osCell) {
+      osCell.textContent = formatAmount(rowData.previous_outstanding_amount);
+      var osAmount = parseAmount(rowData.previous_outstanding_amount);
+      var osSettled = osAmount > 0 && parseAmount(rowData.previous_outstanding_pending) <= 0;
+      osCell.classList.toggle("payment-sheet-cell--settled", osSettled);
+      osCell.classList.toggle("is-open", osAmount > 0 && !osSettled);
+    }
+    var correctionCell = row.querySelector(".payment-correction-cell");
+    if (correctionCell) {
+      var correctionInput = correctionCell.querySelector(".js-payment-correction-input");
+      var correctionAmount = parseAmount(rowData.payment_correction_amount);
+      if (correctionInput) {
+        correctionInput.value = formatAmount(correctionAmount);
+      } else {
+        correctionCell.textContent =
+          correctionAmount !== 0 ? formatAmount(correctionAmount) : "—";
+      }
+      correctionCell.classList.toggle("is-negative", correctionAmount < 0);
+    }
+    var netCell = row.querySelector(".net-amount-cell");
+    if (netCell) netCell.textContent = formatAmount(rowData.net_amount);
+    var balanceCell = row.querySelector(".balance-amount-cell");
+    if (balanceCell) {
+      balanceCell.textContent = formatAmount(rowData.balance_amount);
+      balanceCell.classList.toggle("text-danger", parseAmount(rowData.balance_amount) > 0);
+      balanceCell.classList.toggle("text-success", parseAmount(rowData.balance_amount) <= 0);
+    }
+    var payBtn = row.querySelector(".js-open-period-payment");
+    var carryForward = !!rowData.needs_carry_forward;
+    var payAmount = carryForward ? "0" : rowData.balance_amount;
+    if (payBtn) {
+      payBtn.dataset.amount = payAmount;
+      payBtn.dataset.carryForward = carryForward ? "1" : "0";
+      payBtn.dataset.carryAmount = rowData.carry_forward_amount || "0";
+      payBtn.hidden = !rowData.can_make_payment;
+      payBtn.textContent = carryForward ? "Settle" : "Pay";
+      payBtn.classList.toggle("btn-outline-success", carryForward);
+      payBtn.classList.toggle("btn-success", !carryForward);
+    }
+    row.dataset.balance = rowData.balance_amount;
+    row.dataset.advance = rowData.advance_amount;
+    row.dataset.goods = rowData.goods_deduction;
+    row.dataset.canPay = rowData.can_make_payment ? "1" : "0";
+    row.dataset.carryForward = carryForward ? "1" : "0";
+    row.dataset.carryAmount = rowData.carry_forward_amount || "0";
+    row.classList.toggle("payment-sheet-row--settled", !!rowData.is_fully_settled);
+  }
+
+{% if can_view_payment_settlement %}
+  (function () {
+    var pickerModalEl = document.getElementById("pointDeductionPickerModal");
+    if (!pickerModalEl || !window.bootstrap) return;
+    var pickerModal = new bootstrap.Modal(pickerModalEl);
+    var sheetRoot = document.getElementById("payment-sheet-root");
+    var pickerUrl = "{% url 'collection-point-payment-deduction-picker' %}";
+    var toggleUrl = "{% url 'collection-point-payment-deduction-skip-toggle' %}";
+    var cpLoanToggleUrl = "{% url 'collection-point-payment-loan-deduction-toggle' %}";
+    var state = { pointId: "", pointName: "", readonly: false };
+    var hintEdit = "Checked items are deducted from this collection point payment. For collection-point advances and loans, enter a deduct amount; skipped or remaining balances are carried to the next payment. Use Add instalment to include a previous or future unpaid loan instalment.";
+    var hintView = "These deductions were applied when this collection point was paid. You can view the details, but they cannot be changed.";
+
+    function appendBranches(body) {
+      (sheetRoot.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        body.append("branches", id);
+      });
+    }
+
+    function ownerLabel(item) {
+      if (item.owner_label) return item.owner_label;
+      if (item.scope === "point") return "Collection point";
+      return item.farmer_name || "Linked farmer";
+    }
+
+    function renderPicker(picker, row) {
+      var advancesEl = document.getElementById("deduction-picker-advances");
+      var goodsEl = document.getElementById("deduction-picker-goods");
+      var loansEl = document.getElementById("deduction-picker-loans");
+      var totalsEl = document.getElementById("deduction-picker-totals");
+      var hintEl = document.getElementById("deduction-picker-hint");
+      var readonly = !!state.readonly;
+      if (hintEl) hintEl.textContent = readonly ? hintView : hintEdit;
+      if (pickerModalEl) pickerModalEl.classList.toggle("is-readonly", readonly);
+      advancesEl.innerHTML = "";
+      goodsEl.innerHTML = "";
+      loansEl.innerHTML = "";
+
+      if (!picker.advances.length) {
+        advancesEl.innerHTML = readonly
+          ? '<p class="text-muted small mb-0">No advances deducted in this period.</p>'
+          : '<p class="text-muted small mb-0">No pending point or linked farmer advances, including previous unpaid balances.</p>';
+      } else {
+        var advanceTable = createPickerTable([
+          { label: "", width: "2rem" },
+          { label: "Source" },
+          { label: "Date" },
+          { label: "Type" },
+          { label: "Note" },
+          { label: "Amount", align: "end" },
+          { label: "Paid", align: "end" },
+          { label: "Deduct", align: "end" },
+          { label: "Balance", align: "end" },
+          { label: "Paid on" },
+        ]);
+        picker.advances.forEach(function (item) {
+          advanceTable.tbody.appendChild(buildAdvanceRow(item));
+        });
+        advancesEl.appendChild(advanceTable.table);
+      }
+
+      if (!picker.goods_receipts.length && !picker.goods_lines.length) {
+        goodsEl.innerHTML = readonly
+          ? '<p class="text-muted small mb-0">No goods deducted in this period.</p>'
+          : '<p class="text-muted small mb-0">No pending product deductions in this period.</p>';
+      } else {
+        var productTable = createPickerTable([
+          { label: "", width: "2rem" },
+          { label: "Product" },
+          { label: "Qty", align: "end" },
+          { label: "Unit", align: "end" },
+          { label: "Amount", align: "end" },
+        ]);
+        picker.goods_receipts.forEach(function (receipt) {
+          var prefix = receipt.scope === "point" ? "Direct · " : (receipt.farmer_name ? receipt.farmer_name + " · " : "");
+          var receiptLabel = prefix + "Receipt " + receipt.batch_ref.slice(0, 8).toUpperCase() + " · " + receipt.date.slice(0, 10);
+          productTable.tbody.appendChild(buildProductReceiptRow(receipt, receiptLabel));
+          receipt.lines.forEach(function (line) {
+            productTable.tbody.appendChild(buildProductRow(line, true));
+          });
+        });
+        picker.goods_lines.forEach(function (line) {
+          productTable.tbody.appendChild(buildProductRow(line, false));
+        });
+        goodsEl.appendChild(productTable.table);
+      }
+
+      if (!picker.loan_instalments.length) {
+        loansEl.innerHTML = readonly
+          ? '<p class="text-muted small mb-0">No loan instalments deducted in this period.</p>'
+          : '<p class="text-muted small mb-0">No pending loan instalments in this period. Add a previous or future instalment below if needed.</p>';
+      } else {
+        var loanTable = createPickerTable([
+          { label: "", width: "2rem" },
+          { label: "Borrower" },
+          { label: "Loan #" },
+          { label: "Inst.", align: "end" },
+          { label: "Due date" },
+          { label: "Amount", align: "end" },
+          { label: "Deduct", align: "end" },
+          { label: "Balance", align: "end" },
+        ]);
+        picker.loan_instalments.forEach(function (item) {
+          loanTable.tbody.appendChild(buildLoanRow(item));
+        });
+        loansEl.appendChild(loanTable.table);
+      }
+
+      var addWrap = document.getElementById("deduction-picker-loan-add-wrap");
+      var addSelect = document.getElementById("deduction-picker-loan-add");
+      var addable = picker.addable_loan_instalments || [];
+      if (addWrap && addSelect) {
+        addSelect.innerHTML = "";
+        addable.forEach(function (item) {
+          var opt = document.createElement("option");
+          opt.value = item.schedule_id;
+          opt.textContent = item.label || ("Loan #" + item.loan_id + " · Inst. " + item.installment_number);
+          opt.dataset.remaining = item.remaining || "0";
+          addSelect.appendChild(opt);
+        });
+        addWrap.hidden = readonly || !addable.length;
+      }
+
+      var cpLoanAllWrap = document.getElementById("deduction-picker-cp-loan-all-wrap");
+      var cpLoanAll = document.getElementById("deduction-picker-cp-loan-all");
+      var hasPointLoans = picker.loan_instalments.some(function (item) { return item.scope === "point"; }) || addable.length > 0;
+      if (cpLoanAllWrap && cpLoanAll) {
+        cpLoanAllWrap.hidden = !hasPointLoans;
+        if (hasPointLoans) {
+          cpLoanAll.checked = !!picker.deduct_cp_loan_all;
+          cpLoanAll.disabled = readonly;
+          cpLoanAll.title = readonly ? "Payment already recorded" : "";
+        }
+      }
+
+      if (row) {
+        totalsEl.innerHTML =
+          "Advance " + formatAmount(row.advance_amount) +
+          " · Goods " + formatAmount(row.goods_deduction) +
+          " · Loan " + formatAmount(row.loan_deduction_calculated) +
+          " · Prev. outstanding " + formatAmount(row.previous_outstanding_amount) +
+          " · Payment corrections " + formatAmount(row.payment_correction_amount) +
+          " · Net " + formatAmount(row.net_amount) +
+          " · Balance " + formatAmount(row.balance_amount);
+      }
+    }
+
+    function createPickerTable(headers) {
+      var table = document.createElement("table");
+      table.className = "table table-sm deduction-picker-items-table";
+      var thead = document.createElement("thead");
+      var headerRow = document.createElement("tr");
+      headers.forEach(function (header) {
+        var th = document.createElement("th");
+        if (header.align === "end") th.className = "text-end";
+        if (header.width) th.style.width = header.width;
+        th.textContent = header.label;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      var tbody = document.createElement("tbody");
+      table.appendChild(tbody);
+      return { table: table, tbody: tbody };
+    }
+
+    function bindSkipToggle(input, item, kind, refId, refKey) {
+      if (state.readonly) {
+        input.disabled = true;
+        input.title = "Payment already recorded";
+        return;
+      }
+      input.addEventListener("change", function () {
+        var deductAmount = null;
+        if (item.allow_partial) {
+          var remaining = parseAmount(item.remaining || item.amount);
+          deductAmount = input.checked ? remaining.toFixed(2) : "0.00";
+        }
+        postSkipToggle(item, kind, refId, refKey, !input.checked, input, deductAmount);
+      });
+    }
+
+    function bindDeductAmount(input, item, checkbox) {
+      if (state.readonly) {
+        input.disabled = true;
+        return;
+      }
+      function saveDeduct() {
+        var remaining = parseAmount(item.remaining || item.amount);
+        var deduct = parseAmount(input.value);
+        if (deduct < 0) deduct = 0;
+        if (deduct > remaining) deduct = remaining;
+        input.value = formatAmount(deduct);
+        checkbox.checked = deduct > 0;
+        var kind = item.schedule_id ? "loan_instalment" : "advance";
+        var refId = item.schedule_id || item.id;
+        postSkipToggle(item, kind, refId, "", deduct <= 0, input, deduct.toFixed(2));
+      }
+      input.addEventListener("change", saveDeduct);
+      input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          input.blur();
+        }
+      });
+    }
+
+    function buildAdvanceRow(item) {
+      var tr = document.createElement("tr");
+      var remaining = parseAmount(item.remaining || item.amount);
+      var deductAmount = item.deduct_amount != null ? parseAmount(item.deduct_amount) : (item.deduct ? remaining : 0);
+      var balanceAmount = item.balance_amount != null ? parseAmount(item.balance_amount) : Math.max(0, remaining - deductAmount);
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!item.deduct;
+      tdCheck.appendChild(input);
+      var tdFarmer = document.createElement("td");
+      tdFarmer.textContent = ownerLabel(item);
+      var tdDate = document.createElement("td");
+      tdDate.textContent = item.date.slice(0, 10);
+      if (item.timing && item.timing !== "current") {
+        var timing = document.createElement("span");
+        timing.className = "deduction-picker-timing is-" + item.timing;
+        timing.textContent = item.timing === "previous" ? "Previous" : "Future";
+        tdDate.appendChild(timing);
+      }
+      var tdType = document.createElement("td");
+      tdType.textContent = item.type_label || "Advance Payment";
+      var tdNote = document.createElement("td");
+      tdNote.textContent = item.note || "—";
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(item.original_amount || item.amount);
+      if (item.allow_partial && parseAmount(item.original_amount || item.amount) !== remaining) {
+        var rem = document.createElement("div");
+        rem.className = "small text-muted";
+        rem.textContent = "Open " + formatAmount(remaining);
+        tdAmount.appendChild(rem);
+      }
+      var tdPaid = document.createElement("td");
+      tdPaid.className = "text-end text-muted";
+      tdPaid.textContent = formatAmount(item.paid_amount || 0);
+      var tdDeduct = document.createElement("td");
+      tdDeduct.className = "text-end";
+      var tdBalance = document.createElement("td");
+      tdBalance.className = "text-end text-muted";
+      tdBalance.textContent = formatAmount(balanceAmount);
+      var tdPaidOn = document.createElement("td");
+      tdPaidOn.className = "text-nowrap text-muted";
+      tdPaidOn.textContent = item.paid_on ? String(item.paid_on).slice(0, 10) : "—";
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdFarmer);
+      tr.appendChild(tdDate);
+      tr.appendChild(tdType);
+      tr.appendChild(tdNote);
+      tr.appendChild(tdAmount);
+      tr.appendChild(tdPaid);
+      tr.appendChild(tdDeduct);
+      tr.appendChild(tdBalance);
+      tr.appendChild(tdPaidOn);
+      if (item.allow_partial) {
+        var deductInput = document.createElement("input");
+        deductInput.type = "text";
+        deductInput.inputMode = "decimal";
+        deductInput.className = "form-control form-control-sm deduction-picker-deduct-input";
+        deductInput.value = formatAmount(deductAmount);
+        deductInput.dataset.advanceId = String(item.id);
+        tdDeduct.appendChild(deductInput);
+        bindSkipToggle(input, item, "advance", item.id, "");
+        bindDeductAmount(deductInput, item, input);
+      } else {
+        tdDeduct.textContent = formatAmount(deductAmount);
+        bindSkipToggle(input, item, "advance", item.id, "");
+      }
+      return tr;
+    }
+
+    function buildLoanRow(item) {
+      var tr = document.createElement("tr");
+      var remaining = parseAmount(item.remaining || item.amount);
+      var deductAmount = item.deduct_amount != null ? parseAmount(item.deduct_amount) : (item.deduct ? remaining : 0);
+      var balanceAmount = item.balance_amount != null ? parseAmount(item.balance_amount) : Math.max(0, remaining - deductAmount);
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!item.deduct;
+      tdCheck.appendChild(input);
+      var tdFarmer = document.createElement("td");
+      tdFarmer.textContent = ownerLabel(item);
+      var tdLoan = document.createElement("td");
+      tdLoan.textContent = "#" + item.loan_id;
+      var tdInst = document.createElement("td");
+      tdInst.className = "text-end";
+      tdInst.textContent = item.installment_number;
+      var tdDue = document.createElement("td");
+      tdDue.textContent = item.due_date.slice(0, 10);
+      if (item.timing && item.timing !== "current") {
+        var timing = document.createElement("span");
+        timing.className = "deduction-picker-timing is-" + item.timing;
+        timing.textContent = item.timing === "previous" ? "Previous" : "Future";
+        tdDue.appendChild(timing);
+      }
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(item.original_amount || item.amount);
+      if (item.allow_partial && parseAmount(item.original_amount || item.amount) !== remaining) {
+        var rem = document.createElement("div");
+        rem.className = "small text-muted";
+        rem.textContent = "Open " + formatAmount(remaining);
+        tdAmount.appendChild(rem);
+      }
+      var tdDeduct = document.createElement("td");
+      tdDeduct.className = "text-end";
+      var tdBalance = document.createElement("td");
+      tdBalance.className = "text-end text-muted";
+      tdBalance.textContent = formatAmount(balanceAmount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdFarmer);
+      tr.appendChild(tdLoan);
+      tr.appendChild(tdInst);
+      tr.appendChild(tdDue);
+      tr.appendChild(tdAmount);
+      tr.appendChild(tdDeduct);
+      tr.appendChild(tdBalance);
+      if (item.allow_partial) {
+        var deductInput = document.createElement("input");
+        deductInput.type = "text";
+        deductInput.inputMode = "decimal";
+        deductInput.className = "form-control form-control-sm deduction-picker-deduct-input";
+        deductInput.value = formatAmount(deductAmount);
+        deductInput.dataset.advanceId = "loan-" + String(item.schedule_id);
+        tdDeduct.appendChild(deductInput);
+        bindSkipToggle(input, item, "loan_instalment", item.schedule_id, "");
+        bindDeductAmount(deductInput, item, input);
+      } else {
+        tdDeduct.textContent = formatAmount(deductAmount);
+        bindSkipToggle(input, item, "loan_instalment", item.schedule_id, "");
+      }
+      return tr;
+    }
+
+    function buildProductReceiptRow(receipt, label) {
+      var tr = document.createElement("tr");
+      tr.className = "deduction-picker-receipt-row";
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!receipt.deduct;
+      tdCheck.appendChild(input);
+      var tdLabel = document.createElement("td");
+      tdLabel.colSpan = 3;
+      tdLabel.textContent = label;
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(receipt.amount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdLabel);
+      tr.appendChild(tdAmount);
+      bindSkipToggle(input, receipt, "goods_receipt", 0, receipt.batch_ref);
+      return tr;
+    }
+
+    function buildProductRow(line, nested) {
+      var tr = document.createElement("tr");
+      tr.className = "deduction-picker-product-row" + (nested ? " is-nested" : "");
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!line.deduct;
+      tdCheck.appendChild(input);
+      var tdProduct = document.createElement("td");
+      var prefix = line.scope === "point" ? "Direct · " : (line.farmer_name ? line.farmer_name + " · " : "");
+      tdProduct.textContent = prefix + line.product_name;
+      var tdQty = document.createElement("td");
+      tdQty.className = "text-end";
+      tdQty.textContent = formatAmount(line.quantity);
+      var tdUnit = document.createElement("td");
+      tdUnit.className = "text-end";
+      tdUnit.textContent = formatAmount(line.unit_price || "0");
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(line.amount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdProduct);
+      tr.appendChild(tdQty);
+      tr.appendChild(tdUnit);
+      tr.appendChild(tdAmount);
+      bindSkipToggle(input, line, "goods_line", line.id, "");
+      return tr;
+    }
+
+    function postSkipToggle(item, kind, refId, refKey, skip, inputEl, deductAmount) {
+      var body = new FormData();
+      body.append("point", state.pointId);
+      body.append("scope", item.scope || "point");
+      if (item.farmer_id) body.append("farmer", item.farmer_id);
+      body.append("start", sheetRoot.dataset.periodStart || "");
+      body.append("end", sheetRoot.dataset.periodEnd || "");
+      body.append("kind", kind);
+      body.append("reference_id", refId || "0");
+      body.append("reference_key", refKey || "");
+      body.append("skip", skip ? "1" : "0");
+      if (deductAmount != null && deductAmount !== "") {
+        body.append("deduct_amount", deductAmount);
+      }
+      body.append("csrfmiddlewaretoken", getCsrfToken());
+      appendBranches(body);
+      var restoreId = "";
+      if (item.allow_partial) {
+        restoreId = item.schedule_id ? ("loan-" + item.schedule_id) : String(item.id);
+      }
+      if (inputEl) inputEl.disabled = true;
+      fetch(toggleUrl, { method: "POST", body: body, credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data.ok) throw new Error((result.data && result.data.error) || "Could not save.");
+          applyRowTotals(state.pointId, result.data.row);
+          renderPicker(result.data.picker, result.data.row);
+          if (restoreId) {
+            var el = document.querySelector('input.deduction-picker-deduct-input[data-advance-id="' + restoreId + '"]');
+            if (el) el.focus();
+          }
+        })
+        .catch(function (err) {
+          if (inputEl && inputEl.type === "checkbox") inputEl.checked = !inputEl.checked;
+          if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save", text: err.message });
+        })
+        .finally(function () { if (inputEl) inputEl.disabled = false; });
+    }
+
+    function openPicker(pointId, pointName, focus, readonly) {
+      state.pointId = pointId;
+      state.pointName = pointName;
+      state.readonly = !!readonly;
+      document.getElementById("deduction-picker-point-name").textContent = pointName;
+      var params = new URLSearchParams();
+      params.set("point", pointId);
+      params.set("start", sheetRoot.dataset.periodStart || "");
+      params.set("end", sheetRoot.dataset.periodEnd || "");
+      (sheetRoot.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        params.append("branches", id);
+      });
+      fetch(pickerUrl + "?" + params.toString(), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error || "Could not load deductions.");
+          state.readonly = !!data.readonly || !!state.readonly;
+          renderPicker(data.picker, data.row);
+          if (focus) {
+            var tabBtn = document.getElementById("deduction-tab-" + focus);
+            if (tabBtn && window.bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+          }
+          pickerModal.show();
+        })
+        .catch(function (err) {
+          if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not load", text: err.message });
+        });
+    }
+
+    document.querySelectorAll(".js-deduction-picker-trigger").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        openPicker(btn.dataset.pointId, btn.dataset.pointName || "", btn.dataset.focus || "advance", btn.dataset.readonly === "1");
+      });
+    });
+
+    var cpLoanAll = document.getElementById("deduction-picker-cp-loan-all");
+    if (cpLoanAll) {
+      cpLoanAll.addEventListener("change", function () {
+        if (state.readonly) {
+          cpLoanAll.checked = !cpLoanAll.checked;
+          return;
+        }
+        var body = new FormData();
+        body.append("point", state.pointId);
+        body.append("start", sheetRoot.dataset.periodStart || "");
+        body.append("end", sheetRoot.dataset.periodEnd || "");
+        body.append("deduct_loan", cpLoanAll.checked ? "1" : "0");
+        body.append("csrfmiddlewaretoken", getCsrfToken());
+        appendBranches(body);
+        cpLoanAll.disabled = true;
+        fetch(cpLoanToggleUrl, {
+          method: "POST",
+          body: body,
+          credentials: "same-origin",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (result) {
+            if (!result.ok || !result.data.ok) throw new Error((result.data && result.data.error) || "Could not save.");
+            applyRowTotals(state.pointId, result.data.row);
+            return fetch(
+              pickerUrl + "?" + new URLSearchParams({
+                point: state.pointId,
+                start: sheetRoot.dataset.periodStart || "",
+                end: sheetRoot.dataset.periodEnd || "",
+              }).toString() + (
+                (sheetRoot.dataset.branches || "").split(",").filter(Boolean)
+                  .map(function (id) { return "&branches=" + encodeURIComponent(id); })
+                  .join("")
+              ),
+              { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } }
+            );
+          })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!data.ok) throw new Error(data.error || "Could not reload deductions.");
+            renderPicker(data.picker, data.row);
+          })
+          .catch(function (err) {
+            cpLoanAll.checked = !cpLoanAll.checked;
+            if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save", text: err.message });
+          })
+          .finally(function () { cpLoanAll.disabled = false; });
+      });
+    }
+
+    var loanAddBtn = document.getElementById("deduction-picker-loan-add-btn");
+    var loanAddSelect = document.getElementById("deduction-picker-loan-add");
+    if (loanAddBtn && loanAddSelect) {
+      loanAddBtn.addEventListener("click", function () {
+        if (state.readonly) return;
+        var scheduleId = loanAddSelect.value;
+        if (!scheduleId) return;
+        var remaining = loanAddSelect.options[loanAddSelect.selectedIndex]
+          ? loanAddSelect.options[loanAddSelect.selectedIndex].dataset.remaining
+          : "0";
+        postSkipToggle(
+          { scope: "point", allow_partial: true, schedule_id: scheduleId, remaining: remaining },
+          "loan_instalment",
+          scheduleId,
+          "",
+          false,
+          loanAddBtn,
+          remaining
+        );
+      });
+    }
+  })();
+{% endif %}
+
+{% if can_edit_payment_corrections %}
+  (function () {
+    var sheetRoot = document.getElementById("payment-sheet-root");
+    if (!sheetRoot) return;
+    function appendBranches(body) {
+      (sheetRoot.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        body.append("branches", id);
+      });
+    }
+    function savePaymentCorrection(input) {
+      var pointId = input.dataset.pointId || "";
+      var saveUrl = input.dataset.saveUrl || "";
+      if (!pointId || !saveUrl) return;
+      var body = new FormData();
+      body.append("point", pointId);
+      body.append("start", input.dataset.start || sheetRoot.dataset.periodStart || "");
+      body.append("end", input.dataset.end || sheetRoot.dataset.periodEnd || "");
+      body.append("amount", String(input.value || "0").replace(/,/g, ""));
+      body.append("csrfmiddlewaretoken", getCsrfToken());
+      appendBranches(body);
+      input.disabled = true;
+      fetch(saveUrl, {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data.ok) {
+            throw new Error((result.data && result.data.error) || "Could not save payment correction.");
+          }
+          applyRowTotals(pointId, result.data.row);
+        })
+        .catch(function (err) {
+          if (typeof Swal !== "undefined") {
+            Swal.fire({ icon: "error", title: "Could not save", text: err.message });
+          }
+        })
+        .finally(function () { input.disabled = false; });
+    }
+    document.querySelectorAll(".js-payment-correction-input").forEach(function (input) {
+      input.addEventListener("change", function () {
+        savePaymentCorrection(input);
+      });
+      input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          input.blur();
+        }
+      });
+    });
+  })();
+{% endif %}
+
+{% if can_manage_cp_loan_deduction %}
+  document.querySelectorAll(".cp-loan-deduct-toggle").forEach(function (checkbox) {
+    checkbox.addEventListener("change", function () {
+      var row = checkbox.closest("tr");
+      var amountEl = row ? row.querySelector(".loan-deduct-amount") : null;
+      var hintEl = row ? row.querySelector(".loan-deduct-hint") : null;
+      var pointId = row ? row.dataset.pointId : "";
+      var body = new FormData();
+      body.append("point", pointId);
+      body.append("start", checkbox.dataset.start || "");
+      body.append("end", checkbox.dataset.end || "");
+      body.append("deduct_loan", checkbox.checked ? "1" : "0");
+      body.append("csrfmiddlewaretoken", getCsrfToken());
+      (document.getElementById("payment-sheet-root").dataset.branches || "")
+        .split(",").filter(Boolean).forEach(function (id) { body.append("branches", id); });
+      checkbox.disabled = true;
+      fetch(checkbox.dataset.toggleUrl, {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data.ok) {
+            throw new Error((result.data && result.data.error) || "Could not save loan deduction setting.");
+          }
+          if (result.data.row) {
+            applyRowTotals(pointId, result.data.row);
+          } else if (amountEl) {
+            amountEl.classList.toggle("is-skipped", !result.data.deduct_loan);
+          }
+          if (hintEl) {
+            hintEl.textContent = result.data.deduct_loan ? "" : "Point loans skipped";
+            hintEl.style.display = result.data.deduct_loan ? "none" : "block";
+          } else if (row && !result.data.deduct_loan) {
+            var hint = document.createElement("span");
+            hint.className = "loan-deduct-hint";
+            hint.textContent = "Point loans skipped";
+            row.querySelector(".loan-deduct-cell").appendChild(hint);
+          }
+        })
+        .catch(function (err) {
+          checkbox.checked = !checkbox.checked;
+          if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save", text: err.message });
+        })
+        .finally(function () { checkbox.disabled = false; });
+    });
+  });
+{% endif %}
+})();
+</script>
+{% if can_record_point_payment %}
+{% include "reports/_period_payment_modal_script.html" %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,9 @@
+{# Two-line quantity: kg first, liters second; numbers right-aligned, units in a column #}
+<div class="receipt-qty-stack">
+  <div class="receipt-qty-row">
+    <span class="receipt-qty-fig">{{ kg|floatformat:2 }}</span><span class="receipt-qty-unit">Kg</span>
+  </div>
+  <div class="receipt-qty-row">
+    <span class="receipt-qty-fig">{{ liters|floatformat:2 }}</span><span class="receipt-qty-unit">L</span>
+  </div>
+</div>

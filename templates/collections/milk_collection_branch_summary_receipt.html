@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Branch summary · {{ branch.code }} · {{ from_date }} to {{ to_date }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 10px; color: #111; }
+    .top { margin-bottom: 8px; }
+    .top h3 { margin: 0 0 4px; }
+    .meta { margin: 0; font-size: 12px; color: #334155; }
+    .no-print { margin-bottom: 8px; }
+    .receipt-copy-actions button {
+      font: inherit;
+      font-size: 13px;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      margin-right: 0.4rem;
+    }
+    .receipt-copy-actions button.is-primary {
+      background: #0f766e;
+      border-color: #0f766e;
+      color: #fff;
+    }
+    .receipt-copy-actions button.is-primary:hover:not(:disabled) {
+      background: #0d9488;
+      border-color: #0d9488;
+    }
+    .receipt-copy-actions button.btn-copy-table {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td {
+      border: 1px solid #334155;
+      padding: 3px 4px;
+      font-size: 10px;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      width: 110px;
+    }
+    th:last-child, td:last-child {
+      width: 78px;
+      font-weight: 700;
+    }
+    thead th { background: #f1f5f9; }
+    tfoot td { font-weight: 700; background: #f8fafc; }
+    tr.section-gap td { border: none; height: 6px; padding: 0; }
+    tr.section-head td {
+      font-weight: 700;
+      background: #f8fafc;
+      text-align: left;
+      padding: 5px 4px;
+      border-top: 2px solid #334155;
+      color: #047857;
+    }
+    tr.bulk-row td:first-child { color: #047857; }
+    .sign-plus { font-weight: 700; margin-right: 2px; }
+    .route-name { color: #64748b; font-size: 9px; margin-left: 4px; }
+    .print-page { width: 100%; }
+    @media print {
+      @page { size: A4 landscape; margin: 7mm; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        zoom: 0.88;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .print-page {
+        width: 100%;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print receipt-copy-actions">
+    <button type="button" class="is-primary" onclick="window.print()">Print</button>
+    <button
+      type="button"
+      class="btn-copy-table"
+      onclick="copyTableAsTsv('#branch-summary-table', this)"
+      data-copying-label="Copying…"
+      data-copied-label="Copied!"
+      data-failed-label="Copy failed"
+    ><i class="bi bi-clipboard" aria-hidden="true"></i> Copy</button>
+    <button
+      type="button"
+      onclick="copyElementAsImage(document.querySelector('.print-page'), this)"
+      data-copying-label="Copying…"
+      data-copied-label="Copied!"
+      data-downloaded-label="Downloaded"
+      data-failed-label="Copy failed"
+    >Copy as image</button>
+  </div>
+  <div class="print-page" data-copy-filename="branch-summary-{{ branch.code }}">
+    <div class="top">
+      <h3>Branch Summary</h3>
+      <p class="meta">
+        Branch: {{ branch.code }} - {{ branch.name }} |
+        Period: {{ from_date|date:"Y-m-d" }} to {{ to_date|date:"Y-m-d" }} |
+        Printed: {{ printed_at|date:"Y-m-d H:i" }}
+      </p>
+    </div>
+
+    <table id="branch-summary-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          {% for d in date_list %}
+          <th>{{ d|date:"d-m-Y" }}</th>
+          {% endfor %}
+          <th>TOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in route_rows %}
+        <tr>
+          <td>{{ row.route_name }}</td>
+          {% for value in row.values %}
+          <td>{% if value %}{{ value|floatformat:2 }}{% else %}-{% endif %}</td>
+          {% endfor %}
+          <td>{{ row.row_total|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ date_list|length|add:2 }}" style="text-align:center;">No route collection records in selected period.</td>
+        </tr>
+        {% endfor %}
+
+        {% if bulk_rows %}
+        <tr class="section-gap"><td colspan="{{ date_list|length|add:2 }}"></td></tr>
+        <tr class="section-head">
+          <td colspan="{{ date_list|length|add:2 }}">+ Raw Milk Bulk Collection</td>
+        </tr>
+        {% for row in bulk_rows %}
+        <tr class="bulk-row">
+          <td><span class="sign-plus">+</span>{{ row.supplier_name }}</td>
+          {% for value in row.values %}
+          <td>{% if value %}{{ value|floatformat:2 }}{% else %}-{% endif %}</td>
+          {% endfor %}
+          <td>{{ row.row_total|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+      </tbody>
+      {% if route_rows or bulk_rows %}
+      <tfoot>
+        <tr>
+          <td>TOTAL</td>
+          {% for total in day_totals %}
+          <td>{{ total|floatformat:2 }}</td>
+          {% endfor %}
+          <td>{{ grand_total|floatformat:2 }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+  {% include 'collections/_receipt_copy_table.html' %}
+  {% include 'collections/_receipt_copy_image.html' %}
+</body>
+</html>

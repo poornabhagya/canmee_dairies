@@ -1,0 +1,1612 @@
+{% extends "base.html" %}
+{% load static format_extras %}
+{% block title %}Farmers · Canmee Dairies{% endblock %}
+{% block page_heading %}Farmers{% endblock %}
+{% block topbar_actions %}
+{% if request.user.is_superuser and perms.masters.change_farmer %}
+<button type="button" class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#farmerBankImportModal"><i class="bi bi-bank me-1"></i>Import bank accounts</button>
+{% endif %}
+{% if perms.masters.add_farmer %}
+{% if request.user.is_superuser %}
+<button type="button" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#farmerImportModal"><i class="bi bi-upload me-1"></i>Import</button>
+{% endif %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#farmerQuickAddModal"><i class="bi bi-plus-lg me-1"></i>Add farmer</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+<style>
+  .farmer-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .farmer-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .farmer-list-card .table-wrap,
+  .farmer-list-card .dataTables_wrapper,
+  .farmer-list-card div.dt-container,
+  .farmer-list-card div.dt-scroll,
+  .farmer-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .farmer-list-card .farmer-table {
+    width: 100% !important;
+  }
+  .farmer-list-card .farmer-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.35rem;
+    vertical-align: bottom;
+  }
+  .farmer-list-card .farmer-table tbody td {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.35rem;
+    vertical-align: middle;
+  }
+  .farmer-list-card .farmer-table .smart-dt-name-row {
+    min-width: 0;
+  }
+  .farmer-list-card .farmer-table .smart-dt-name-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(12rem, 28vw);
+    vertical-align: bottom;
+  }
+  .farmer-list-card .farmer-table .farmer-col-reg {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+    color: #475569;
+    max-width: 5.5rem;
+  }
+  .farmer-list-card .farmer-table .farmer-col-route,
+  .farmer-list-card .farmer-table .farmer-col-mobile {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .smart-modal.smart-modal--wide .modal-dialog { max-width: 760px; }
+  .farmer-date-group .input-group-text {
+    background: #f8fafc;
+    border-color: #dbe3ef;
+    color: #64748b;
+    cursor: pointer;
+  }
+  .farmer-date-group .form-control { border-right: 0; }
+  .farmer-inactive-alert-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin-bottom: 0.85rem;
+  }
+  .farmer-inactive-alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%);
+    color: #92400e;
+    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.08);
+  }
+  .farmer-inactive-alert i.bi-exclamation-triangle-fill {
+    color: #d97706;
+    flex-shrink: 0;
+  }
+  .farmer-inactive-alert strong { color: #78350f; }
+  .farmer-inactive-alert-action {
+    margin-left: auto;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .smart-dt-chip--warn.is-active {
+    border-color: rgba(217, 119, 6, 0.45);
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+  }
+  .smart-dt-chip--warn.is-active .smart-dt-chip-count {
+    background: rgba(217, 119, 6, 0.18);
+    color: #b45309;
+  }
+  .farmer-today-col,
+  .farmer-avg-col {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .farmer-row--inactive-30 td { background-color: rgba(254, 243, 199, 0.22); }
+  .farmer-resign-btn {
+    border: 0;
+    background: transparent;
+    color: #b45309;
+    padding: 0.1rem 0.25rem;
+    line-height: 1;
+  }
+  .farmer-resign-btn:hover { color: #92400e; }
+  .farmer-view-btn {
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    padding: 0.1rem 0.25rem;
+    line-height: 1;
+  }
+  .farmer-view-btn:hover { color: #0f172a; }
+  .farmer-rate-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 1.75rem;
+  }
+  .farmer-rate-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0.35rem;
+    margin: 0;
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  .farmer-rate-display:hover,
+  .farmer-rate-display:focus {
+    background: rgba(5, 150, 105, 0.08);
+    outline: none;
+  }
+  .farmer-rate-display .farmer-rate-edit-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .farmer-rate-display:hover .farmer-rate-edit-icon,
+  .farmer-rate-display:focus .farmer-rate-edit-icon,
+  tr:hover .farmer-rate-display .farmer-rate-edit-icon {
+    opacity: 1;
+  }
+  .farmer-rate-display.is-empty {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .farmer-rate-editor {
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    width: 100%;
+  }
+  .farmer-rate-inline.is-editing .farmer-rate-display { display: none; }
+  .farmer-rate-inline.is-editing .farmer-rate-editor { display: inline-flex; }
+  .farmer-rate-editor .js-farmer-rate-input {
+    width: 5.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .farmer-rate-inline.is-saving { opacity: 0.65; pointer-events: none; }
+  .farmer-rate-inline.is-saved .farmer-rate-display {
+    background: rgba(5, 150, 105, 0.12);
+  }
+  .farmer-rate-inline.is-error .js-farmer-rate-input {
+    border-color: #f87171;
+  }
+  .farmer-view-modal-dl {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 0.55rem 0.85rem;
+    margin: 0;
+  }
+  .farmer-view-modal-dl dt {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .farmer-view-modal-dl dd {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 600;
+  }
+  .payment-sheet-paid-popover {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-popover-pop {
+    --bs-popover-max-width: 15rem;
+    font-size: 0.8125rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-header {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.45rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-body { padding: 0.5rem 0.65rem; }
+  .payment-sheet-paid-popover-body__hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .payment-sheet-paid-popover-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-sheet-paid-popover-row--total {
+    font-weight: 700;
+    color: #0f172a;
+  }
+</style>
+{% endblock %}
+{% block content %}
+{{ farmer_filter_routes|json_script:"farmer-filter-routes-data" }}
+{{ farmer_filter_points|json_script:"farmer-filter-points-data" }}
+{% if farmer_point_rows %}{{ farmer_point_rows|json_script:"farmer-point-rows-data" }}{% endif %}
+<div class="card card-table farmer-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Farmer summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Farmers</span>
+        <span class="smart-dt-stat-value">{{ farmer_summary.count }}</span>
+      </div>
+      <button type="button" class="smart-dt-stat smart-dt-stat--active smart-dt-stat--clickable js-farmer-stat-filter" data-smart-filter="active">
+        <span class="smart-dt-stat-label">Active today</span>
+        <span class="smart-dt-stat-value">{{ farmer_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--inactive smart-dt-stat--clickable js-farmer-stat-filter" data-smart-filter="inactive">
+        <span class="smart-dt-stat-label">Inactive today</span>
+        <span class="smart-dt-stat-value">{{ farmer_summary.inactive_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--warn smart-dt-stat--clickable js-farmer-stat-filter" data-smart-filter="inactive-30">
+        <span class="smart-dt-stat-label">30+ days</span>
+        <span class="smart-dt-stat-value">{{ farmer_summary.inactive_30_days }}</span>
+      </button>
+    </div>
+    {% if farmer_summary.inactive_30_days %}
+    <div class="farmer-inactive-alert-wrap" id="farmerInactiveAlert">
+      <div class="farmer-inactive-alert" role="status" aria-live="polite">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <span>
+          <strong>{{ farmer_summary.inactive_30_days }} farmer{{ farmer_summary.inactive_30_days|pluralize }}</strong>
+          ha{{ farmer_summary.inactive_30_days|pluralize:"s,ve" }} had no milk collection for
+          <strong>30+ consecutive days</strong>
+          {% if farmer_summary.max_inactive_days %} (longest gap: {{ farmer_summary.max_inactive_days }} days){% endif %}.
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-warning farmer-inactive-alert-action js-farmer-show-inactive-30">
+          View farmers
+        </button>
+      </div>
+    </div>
+    {% endif %}
+    <div id="farmerDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Farmer filters">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ farmer_summary.count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="active">
+        Active<span class="smart-dt-chip-count">{{ farmer_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="inactive">
+        Inactive<span class="smart-dt-chip-count">{{ farmer_summary.inactive_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="inactive-30">
+        30+ days<span class="smart-dt-chip-count">{{ farmer_summary.inactive_30_days }}</span>
+      </button>
+      {% if farmer_branch_options|length > 1 %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by branch</span>
+        <select id="farmerBranchFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by branch">
+          <option value="all">All branches</option>
+          {% for b in farmer_branch_options %}
+          <option value="{{ b.id }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by route</span>
+        <select id="farmerRouteFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by route">
+          <option value="all">All routes</option>
+        </select>
+      </label>
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by collection point</span>
+        <select id="farmerPointFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by collection point">
+          <option value="all">All points</option>
+        </select>
+      </label>
+    </div>
+    <table
+      class="table table-hover datatable datatable-smart farmer-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No farmers yet."
+      data-filters-target="farmerDtFilters"
+      data-branch-filter-target="farmerBranchFilter"
+      data-route-filter-target="farmerRouteFilter"
+      data-point-filter-target="farmerPointFilter"
+      data-default-order-col="2"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all dt-reg">Reg no</th>
+          <th class="all">Common name</th>
+          <th class="all text-end">Today (kg)</th>
+          <th class="min-tablet-l text-end" title="Average daily supply (kg per collection day)">Avg daily (kg)</th>
+          {% if perms.masters.bulk_update_farmerrate %}
+          <th class="min-tablet-l text-end">Rate</th>
+          {% endif %}
+          {% if can_view_farmer_account %}<th class="min-tablet-l text-end">Account</th>{% endif %}
+          <th class="min-tablet-l">Route</th>
+          <th class="min-desktop">Mobile</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr
+          class="{% if o.is_resigned %}smart-row--resigned{% elif o.is_active_farmer %}smart-row--active{% elif o.is_inactive_farmer %}smart-row--inactive{% endif %}{% if o.is_inactive_30_days and not o.is_resigned %} smart-row--inactive-30 farmer-row--inactive-30{% endif %}"
+          data-farmer-id="{{ o.pk }}"
+          data-branch-id="{{ o.branch_id|default:'' }}"
+          data-route-id="{{ o.route_id|default:'' }}"
+          data-point-id="{{ o.collection_point_id|default:'' }}"
+        >
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all farmer-col-reg">{{ o.registration_number|default:"—" }}</td>
+          <td class="all">
+            <div class="smart-dt-name-row">
+              <a href="{% url 'farmer-detail' o.pk %}" class="smart-dt-name-link">{{ o.common_name|default:"—" }}</a>
+              <button
+                type="button"
+                class="farmer-view-btn js-farmer-view"
+                title="View farmer details"
+                aria-label="View {{ o.common_name|default:o.full_name }}"
+                data-farmer-name="{{ o.common_name|default:o.full_name }}"
+                data-farmer-account="{% if can_view_farmer_account and o.account_summary %}{{ o.account_summary.net|money }}{% else %}—{% endif %}"
+                data-farmer-route="{% if o.route %}{{ o.route.name }}{% else %}—{% endif %}"
+                data-farmer-branch="{% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %}"
+                data-farmer-point="{% if o.collection_point %}{{ o.collection_point.number }} - {{ o.collection_point.name }}{% else %}—{% endif %}"
+                data-farmer-nic="{{ o.nic|default:'—' }}"
+                data-farmer-whatsapp="{{ o.whatsapp|default:'—' }}"
+              >
+                <i class="bi bi-eye" aria-hidden="true"></i>
+              </button>
+              {% if o.is_resigned %}
+              <span class="badge text-bg-secondary-subtle border text-secondary-emphasis">Resigned</span>
+              {% elif perms.masters.change_farmer %}
+              <button
+                type="button"
+                class="smart-dt-edit-btn js-farmer-edit"
+                title="Edit farmer"
+                aria-label="Edit {{ o.common_name|default:o.full_name }}"
+                data-farmer-id="{{ o.pk }}"
+                data-farmer-full-name="{{ o.full_name }}"
+                data-farmer-initial="{{ o.initial|default:'' }}"
+                data-farmer-common-name="{{ o.common_name }}"
+                data-farmer-branch-id="{{ o.branch_id|default:'' }}"
+                data-farmer-point-id="{{ o.collection_point_id|default:'' }}"
+                data-farmer-rate="{{ o.rate|default:'' }}"
+                data-farmer-apply-rate-paid="{{ o.apply_rate_paid|default:'' }}"
+                data-farmer-nic="{{ o.nic|default:'' }}"
+                data-farmer-dob="{{ o.date_of_birth|date:'Y-m-d' }}"
+                data-farmer-mobile="{{ o.mobile|default:'' }}"
+                data-farmer-whatsapp="{{ o.whatsapp|default:'' }}"
+                data-farmer-email="{{ o.email|default:'' }}"
+                data-farmer-address="{{ o.address|default:'' }}"
+              >
+                <i class="bi bi-pen-fill" aria-hidden="true"></i>
+              </button>
+              <button
+                type="button"
+                class="farmer-resign-btn js-farmer-resign"
+                title="Mark as resigned"
+                aria-label="Mark {{ o.common_name|default:o.full_name }} as resigned"
+                data-farmer-id="{{ o.pk }}"
+                data-farmer-name="{{ o.common_name|default:o.full_name }}"
+              >
+                <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="all farmer-today-col text-end dt-num" data-order="{{ o.today_milk_kg|default:'0' }}">
+            {% if o.is_resigned %}<span class="text-muted">—</span>{% else %}{{ o.today_milk_kg }}{% endif %}
+          </td>
+          <td class="min-tablet-l farmer-avg-col text-end dt-num" data-order="{{ o.avg_daily_milk_kg|default:'0' }}">
+            {% if o.avg_daily_milk_kg != None %}{{ o.avg_daily_milk_kg }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          {% if perms.masters.bulk_update_farmerrate %}
+          <td class="min-tablet-l text-end farmer-rate-cell" data-order="{{ o.rate|default:'0' }}">
+            {% if o.is_resigned %}
+            <span class="text-muted">—</span>
+            {% else %}
+            <div
+              class="farmer-rate-inline"
+              data-farmer-id="{{ o.pk }}"
+              data-rate="{{ o.rate|default_if_none:'0' }}"
+              data-apply-rate-paid="{{ o.apply_rate_paid|default:'yes' }}"
+            >
+              <button type="button" class="farmer-rate-display js-farmer-rate-edit {% if not o.rate %}is-empty{% endif %}" title="Edit rate">
+                <span class="js-farmer-rate-label">
+                  {% if o.rate %}
+                    {{ o.rate|money }}
+                  {% else %}
+                    Set rate
+                  {% endif %}
+                </span>
+                <i class="bi bi-pencil farmer-rate-edit-icon" aria-hidden="true"></i>
+              </button>
+              <div class="farmer-rate-editor">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="form-control form-control-sm js-farmer-rate-input no-global-select2"
+                  value="{% if o.rate %}{{ o.rate }}{% endif %}"
+                  aria-label="Rate for {{ o.common_name|default:o.full_name }}"
+                >
+              </div>
+            </div>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% if can_view_farmer_account %}
+          <td class="min-tablet-l text-end">
+            {% include "masters/_farmer_account_cell.html" with account=o.account_summary %}
+          </td>
+          {% endif %}
+          <td class="min-tablet-l farmer-col-route">{% if o.route %}{{ o.route.name }}{% else %}—{% endif %}</td>
+          <td class="min-desktop farmer-col-mobile">{% if o.mobile %}{{ o.mobile }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade smart-modal" id="farmerViewModal" tabindex="-1" aria-labelledby="farmerViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="farmerViewModalLabel">Farmer details</h5>
+          <p class="text-muted small mb-0" id="farmerViewSubtitle"></p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <dl class="farmer-view-modal-dl">
+          <dt>Account</dt><dd id="farmerViewAccount">—</dd>
+          <dt>Route</dt><dd id="farmerViewRoute">—</dd>
+          <dt>Branch</dt><dd id="farmerViewBranch">—</dd>
+          <dt>Collection point</dt><dd id="farmerViewPoint">—</dd>
+          <dt>NIC</dt><dd id="farmerViewNic">—</dd>
+          <dt>WhatsApp</dt><dd id="farmerViewWhatsapp">—</dd>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if perms.masters.add_farmer %}
+{% if request.user.is_superuser %}
+<div class="modal fade smart-modal" id="farmerImportModal" tabindex="-1" aria-labelledby="farmerImportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'farmer-import' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="farmerImportModalLabel">Import farmers from Excel</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <a href="{% url 'farmer-import-template' %}?format=csv" class="btn btn-sm btn-outline-secondary me-2">
+              <i class="bi bi-download me-1"></i>Download CSV template
+            </a>
+            <a href="{% url 'farmer-import-template' %}?format=xlsx" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-download me-1"></i>Download Excel template
+            </a>
+          </div>
+            <div class="mb-3">
+            <label class="form-label" for="id_farmer_import_file">Excel/CSV file</label>
+            <input id="id_farmer_import_file" type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+            <div class="form-text">Expected columns: full_name (or name), common_name, collection_point_number, rate, apply_rate_paid, nic, mobile, whatsapp, email, address. Registration number is auto-generated for new farmers.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if request.user.is_superuser and perms.masters.change_farmer %}
+<div class="modal fade smart-modal" id="farmerBankImportModal" tabindex="-1" aria-labelledby="farmerBankImportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'farmer-bank-account-import' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="farmerBankImportModalLabel">Import farmer bank accounts</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <a href="{% url 'farmer-bank-account-import-template' %}?format=xlsx" class="btn btn-sm btn-outline-secondary me-2">
+              <i class="bi bi-download me-1"></i>Download Excel template
+            </a>
+            <a href="{% url 'farmer-bank-account-import-template' %}?format=csv" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-download me-1"></i>Download CSV template
+            </a>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_farmer_bank_import_default_branch">Default Branch (optional)</label>
+            <select id="id_farmer_bank_import_default_branch" name="default_branch" class="form-select">
+              <option value="">Use Branch column in file</option>
+              {% for branch in farmer_branch_options %}
+              <option value="{{ branch.name }}">{{ branch.name }}{% if branch.code %} ({{ branch.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_farmer_bank_import_file">Excel/CSV file</label>
+            <input id="id_farmer_bank_import_file" type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+            <div class="form-text">
+              Template columns: Branch, registration_number, account_name, account_number, bank_name, bank_code, bank_branch, branch_code, is_primary.
+              Branch is the dairy branch (Setup → Branches), not the bank branch.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="modal fade smart-modal smart-modal--wide" id="farmerQuickAddModal" tabindex="-1" aria-labelledby="farmerQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="farmer-quick-add-form" method="post" action="{% url 'farmer-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-person-plus"></i></span>
+            <div>
+              <h5 class="modal-title" id="farmerQuickAddModalLabel">Add farmer</h5>
+              <p class="modal-subtitle">Register a farmer and assign collection point.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="id_farmer_add_initial" name="initial">
+          <div class="smart-form-sections">
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-person-vcard" aria-hidden="true"></i>Identity</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_farmer_add_full_name">Full name</label>
+                  <input id="id_farmer_add_full_name" name="full_name" type="text" class="form-control" required>
+                  <div class="form-text small">Initial: <span id="farmer-add-initial-preview">—</span></div>
+                  <div class="invalid-feedback" data-modal-error-for="full_name"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_common_name">Common name</label>
+                  <input id="id_farmer_add_common_name" name="common_name" type="text" class="form-control" required>
+                  <div class="invalid-feedback" data-modal-error-for="common_name"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_nic">NIC</label>
+                  <input id="id_farmer_add_nic" name="nic" type="text" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="nic"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_date_of_birth">DOB</label>
+                  <div class="input-group farmer-date-group"><input id="id_farmer_add_date_of_birth" name="date_of_birth" type="text" class="form-control js-datepicker" placeholder="Select date" autocomplete="off"><span class="input-group-text js-datepicker-trigger" data-target="#id_farmer_add_date_of_birth"><i class="bi bi-calendar3"></i></span></div>
+                  <div class="invalid-feedback" data-modal-error-for="date_of_birth"></div>
+                </div>
+              </div>
+            </section>
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-geo-alt" aria-hidden="true"></i>Assignment &amp; rate</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_branch">Branch</label>
+                  <select id="id_farmer_add_branch" name="branch" class="form-select" required><option value="">---------</option>{% for b in farmer_create_form.fields.branch.queryset %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}</select>
+                  <div class="invalid-feedback" data-modal-error-for="branch"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_collection_point">Collection point</label>
+                  <select id="id_farmer_add_collection_point" name="collection_point" class="form-select" required><option value="">---------</option></select>
+                  <div class="invalid-feedback" data-modal-error-for="collection_point"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_rate">Rate</label>
+                  <input id="id_farmer_add_rate" name="rate" type="number" class="form-control" step="0.01" min="0.01" required>
+                  <div class="invalid-feedback" data-modal-error-for="rate"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_apply_rate_paid">Apply rate paid</label>
+                  <select id="id_farmer_add_apply_rate_paid" name="apply_rate_paid" class="form-select" required>
+                    <option value="yes" selected>Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                  <div class="invalid-feedback" data-modal-error-for="apply_rate_paid"></div>
+                </div>
+              </div>
+            </section>
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-telephone" aria-hidden="true"></i>Contact</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_mobile">Mobile</label>
+                  <input id="id_farmer_add_mobile" name="mobile" type="text" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="mobile"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_add_whatsapp">WhatsApp</label>
+                  <input id="id_farmer_add_whatsapp" name="whatsapp" type="text" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="whatsapp"></div>
+                </div>
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_farmer_add_email">Email</label>
+                  <input id="id_farmer_add_email" name="email" type="email" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="email"></div>
+                </div>
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_farmer_add_address">Address</label>
+                  <textarea id="id_farmer_add_address" name="address" class="form-control" rows="2"></textarea>
+                  <div class="invalid-feedback" data-modal-error-for="address"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save farmer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if perms.masters.change_farmer %}
+<div class="modal fade smart-modal smart-modal--wide" id="farmerQuickEditModal" tabindex="-1" aria-labelledby="farmerQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="farmer-quick-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-pen-fill"></i></span>
+            <div>
+              <h5 class="modal-title" id="farmerQuickEditModalLabel">Edit farmer</h5>
+              <p class="modal-subtitle" data-edit-farmer-subtitle>Update farmer details and assignment.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="id_farmer_edit_initial" name="initial">
+          <div class="smart-form-sections">
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-person-vcard" aria-hidden="true"></i>Identity</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_farmer_edit_full_name">Full name</label>
+                  <input id="id_farmer_edit_full_name" name="full_name" type="text" class="form-control" required>
+                  <div class="form-text small">Initial: <span id="farmer-edit-initial-preview">—</span></div>
+                  <div class="invalid-feedback" data-modal-error-for="full_name"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_common_name">Common name</label>
+                  <input id="id_farmer_edit_common_name" name="common_name" type="text" class="form-control" required>
+                  <div class="invalid-feedback" data-modal-error-for="common_name"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_nic">NIC</label>
+                  <input id="id_farmer_edit_nic" name="nic" type="text" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="nic"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_date_of_birth">DOB</label>
+                  <div class="input-group farmer-date-group"><input id="id_farmer_edit_date_of_birth" name="date_of_birth" type="text" class="form-control js-datepicker" placeholder="Select date" autocomplete="off"><span class="input-group-text js-datepicker-trigger" data-target="#id_farmer_edit_date_of_birth"><i class="bi bi-calendar3"></i></span></div>
+                  <div class="invalid-feedback" data-modal-error-for="date_of_birth"></div>
+                </div>
+              </div>
+            </section>
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-geo-alt" aria-hidden="true"></i>Assignment &amp; rate</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_branch">Branch</label>
+                  <select id="id_farmer_edit_branch" name="branch" class="form-select" required>{% for b in farmer_create_form.fields.branch.queryset %}<option value="{{ b.pk }}">{{ b.name }}</option>{% endfor %}</select>
+                  <div class="invalid-feedback" data-modal-error-for="branch"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_collection_point">Collection point</label>
+                  <select id="id_farmer_edit_collection_point" name="collection_point" class="form-select" required>{% for cp in farmer_create_form.fields.collection_point.queryset %}<option value="{{ cp.pk }}">{{ cp.number }} - {{ cp.name }}</option>{% endfor %}</select>
+                  <div class="invalid-feedback" data-modal-error-for="collection_point"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_rate">Rate</label>
+                  <input id="id_farmer_edit_rate" name="rate" type="number" class="form-control" step="0.01" min="0.01" required>
+                  <div class="invalid-feedback" data-modal-error-for="rate"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_apply_rate_paid">Apply rate paid</label>
+                  <select id="id_farmer_edit_apply_rate_paid" name="apply_rate_paid" class="form-select" required>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                  <div class="invalid-feedback" data-modal-error-for="apply_rate_paid"></div>
+                </div>
+              </div>
+            </section>
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-telephone" aria-hidden="true"></i>Contact</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_mobile">Mobile</label>
+                  <input id="id_farmer_edit_mobile" name="mobile" type="text" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="mobile"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_farmer_edit_whatsapp">WhatsApp</label>
+                  <input id="id_farmer_edit_whatsapp" name="whatsapp" type="text" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="whatsapp"></div>
+                </div>
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_farmer_edit_email">Email</label>
+                  <input id="id_farmer_edit_email" name="email" type="email" class="form-control">
+                  <div class="invalid-feedback" data-modal-error-for="email"></div>
+                </div>
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_farmer_edit_address">Address</label>
+                  <textarea id="id_farmer_edit_address" name="address" class="form-control" rows="2"></textarea>
+                  <div class="invalid-feedback" data-modal-error-for="address"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Update farmer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% if perms.masters.change_farmer %}
+<div class="modal fade smart-modal" id="farmerResignModal" tabindex="-1" aria-labelledby="farmerResignModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="farmer-resign-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-box-arrow-right"></i></span>
+            <div>
+              <h5 class="modal-title" id="farmerResignModalLabel">Mark farmer as resigned</h5>
+              <p class="modal-subtitle" data-resign-farmer-subtitle>Record resignation and keep farmer history.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="smart-form-grid">
+            <div class="smart-field span-2">
+              <label class="form-label" for="id_farmer_resign_date">Resignation date</label>
+              <div class="input-group farmer-date-group">
+                <input id="id_farmer_resign_date" name="resigned_at" type="text" class="form-control js-datepicker" placeholder="Select date" autocomplete="off" required>
+                <span class="input-group-text js-datepicker-trigger" data-target="#id_farmer_resign_date"><i class="bi bi-calendar3"></i></span>
+              </div>
+              <div class="invalid-feedback" data-modal-error-for="resigned_at"></div>
+            </div>
+            <div class="smart-field span-2">
+              <label class="form-label" for="id_farmer_resign_note">Note</label>
+              <textarea id="id_farmer_resign_note" name="resignation_note" class="form-control" rows="2" placeholder="Optional"></textarea>
+              <div class="invalid-feedback" data-modal-error-for="resignation_note"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning"><i class="bi bi-box-arrow-right me-1"></i>Save resignation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.masters.add_farmer or perms.masters.change_farmer %}
+<script>
+(function () {
+  var $ = window.jQuery;
+  var addForm = document.getElementById("farmer-quick-add-form");
+  var editForm = document.getElementById("farmer-quick-edit-form");
+  var addModalEl = document.getElementById("farmerQuickAddModal");
+  var editModalEl = document.getElementById("farmerQuickEditModal");
+  var addModal = addModalEl ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  var addPointSel = addForm ? addForm.querySelector('[name="collection_point"]') : null;
+  var editPointSel = editForm ? editForm.querySelector('[name="collection_point"]') : null;
+  var addBranchSel = addForm ? addForm.querySelector('[name="branch"]') : null;
+  var editBranchSel = editForm ? editForm.querySelector('[name="branch"]') : null;
+  var addInitialPreview = document.getElementById("farmer-add-initial-preview");
+  var editInitialPreview = document.getElementById("farmer-edit-initial-preview");
+  var pointRows = [];
+  try {
+    var scriptEl = document.getElementById("farmer-point-rows-data");
+    pointRows = scriptEl ? JSON.parse(scriptEl.textContent || "[]") : [];
+  } catch (e) {
+    pointRows = [];
+  }
+
+  function buildInitial(fullName) {
+    var parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    if (parts.length === 1) return parts[0];
+    var prefix = parts.slice(0, -1).map(function (p) { return p.charAt(0).toUpperCase(); }).join(".");
+    return prefix + "." + parts[parts.length - 1];
+  }
+
+  function capitalizeWords(value) {
+    return (value || "")
+      .replace(/\s+/g, " ")
+      .trimStart()
+      .replace(/\b([a-zA-Z])([a-zA-Z]*)/g, function (_, first, rest) {
+        return first.toUpperCase() + rest.toLowerCase();
+      });
+  }
+
+  function titleCaseInput(el) {
+    if (!el) return;
+    var current = el.value || "";
+    var converted = capitalizeWords(current);
+    if (converted !== current) {
+      var hadTrailingSpace = /\s$/.test(current);
+      el.value = hadTrailingSpace ? converted + " " : converted;
+    }
+  }
+
+  function syncInitial(form, fullNameSel, initialSel, previewEl) {
+    if (!form) return;
+    var fullName = form.querySelector(fullNameSel);
+    var initial = form.querySelector(initialSel);
+    if (!fullName || !initial) return;
+    initial.value = buildInitial(fullName.value || "");
+    if (previewEl) previewEl.textContent = initial.value || "—";
+  }
+
+  function refillPointSelect(selectEl, branchId, requireBranchSelection) {
+    if (!selectEl) return;
+    var current = selectEl.value;
+    var opts = ['<option value="">---------</option>'];
+    var mustChooseBranch = !!requireBranchSelection;
+    var normalizedBranchId = String(branchId || "").trim();
+    console.log("[FarmerModal] refillPointSelect start", {
+      branchId: normalizedBranchId,
+      currentPoint: current || "",
+      totalPointRows: pointRows.length,
+      requireBranchSelection: mustChooseBranch,
+      samplePointBranchIds: pointRows.slice(0, 8).map(function (r) { return String(r.branch_id || "").trim(); })
+    });
+    if (mustChooseBranch && !normalizedBranchId) {
+      selectEl.innerHTML = opts.join("");
+      if ($ && $.fn && $.fn.select2) {
+        var $emptyEl = $(selectEl);
+        if ($emptyEl.hasClass("select2-hidden-accessible")) {
+          $emptyEl.select2("destroy");
+        }
+      }
+      console.log("[FarmerModal] refillPointSelect done", {
+        branchId: "",
+        renderedOptions: 0,
+        selectedPoint: "",
+        reason: "branch_not_selected"
+      });
+      return;
+    }
+    pointRows.forEach(function (r) {
+      var rowBranchId = String(r.branch_id || "").trim();
+      var sameBranch = !normalizedBranchId || rowBranchId === normalizedBranchId;
+      if (!sameBranch) return;
+      opts.push('<option value="' + r.id + '">' + r.label + '</option>');
+    });
+    selectEl.innerHTML = opts.join("");
+    if (current) {
+      selectEl.value = current;
+      if (selectEl.value !== current) selectEl.value = "";
+    }
+    if ($ && $.fn && $.fn.select2) {
+      var $el = $(selectEl);
+      if ($el.hasClass("select2-hidden-accessible")) {
+        $el.select2("destroy");
+      }
+    }
+    console.log("[FarmerModal] refillPointSelect done", {
+      branchId: normalizedBranchId,
+      renderedOptions: Math.max(0, selectEl.options.length - 1),
+      selectedPoint: selectEl.value || ""
+    });
+  }
+
+  function resolveBranchForEdit(rawBranchId, rawPointId) {
+    var pointId = String(rawPointId || "").trim();
+    if (pointId) {
+      var row = pointRows.find(function (r) { return String(r.id || "") === pointId; });
+      if (row && String(row.branch_id || "").trim()) return String(row.branch_id || "").trim();
+    }
+    // Fallback only when point is empty or cannot be resolved.
+    return String(rawBranchId || "").trim();
+  }
+
+  function getBranchValues(branchSelectEl) {
+    if (!branchSelectEl) return [];
+    return Array.prototype.map.call(branchSelectEl.options, function (o) { return String(o.value || "").trim(); })
+      .filter(function (v) { return v !== ""; });
+  }
+
+  function applyBranchPolicy(branchSelectEl, pointSelectEl, modalEl, opts) {
+    if (!branchSelectEl || !pointSelectEl) return;
+    opts = opts || {};
+    var preserveCurrentBranch = !!opts.preserveCurrentBranch;
+    var branchValues = getBranchValues(branchSelectEl);
+    var branchCount = branchValues.length;
+    console.log("[FarmerModal] applyBranchPolicy", {
+      branchCount: branchCount,
+      branches: branchValues,
+      currentBranch: branchSelectEl.value || ""
+    });
+
+    if (branchCount <= 1) {
+      if (branchCount === 1 && !branchSelectEl.value) {
+        branchSelectEl.value = branchValues[0];
+      }
+      refillPointSelect(pointSelectEl, branchSelectEl.value || "", false);
+      if (pointSelectEl) initSel2(pointSelectEl, modalEl);
+      return;
+    }
+
+    // Multi-branch rule:
+    // - Add flow: empty until user chooses branch
+    // - Edit flow: keep existing branch/point selection when provided
+    if (preserveCurrentBranch && String(branchSelectEl.value || "").trim()) {
+      refillPointSelect(pointSelectEl, branchSelectEl.value, true);
+      if (pointSelectEl) initSel2(pointSelectEl, modalEl);
+      return;
+    }
+    branchSelectEl.value = "";
+    refillPointSelect(pointSelectEl, "", true);
+    if (pointSelectEl) initSel2(pointSelectEl, modalEl);
+  }
+
+  function initSel2(el, parentEl) {
+    if (!$ || !$.fn || !$.fn.select2 || !el || !parentEl) return;
+    var $el = $(el);
+    if ($el.hasClass("select2-hidden-accessible")) $el.select2("destroy");
+    $el.select2({ width: "100%", dropdownParent: $(parentEl), placeholder: "Select collection point", allowClear: true });
+  }
+
+  function initDatePicker(inputEl) {
+    if (!inputEl || typeof flatpickr === "undefined") return;
+    if (inputEl._flatpickr) return;
+    flatpickr(inputEl, {
+      dateFormat: "Y-m-d",
+      allowInput: false,
+      disableMobile: true
+    });
+  }
+
+  function clearErr(form) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[data-modal-error-for]").forEach(function (el) { el.textContent = ""; });
+  }
+
+  function setErr(form, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector('[data-modal-error-for="' + field + '"]');
+      if (input) input.classList.add("is-invalid");
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+  function submitForm(form, done) {
+    fetch(form.action, { method: "POST", body: new FormData(form), credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErr(form, (res.data && res.data.errors) || {});
+          return;
+        }
+        done();
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save farmer." });
+      });
+  }
+
+  if (addForm && addModalEl) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErr(addForm);
+      submitForm(addForm, function () { if (addModal) addModal.hide(); window.location.reload(); });
+    });
+    addModalEl.addEventListener("shown.bs.modal", function () {
+      applyBranchPolicy(addBranchSel, addPointSel, addModalEl, { preserveCurrentBranch: false });
+      syncInitial(addForm, '[name="full_name"]', '[name="initial"]', addInitialPreview);
+      initDatePicker(document.getElementById("id_farmer_add_date_of_birth"));
+    });
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      addForm.reset();
+      clearErr(addForm);
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErr(editForm);
+      submitForm(editForm, function () { if (editModal) editModal.hide(); window.location.reload(); });
+    });
+    editModalEl.addEventListener("shown.bs.modal", function () {
+      // Keep preloaded edit values; avoid second refill pass.
+      if (editPointSel) initSel2(editPointSel, editModalEl);
+      syncInitial(editForm, '[name="full_name"]', '[name="initial"]', editInitialPreview);
+      initDatePicker(document.getElementById("id_farmer_edit_date_of_birth"));
+    });
+    editModalEl.addEventListener("hidden.bs.modal", function () {
+      editForm.reset();
+      clearErr(editForm);
+    });
+  }
+
+  if (addBranchSel) {
+    var onAddBranchChange = function () {
+      console.log("[FarmerModal] add branch changed", {
+        branch: String(addBranchSel.value || "").trim(),
+        branchText: addBranchSel.options[addBranchSel.selectedIndex] ? addBranchSel.options[addBranchSel.selectedIndex].text : ""
+      });
+      refillPointSelect(addPointSel, addBranchSel.value, true);
+      if (addPointSel) {
+        initSel2(addPointSel, addModalEl);
+      }
+    };
+    addBranchSel.addEventListener("change", onAddBranchChange);
+    addBranchSel.addEventListener("input", onAddBranchChange);
+    if ($ && $.fn) {
+      $(addBranchSel).on("change", onAddBranchChange);
+    }
+  }
+  if (editBranchSel) {
+    var onEditBranchChange = function () {
+      console.log("[FarmerModal] edit branch changed", {
+        branch: String(editBranchSel.value || "").trim(),
+        branchText: editBranchSel.options[editBranchSel.selectedIndex] ? editBranchSel.options[editBranchSel.selectedIndex].text : ""
+      });
+      refillPointSelect(editPointSel, editBranchSel.value, true);
+      if (editPointSel) {
+        initSel2(editPointSel, editModalEl);
+      }
+    };
+    editBranchSel.addEventListener("change", onEditBranchChange);
+    editBranchSel.addEventListener("input", onEditBranchChange);
+    if ($ && $.fn) {
+      $(editBranchSel).on("change", onEditBranchChange);
+    }
+  }
+  if (addForm) {
+    var afn = addForm.querySelector('[name="full_name"]');
+    var ain = addForm.querySelector('[name="initial"]');
+    if (afn && ain) afn.addEventListener("input", function () {
+      titleCaseInput(afn);
+      ain.value = buildInitial(afn.value || "");
+      if (addInitialPreview) addInitialPreview.textContent = ain.value || "—";
+    });
+    var acn = addForm.querySelector('[name="common_name"]');
+    if (acn) acn.addEventListener("input", function () { titleCaseInput(acn); });
+  }
+  if (editForm) {
+    var efn = editForm.querySelector('[name="full_name"]');
+    var ein = editForm.querySelector('[name="initial"]');
+    if (efn && ein) efn.addEventListener("input", function () {
+      titleCaseInput(efn);
+      ein.value = buildInitial(efn.value || "");
+      if (editInitialPreview) editInitialPreview.textContent = ein.value || "—";
+    });
+    var ecn = editForm.querySelector('[name="common_name"]');
+    if (ecn) ecn.addEventListener("input", function () { titleCaseInput(ecn); });
+  }
+
+  // DataTables re-creates table rows, so use delegation (not per-link listeners).
+  function openFarmerEditModal(anchor) {
+    if (!editForm || !editModal) return;
+    var a = anchor;
+    var id = a.getAttribute("data-farmer-id");
+    editForm.action = "{% url 'farmer-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + id + "/quick-edit/");
+    editForm.querySelector('[name="full_name"]').value = a.getAttribute("data-farmer-full-name") || "";
+    editForm.querySelector('[name="initial"]').value = a.getAttribute("data-farmer-initial") || "";
+    if (editInitialPreview) editInitialPreview.textContent = editForm.querySelector('[name="initial"]').value || "—";
+    editForm.querySelector('[name="common_name"]').value = a.getAttribute("data-farmer-common-name") || "";
+    var rawPointId = a.getAttribute("data-farmer-point-id") || "";
+    var resolvedBranchId = resolveBranchForEdit(a.getAttribute("data-farmer-branch-id"), rawPointId);
+    if (editBranchSel) {
+      editBranchSel.value = resolvedBranchId;
+      if ($ && $.fn && $.fn.select2 && $(editBranchSel).hasClass("select2-hidden-accessible")) {
+        $(editBranchSel).val(resolvedBranchId).trigger("change.select2");
+      }
+    }
+    refillPointSelect(editPointSel, editBranchSel ? editBranchSel.value : "", true);
+    editForm.querySelector('[name="collection_point"]').value = rawPointId;
+    if (editPointSel) {
+      initSel2(editPointSel, editModalEl);
+      if ($ && $.fn && $.fn.select2) {
+        $(editPointSel).val(rawPointId).trigger("change");
+      }
+    }
+    editForm.querySelector('[name="rate"]').value = a.getAttribute("data-farmer-rate") || "";
+    editForm.querySelector('[name="apply_rate_paid"]').value = a.getAttribute("data-farmer-apply-rate-paid") || "yes";
+    editForm.querySelector('[name="nic"]').value = a.getAttribute("data-farmer-nic") || "";
+    editForm.querySelector('[name="date_of_birth"]').value = a.getAttribute("data-farmer-dob") || "";
+    editForm.querySelector('[name="mobile"]').value = a.getAttribute("data-farmer-mobile") || "";
+    editForm.querySelector('[name="whatsapp"]').value = a.getAttribute("data-farmer-whatsapp") || "";
+    editForm.querySelector('[name="email"]').value = a.getAttribute("data-farmer-email") || "";
+    editForm.querySelector('[name="address"]').value = a.getAttribute("data-farmer-address") || "";
+    var editSubtitle = editModalEl ? editModalEl.querySelector("[data-edit-farmer-subtitle]") : null;
+    if (editSubtitle) {
+      var farmerName = a.getAttribute("data-farmer-common-name") || a.getAttribute("data-farmer-full-name") || "";
+      editSubtitle.textContent = farmerName ? "Editing " + farmerName + "." : "Update farmer details and assignment.";
+    }
+    clearErr(editForm);
+    editModal.show();
+  }
+  var farmerListRoot = document.querySelector(".farmer-list-card");
+  if (farmerListRoot) {
+    farmerListRoot.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest(".js-farmer-edit") : null;
+      if (a) {
+        e.preventDefault();
+        e.stopPropagation();
+        openFarmerEditModal(a);
+        return;
+      }
+      var resignBtn = e.target && e.target.closest ? e.target.closest(".js-farmer-resign") : null;
+      if (resignBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openFarmerResignModal(resignBtn);
+      }
+    });
+  }
+
+  var resignForm = document.getElementById("farmer-resign-form");
+  var resignModalEl = document.getElementById("farmerResignModal");
+  var resignModal = resignModalEl ? bootstrap.Modal.getOrCreateInstance(resignModalEl) : null;
+
+  function openFarmerResignModal(btn) {
+    if (!resignForm || !resignModal) return;
+    var id = btn.getAttribute("data-farmer-id");
+    var name = btn.getAttribute("data-farmer-name") || "farmer";
+    resignForm.action = "{% url 'farmer-resign' 0 %}".replace("/0/resign/", "/" + id + "/resign/");
+    var subtitle = resignModalEl.querySelector("[data-resign-farmer-subtitle]");
+    if (subtitle) subtitle.textContent = "Record resignation for " + name + ".";
+    clearErr(resignForm);
+    resignModal.show();
+    initDatePicker(document.getElementById("id_farmer_resign_date"));
+  }
+
+  if (resignForm) {
+    resignForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErr(resignForm);
+      submitForm(resignForm, function () {
+        if (resignModal) resignModal.hide();
+        window.location.reload();
+      });
+    });
+    if (resignModalEl) {
+      resignModalEl.addEventListener("hidden.bs.modal", function () {
+        resignForm.reset();
+        clearErr(resignForm);
+      });
+    }
+  }
+
+  document.querySelectorAll(".js-datepicker-trigger").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var target = document.querySelector(btn.getAttribute("data-target") || "");
+      if (!target) return;
+      initDatePicker(target);
+      if (target._flatpickr) {
+        target._flatpickr.open();
+      } else {
+        target.focus();
+      }
+    });
+  });
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  function readJson(id) {
+    try {
+      var el = document.getElementById(id);
+      return el ? JSON.parse(el.textContent || "[]") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function initFarmerCascadeFilters() {
+    var branchEl = document.getElementById("farmerBranchFilter");
+    var routeEl = document.getElementById("farmerRouteFilter");
+    var pointEl = document.getElementById("farmerPointFilter");
+    if (!routeEl || !pointEl) return;
+    var routes = readJson("farmer-filter-routes-data");
+    var points = readJson("farmer-filter-points-data");
+
+    function appendOption(selectEl, value, label) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      selectEl.appendChild(opt);
+    }
+
+    function refillRoutes() {
+      var branchId = branchEl ? String(branchEl.value || "all") : "all";
+      routeEl.innerHTML = "";
+      appendOption(routeEl, "all", "All routes");
+      routes.forEach(function (route) {
+        if (branchId === "all" || String(route.branch_id) === branchId) {
+          appendOption(routeEl, String(route.id), route.label);
+        }
+      });
+    }
+
+    function refillPoints() {
+      var branchId = branchEl ? String(branchEl.value || "all") : "all";
+      var routeId = String(routeEl.value || "all");
+      pointEl.innerHTML = "";
+      appendOption(pointEl, "all", "All points");
+      points.forEach(function (point) {
+        var branchOk = branchId === "all" || String(point.branch_id) === branchId;
+        var routeOk = routeId === "all" || String(point.route_id) === routeId;
+        if (branchOk && routeOk) {
+          appendOption(pointEl, String(point.id), point.label);
+        }
+      });
+    }
+
+    refillRoutes();
+    refillPoints();
+    if (branchEl) {
+      branchEl.addEventListener("change", function () {
+        refillRoutes();
+        routeEl.value = "all";
+        refillPoints();
+        pointEl.value = "all";
+        routeEl.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+    routeEl.addEventListener("change", function () {
+      refillPoints();
+      pointEl.value = "all";
+      pointEl.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  function initFarmerAccountPopovers(root) {
+    if (!window.bootstrap || !bootstrap.Popover) return;
+    (root || document).querySelectorAll(".farmer-account-popover").forEach(function (trigger) {
+      if (trigger.dataset.popoverReady === "1") return;
+      var template = trigger.nextElementSibling;
+      if (!template || template.tagName !== "TEMPLATE") return;
+      new bootstrap.Popover(trigger, {
+        html: true,
+        sanitize: false,
+        title: "Farmer account summary",
+        content: template.innerHTML,
+        trigger: "hover focus",
+        placement: "left",
+        container: "body",
+        customClass: "payment-sheet-paid-popover-pop",
+      });
+      trigger.dataset.popoverReady = "1";
+    });
+  }
+
+  function initFarmerViewModal() {
+    var modalEl = document.getElementById("farmerViewModal");
+    if (!modalEl || typeof bootstrap === "undefined") return;
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    var subtitleEl = document.getElementById("farmerViewSubtitle");
+    var fields = {
+      account: document.getElementById("farmerViewAccount"),
+      route: document.getElementById("farmerViewRoute"),
+      branch: document.getElementById("farmerViewBranch"),
+      point: document.getElementById("farmerViewPoint"),
+      nic: document.getElementById("farmerViewNic"),
+      whatsapp: document.getElementById("farmerViewWhatsapp"),
+    };
+
+    document.addEventListener("click", function (e) {
+      var trigger = e.target.closest(".js-farmer-view");
+      if (!trigger) return;
+      e.preventDefault();
+      if (subtitleEl) subtitleEl.textContent = trigger.getAttribute("data-farmer-name") || "";
+      if (fields.account) fields.account.textContent = trigger.getAttribute("data-farmer-account") || "—";
+      if (fields.route) fields.route.textContent = trigger.getAttribute("data-farmer-route") || "—";
+      if (fields.branch) fields.branch.textContent = trigger.getAttribute("data-farmer-branch") || "—";
+      if (fields.point) fields.point.textContent = trigger.getAttribute("data-farmer-point") || "—";
+      if (fields.nic) fields.nic.textContent = trigger.getAttribute("data-farmer-nic") || "—";
+      if (fields.whatsapp) fields.whatsapp.textContent = trigger.getAttribute("data-farmer-whatsapp") || "—";
+      modal.show();
+    });
+  }
+
+  function bootFarmerListUi() {
+    initFarmerCascadeFilters();
+    initFarmerAccountPopovers(document.querySelector(".farmer-list-card"));
+    initFarmerViewModal();
+    var tableEl = document.querySelector(".farmer-table");
+    if (tableEl && window.jQuery && $.fn.dataTable) {
+      $(tableEl).on("draw.dt", function () {
+        initFarmerAccountPopovers(document.querySelector(".farmer-list-card"));
+      });
+    }
+    document.querySelectorAll(".js-farmer-show-inactive-30").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var chip = document.querySelector('#farmerDtFilters [data-smart-filter="inactive-30"]');
+        if (chip) chip.click();
+        var alertEl = document.getElementById("farmerInactiveAlert");
+        if (alertEl) alertEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
+    document.querySelectorAll(".js-farmer-stat-filter").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var filter = btn.getAttribute("data-smart-filter");
+        if (!filter) return;
+        var chip = document.querySelector('#farmerDtFilters [data-smart-filter="' + filter + '"]');
+        if (chip) {
+          chip.click();
+          return;
+        }
+        if (filter === "inactive-30") {
+          var warnChip = document.querySelector('#farmerDtFilters [data-smart-filter="inactive-30"]');
+          if (warnChip) warnChip.click();
+        }
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootFarmerListUi);
+  } else {
+    bootFarmerListUi();
+  }
+})();
+</script>
+{% if perms.masters.bulk_update_farmerrate %}
+<script>
+(function () {
+  var saveUrl = "{% url 'farmer-bulk-rate-cell-save' %}";
+  var csrfToken = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "{{ csrf_token }}";
+  var inFlight = Object.create(null);
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getEditors() {
+    return Array.prototype.slice.call(document.querySelectorAll(".farmer-rate-inline"));
+  }
+
+  function closeEditor(wrap, restore) {
+    if (!wrap) return;
+    var input = wrap.querySelector(".js-farmer-rate-input");
+    if (restore && input) {
+      var original = wrap.getAttribute("data-rate") || "";
+      input.value = original === "0" || original === "0.00" ? "" : original;
+    }
+    wrap.classList.remove("is-editing", "is-error");
+  }
+
+  function openEditor(wrap) {
+    getEditors().forEach(function (other) {
+      if (other !== wrap) closeEditor(other, true);
+    });
+    wrap.classList.add("is-editing");
+    wrap.classList.remove("is-error", "is-saved");
+    var input = wrap.querySelector(".js-farmer-rate-input");
+    if (input) {
+      input.focus();
+      if (typeof input.select === "function") input.select();
+    }
+  }
+
+  function setLabel(wrap, rateDisplay, hasRate) {
+    var label = wrap.querySelector(".js-farmer-rate-label");
+    var btn = wrap.querySelector(".farmer-rate-display");
+    if (!label) return;
+    if (hasRate) {
+      label.textContent = rateDisplay;
+      if (btn) btn.classList.remove("is-empty");
+    } else {
+      label.textContent = "Set rate";
+      if (btn) btn.classList.add("is-empty");
+    }
+  }
+
+  function nextEditor(wrap) {
+    var editors = getEditors().filter(function (el) {
+      return el.offsetParent !== null;
+    });
+    var idx = editors.indexOf(wrap);
+    if (idx < 0) return null;
+    return editors[idx + 1] || null;
+  }
+
+  function saveEditor(wrap, options) {
+    options = options || {};
+    var farmerId = wrap.getAttribute("data-farmer-id");
+    if (!farmerId || inFlight[farmerId]) return Promise.resolve();
+    var input = wrap.querySelector(".js-farmer-rate-input");
+    if (!input) return Promise.resolve();
+
+    var rate = String(input.value || "").replace(/,/g, "").trim();
+    var applyRatePaid = wrap.getAttribute("data-apply-rate-paid") || "yes";
+    var originalRate = wrap.getAttribute("data-rate") || "0";
+    if (!rate) {
+      closeEditor(wrap, true);
+      return Promise.resolve();
+    }
+    if (rate === originalRate) {
+      closeEditor(wrap, false);
+      if (options.moveNext) {
+        var nxtSame = nextEditor(wrap);
+        if (nxtSame) openEditor(nxtSame);
+      }
+      return Promise.resolve();
+    }
+
+    inFlight[farmerId] = true;
+    wrap.classList.add("is-saving");
+    wrap.classList.remove("is-error");
+    var body = new FormData();
+    body.append("farmer_id", farmerId);
+    body.append("rate", rate);
+    body.append("apply_rate_paid", applyRatePaid);
+    body.append("csrfmiddlewaretoken", csrfToken);
+
+    return fetch(saveUrl, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return { ok: r.ok, data: d };
+        });
+      })
+      .then(function (res) {
+        wrap.classList.remove("is-saving");
+        delete inFlight[farmerId];
+        if (!res.ok || !res.data || !res.data.ok) {
+          wrap.classList.add("is-error");
+          if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Could not save rate",
+              text: (res.data && res.data.error) || "Please try again.",
+              timer: 2200,
+              showConfirmButton: false,
+              toast: true,
+              position: "top-end",
+            });
+          }
+          return;
+        }
+        var data = res.data;
+        wrap.setAttribute("data-rate", data.rate);
+        if (data.apply_rate_paid) {
+          wrap.setAttribute("data-apply-rate-paid", data.apply_rate_paid);
+        }
+        input.value = data.rate;
+        setLabel(wrap, data.rate_display || formatMoney(data.rate), parseFloat(data.rate) > 0);
+        var cell = wrap.closest("td");
+        if (cell) cell.setAttribute("data-order", data.rate);
+        wrap.classList.remove("is-editing");
+        wrap.classList.add("is-saved");
+        window.setTimeout(function () {
+          wrap.classList.remove("is-saved");
+        }, 900);
+        if (options.moveNext) {
+          var nxt = nextEditor(wrap);
+          if (nxt) openEditor(nxt);
+        }
+      })
+      .catch(function () {
+        wrap.classList.remove("is-saving");
+        delete inFlight[farmerId];
+        wrap.classList.add("is-error");
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var editBtn = ev.target.closest(".js-farmer-rate-edit");
+    if (editBtn) {
+      ev.preventDefault();
+      openEditor(editBtn.closest(".farmer-rate-inline"));
+      return;
+    }
+    var inside = ev.target.closest(".farmer-rate-inline.is-editing");
+    if (!inside) {
+      getEditors().forEach(function (wrap) {
+        if (wrap.classList.contains("is-editing")) saveEditor(wrap);
+      });
+    }
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var wrap = ev.target.closest(".farmer-rate-inline.is-editing");
+    if (!wrap) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor(wrap, { moveNext: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor(wrap, true);
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

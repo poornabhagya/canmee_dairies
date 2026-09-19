@@ -1,0 +1,35 @@
+<tr class="payment-sheet-total-row{% if route_total %} payment-sheet-route-total-row{% endif %}">
+  <td class="payment-sheet-select-col"></td>
+  <th class="sticky-col-farmer">{{ label|default:"Total" }}</th>
+  <td class="sticky-col-rate money-col">—</td>
+  {% if totals.mixed_units %}
+  {% for d in date_cols %}
+  <td class="day-col">—</td>
+  {% endfor %}
+  <td class="money-col">—</td>
+  {% else %}
+  {% for v in totals.day_vals %}
+  <td class="day-col">{{ v|money }}</td>
+  {% endfor %}
+  <td class="money-col">{{ totals.total_quantity|money }}</td>
+  {% endif %}
+  <td class="money-col">{{ totals.gross_amount|money }}</td>
+  {% if can_view_payment_settlement %}
+  <td class="money-col payment-sheet-print-settlement-col">{{ totals.advance_amount|money }}</td>
+  <td class="money-col payment-sheet-print-settlement-col">{{ totals.goods_deduction|money }}</td>
+  <td class="money-col loan-deduct-cell payment-sheet-print-settlement-col">{{ totals.loan_deduction|money }}</td>
+  <td class="money-col previous-outstanding-cell payment-sheet-print-settlement-col{% if totals.previous_outstanding_amount > 0 %} is-open{% endif %}">{{ totals.previous_outstanding_amount|money }}</td>
+  <td class="money-col payment-correction-cell payment-sheet-print-settlement-col{% if totals.payment_correction_amount < 0 %} is-negative{% endif %}">{{ totals.payment_correction_amount|money }}</td>
+  <td class="money-col payment-sheet-print-settlement-col">{{ totals.collector_fee_amount|money }}</td>
+  {% if sheet_totals.show_additional_column %}
+  <td class="money-col payment-sheet-print-settlement-col">{{ totals.additional_amount|money }}</td>
+  {% endif %}
+  <td class="money-col net-amount-cell payment-sheet-print-settlement-col">{{ totals.net_amount|money }}</td>
+  {% include "reports/_collection_point_payment_paid_cell.html" with amount=totals.paid_amount cash=totals.cash_paid advance=totals.paid_advance goods=totals.paid_goods loan=totals.paid_loan outstanding=totals.paid_outstanding %}
+  <td class="money-col payment-sheet-print-settlement-col">{{ totals.balance_amount|money }}</td>
+  {% if can_record_point_payment %}
+  <td class="payment-sheet-method-col"></td>
+  {% endif %}
+  {% endif %}
+  <td class="payment-sheet-actions-col"></td>
+</tr>

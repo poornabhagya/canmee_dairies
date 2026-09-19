@@ -1,0 +1,92 @@
+{% load static cp_loan_extras %}
+<div class="cp-loan-print-sheet" aria-hidden="true">
+  <header class="cp-loan-bank-doc">
+    <div class="cp-loan-bank-doc__brand">
+      <img src="{% static 'img/logo.png' %}" alt="" class="cp-loan-bank-doc__logo" width="48" height="48">
+      <div>
+        <div class="cp-loan-bank-doc__company">CANMEE DAIRIES (PVT) LTD</div>
+        <div class="cp-loan-bank-doc__line">Phone: 071 543 5019</div>
+      </div>
+      <div class="cp-loan-bank-doc__issued">
+        <span>Generated</span>
+        <strong>{% now "d M Y, H:i" %}</strong>
+      </div>
+    </div>
+    <div class="cp-loan-bank-doc__titleblock">
+      <h1 class="cp-loan-bank-doc__title js-print-doc-name">Collection point loan register</h1>
+      <p class="cp-loan-bank-doc__subtitle">
+        {{ selected_status_label|default:"All" }}
+        · {{ loan_totals.count }} loan{{ loan_totals.count|pluralize }}
+        {% if selected_branch_names %} · {{ selected_branch_names|join:" · " }}{% endif %}
+      </p>
+    </div>
+    <table class="cp-loan-print-table cp-loan-print-table--totals">
+      <thead>
+        <tr>
+          <th>Loans</th>
+          <th>Loan amount</th>
+          <th>Paid total</th>
+          <th>Outstanding balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ loan_totals.count }}</td>
+          <td>{{ loan_totals.loan_amount|money }}</td>
+          <td>{{ loan_totals.paid|money }}</td>
+          <td>{{ loan_totals.balance|money }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </header>
+
+  <section class="cp-loan-print-sheet__section">
+    <h2 class="cp-loan-print-sheet__heading">Loans</h2>
+    {% if object_list %}
+    <table class="cp-loan-print-table">
+      <thead>
+        <tr>
+          <th>Loan</th>
+          <th>Branch</th>
+          <th>Collection point</th>
+          <th class="is-num">Amount</th>
+          <th class="is-num">Paid</th>
+          <th class="is-num">Balance</th>
+          <th>Status</th>
+          <th class="is-num">Inst.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in object_list %}
+        <tr>
+          <td>#{{ loan.pk }}</td>
+          <td>{{ loan.branch.name }}</td>
+          <td>{{ loan.collection_point.number }} — {{ loan.collection_point.name }}</td>
+          <td class="is-num">{{ loan.loan_amount|money }}</td>
+          <td class="is-num">{{ loan.paid_total|money }}</td>
+          <td class="is-num">{{ loan.balance_total|money }}</td>
+          <td>{% if loan.status == "approved" and loan.balance_total <= 0 %}Settled{% else %}{{ loan.get_status_display }}{% endif %}</td>
+          <td class="is-num">{{ loan.installment_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3">Totals ({{ loan_totals.count }})</th>
+          <th class="is-num">{{ loan_totals.loan_amount|money }}</th>
+          <th class="is-num">{{ loan_totals.paid|money }}</th>
+          <th class="is-num">{{ loan_totals.balance|money }}</th>
+          <th colspan="2"></th>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="cp-loan-print-sheet__empty">No loans in this filter.</p>
+    {% endif %}
+  </section>
+
+  <footer class="cp-loan-bank-doc__footer">
+    <span>This is a computer-generated register and does not require a signature.</span>
+    <span>Canmee Dairies (Pvt) Ltd · Confidential</span>
+  </footer>
+</div>

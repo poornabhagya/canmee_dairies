@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block title %}Employee details · Canmee Dairies{% endblock %}
+{% block page_heading %}Employee{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+<style>
+  .employee-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    max-width: 100%;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    margin-bottom: 1rem;
+  }
+  .employee-section-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.65rem;
+  }
+  .employee-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .employee-detail-grid > * { min-width: 0; }
+  .employee-pane {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    background: #fff;
+    height: 100%;
+  }
+  .employee-pane--wide {
+    grid-column: 1 / -1;
+  }
+  .employee-kv {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 38%) 1fr;
+    gap: 0.35rem 0.85rem;
+    margin: 0;
+  }
+  .employee-kv > div {
+    display: contents;
+  }
+  .employee-kv dt {
+    margin: 0;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .employee-kv dd {
+    margin: 0;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 0.9rem;
+    word-break: break-word;
+  }
+  .employee-kv > div:last-child dt,
+  .employee-kv > div:last-child dd {
+    border-bottom: 0;
+  }
+  .employee-status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .employee-status-pill--active {
+    background: rgba(5, 150, 105, 0.12);
+    color: #047857;
+  }
+  .employee-status-pill--inactive,
+  .employee-status-pill--resigned {
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+  }
+  .employee-status-pill--terminated {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+  }
+  .employee-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .employee-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: #334155;
+  }
+  .employee-link {
+    color: #047857;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .employee-link:hover { color: #059669; text-decoration: underline; }
+  .employee-notes {
+    white-space: pre-wrap;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.5;
+  }
+  .doc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+  .doc-card {
+    border: 1px solid #e9edf5;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .doc-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  }
+  .doc-preview {
+    height: 110px;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .doc-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .doc-icon { font-size: 2.6rem; line-height: 1; }
+  .doc-icon-pdf { color: #dc3545; }
+  .doc-icon-excel { color: #198754; }
+  .doc-icon-default { color: #64748b; }
+  .doc-meta { padding: 0.6rem 0.7rem; }
+  .doc-name {
+    display: block;
+    color: #334155;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .doc-type { color: #64748b; font-size: 0.82rem; }
+  .doc-date { color: #94a3b8; font-size: 0.8rem; margin-top: 0.12rem; }
+  @media (max-width: 991.98px) {
+    .employee-detail-grid { grid-template-columns: 1fr; }
+    .employee-pane--wide { grid-column: auto; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ employee.get_full_name|default:employee.first_name }}</h1>
+    <p class="page-subtitle">
+      {% if employee.employee_number %}{{ employee.employee_number }}{% else %}Employee number not assigned{% endif %}
+      {% if employee.department %} · {{ employee.department }}{% endif %}
+      {% if employee.job_title %} · {{ employee.job_title }}{% endif %}
+    </p>
+  </div>
+  <div class="page-actions d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{% url 'hrm:employee_list' %}">Back</a>
+    {% if perms.hrm.change_employee and employee.status != 'resigned' %}
+    <a class="btn btn-outline-warning" href="{% url 'hrm:employee_resign' employee.pk %}"><i class="bi bi-box-arrow-right me-1"></i>Record resignation</a>
+    {% endif %}
+    {% if perms.hrm.change_employee and employee.status != 'terminated' %}
+    <a class="btn btn-outline-danger" href="{% url 'hrm:employee_terminate' employee.pk %}"><i class="bi bi-person-x me-1"></i>Record termination</a>
+    {% endif %}
+    {% if perms.hrm.change_employee %}
+    <a class="btn btn-primary" href="{% url 'hrm:employee_edit' employee.pk %}">Edit</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="smart-stat-grid">
+  <div class="smart-stat-card">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Status</span>
+      <span class="smart-stat-card__value">{{ employee.get_status_display }}</span>
+    </span>
+  </div>
+  <div class="smart-stat-card">
+    <span class="smart-stat-card__icon smart-stat-card__icon--sky"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Department</span>
+      <span class="smart-stat-card__value">{% if employee.department %}{{ employee.department.name }}{% else %}—{% endif %}</span>
+    </span>
+  </div>
+  <div class="smart-stat-card">
+    <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-credit-card-2-front" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">NIC</span>
+      <span class="smart-stat-card__value">{{ employee.nic|default:"—" }}</span>
+    </span>
+  </div>
+  <div class="smart-stat-card">
+    <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-building" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Branches</span>
+      <span class="smart-stat-card__value">{{ employee_branches|length }}</span>
+    </span>
+  </div>
+  <div class="smart-stat-card">
+    <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-person-check" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">User account</span>
+      <span class="smart-stat-card__value">{% if employee.user_account %}{{ employee.user_account.username|capfirst }}{% else %}—{% endif %}</span>
+    </span>
+  </div>
+  <div class="smart-stat-card">
+    <span class="smart-stat-card__icon smart-stat-card__icon--orange"><i class="bi bi-folder2-open" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Documents</span>
+      <span class="smart-stat-card__value">{{ employee.documents.all|length }}</span>
+    </span>
+  </div>
+</div>
+
+<div class="card employee-detail-card">
+  <div class="card-body">
+    <div class="employee-detail-grid">
+      <section class="employee-pane">
+        <div class="employee-section-title">Identity</div>
+        <dl class="employee-kv">
+          <div><dt>Employee number</dt><dd>{{ employee.employee_number|default:"—" }}</dd></div>
+          <div><dt>Common name</dt><dd>{{ employee.common_name|default:"—" }}</dd></div>
+          <div><dt>Full name</dt><dd>{{ employee.get_full_name|default:"—" }}</dd></div>
+          <div><dt>Initial</dt><dd>{{ employee.initial|default:"—" }}</dd></div>
+          <div><dt>NIC</dt><dd>{{ employee.nic|default:"—" }}</dd></div>
+          <div><dt>Date of birth</dt><dd>{{ employee.date_of_birth|date:"Y-m-d"|default:"—" }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="employee-pane">
+        <div class="employee-section-title">Contact</div>
+        <dl class="employee-kv">
+          <div>
+            <dt>Email</dt>
+            <dd>
+              {% if employee.email %}
+              <a class="employee-link" href="mailto:{{ employee.email }}">{{ employee.email }}</a>
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>Mobile</dt>
+            <dd>
+              {% if employee.phone %}
+              <a class="employee-link" href="tel:{{ employee.phone }}">{{ employee.phone }}</a>
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>WhatsApp</dt>
+            <dd>
+              {% if employee.whatsapp %}
+              <a class="employee-link" href="https://wa.me/{{ employee.whatsapp|cut:'+'|cut:' '|cut:'-' }}" target="_blank" rel="noopener">{{ employee.whatsapp }}</a>
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="employee-pane">
+        <div class="employee-section-title">Employment</div>
+        <dl class="employee-kv">
+          <div><dt>Job title</dt><dd>{{ employee.job_title|default:"—" }}</dd></div>
+          <div><dt>Department</dt><dd>{% if employee.department %}{{ employee.department.name }}{% else %}—{% endif %}</dd></div>
+          <div>
+            <dt>Branches</dt>
+            <dd>
+              {% if employee_branches %}
+              <div class="employee-chip-list">
+                {% for b in employee_branches %}
+                <span class="employee-chip">{{ b.name }}</span>
+                {% endfor %}
+              </div>
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+          <div><dt>Hire date</dt><dd>{{ employee.hire_date|date:"Y-m-d"|default:"—" }}</dd></div>
+          <div>
+            <dt>Status</dt>
+            <dd><span class="employee-status-pill employee-status-pill--{{ employee.status }}">{{ employee.get_status_display }}</span></dd>
+          </div>
+          <div>
+            <dt>Attendance login</dt>
+            <dd>
+              {% if employee.nic %}
+                {% if employee.attendance_password_set %}Password set{% else %}Pending first login{% endif %}
+              {% else %}
+                NIC not set
+              {% endif %}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="employee-pane">
+        <div class="employee-section-title">User account</div>
+        <dl class="employee-kv">
+          {% if employee.user_account %}
+          <div><dt>Username</dt><dd>{{ employee.user_account.username }}</dd></div>
+          <div><dt>Account email</dt><dd>{{ employee.user_account.email|default:"—" }}</dd></div>
+          <div>
+            <dt>Account status</dt>
+            <dd>
+              {% if employee.user_account.is_active %}
+              <span class="employee-status-pill employee-status-pill--active">Active</span>
+              {% else %}
+              <span class="employee-status-pill employee-status-pill--inactive">Inactive</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>Staff / superuser</dt>
+            <dd>
+              {% if employee.user_account.is_superuser %}Superuser
+              {% elif employee.user_account.is_staff %}Staff
+              {% else %}Standard{% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>Roles</dt>
+            <dd>
+              {% with groups=employee.user_account.groups.all %}
+              {% if groups %}
+              <div class="employee-chip-list">
+                {% for g in groups %}
+                <span class="employee-chip">{{ g.name }}</span>
+                {% endfor %}
+              </div>
+              {% else %}—{% endif %}
+              {% endwith %}
+            </dd>
+          </div>
+          <div><dt>Last login</dt><dd>{{ employee.user_account.last_login|date:"Y-m-d H:i"|default:"—" }}</dd></div>
+          {% else %}
+          <div><dt>Linked account</dt><dd>No user account linked</dd></div>
+          {% endif %}
+        </dl>
+      </section>
+
+      {% if employee.status == 'resigned' or employee.resignation_date or employee.resignation_reason %}
+      <section class="employee-pane">
+        <div class="employee-section-title">Resignation</div>
+        <dl class="employee-kv">
+          <div><dt>Resignation date</dt><dd>{{ employee.resignation_date|date:"Y-m-d"|default:"—" }}</dd></div>
+          <div><dt>Reason</dt><dd>{{ employee.resignation_reason|default:"—" }}</dd></div>
+          <div><dt>Notes</dt><dd class="employee-notes">{{ employee.resignation_notes|default:"—" }}</dd></div>
+          <div><dt>Recorded by</dt><dd>{% if employee.resigned_by %}{{ employee.resigned_by.get_username|capfirst }}{% else %}—{% endif %}</dd></div>
+        </dl>
+      </section>
+      {% endif %}
+
+      {% if employee.status == 'terminated' or employee.termination_date or employee.termination_reason %}
+      <section class="employee-pane">
+        <div class="employee-section-title">Termination</div>
+        <dl class="employee-kv">
+          <div><dt>Termination date</dt><dd>{{ employee.termination_date|date:"Y-m-d"|default:"—" }}</dd></div>
+          <div><dt>Reason</dt><dd>{{ employee.termination_reason|default:"—" }}</dd></div>
+          <div><dt>Notes</dt><dd class="employee-notes">{{ employee.termination_notes|default:"—" }}</dd></div>
+          <div><dt>Recorded by</dt><dd>{% if employee.terminated_by %}{{ employee.terminated_by.get_username|capfirst }}{% else %}—{% endif %}</dd></div>
+        </dl>
+      </section>
+      {% endif %}
+
+      <section class="employee-pane">
+        <div class="employee-section-title">Notes</div>
+        <div class="employee-notes">{% if employee.notes %}{{ employee.notes }}{% else %}<span class="text-muted">No notes.</span>{% endif %}</div>
+      </section>
+
+      <section class="employee-pane">
+        <div class="employee-section-title">Record info</div>
+        <dl class="employee-kv">
+          <div><dt>Created</dt><dd>{{ employee.date_created|date:"Y-m-d H:i"|default:"—" }}</dd></div>
+          <div><dt>Last updated</dt><dd>{{ employee.last_updated|date:"Y-m-d H:i"|default:"—" }}</dd></div>
+          {% if employee.document_type or employee.document_file %}
+          <div><dt>Legacy document type</dt><dd>{{ employee.get_document_type_display|default:"—" }}</dd></div>
+          <div>
+            <dt>Legacy document</dt>
+            <dd>
+              {% if employee.document_file %}
+              <a class="employee-link" href="{{ employee.document_file.url }}" target="_blank" rel="noopener">View file</a>
+              {% else %}—{% endif %}
+            </dd>
+          </div>
+          {% endif %}
+        </dl>
+      </section>
+
+      <section class="employee-pane employee-pane--wide" id="employee-documents">
+        <div class="employee-section-title">Documents</div>
+        {% if employee.documents.all %}
+        <div class="doc-grid">
+          {% for doc in employee.documents.all %}
+          <a href="{{ doc.document_file.url }}" target="_blank" rel="noopener" class="text-decoration-none doc-card" data-doc-card data-doc-url="{{ doc.document_file.url }}" data-doc-name="{{ doc.document_file.name|cut:'hrm/employee_documents/' }}">
+            <div class="doc-preview" data-doc-preview>
+              <img src="{{ doc.document_file.url }}" alt="{{ doc.get_document_type_display }}" data-doc-image>
+            </div>
+            <div class="doc-meta">
+              <span class="doc-name">{{ doc.document_file.name|cut:"hrm/employee_documents/" }}</span>
+              <div class="doc-date">{{ doc.date_created|date:"M d, Y" }}</div>
+              <div class="doc-type">{{ doc.get_document_type_display }}</div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">No documents uploaded.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  function buildIconClass(url, name) {
+    const val = (url || "").toLowerCase();
+    const fileName = (name || "").toLowerCase();
+    const target = fileName || val;
+    if (target.endsWith(".pdf")) return "bi-file-earmark-pdf doc-icon-pdf";
+    if (target.endsWith(".xls") || target.endsWith(".xlsx") || target.endsWith(".csv")) return "bi-file-earmark-excel doc-icon-excel";
+    return "bi-file-earmark doc-icon-default";
+  }
+  function isImageFile(url, name) {
+    const val = (url || "").toLowerCase();
+    const fileName = (name || "").toLowerCase();
+    const target = fileName || val;
+    return (
+      target.endsWith(".jpg") ||
+      target.endsWith(".jpeg") ||
+      target.endsWith(".png") ||
+      target.endsWith(".gif") ||
+      target.endsWith(".webp") ||
+      target.endsWith(".bmp") ||
+      target.endsWith(".svg")
+    );
+  }
+  function renderIcon(preview, url, name) {
+    if (!preview) return;
+    const icon = document.createElement("i");
+    icon.className = "bi doc-icon " + buildIconClass(url, name);
+    preview.appendChild(icon);
+  }
+  document.querySelectorAll("[data-doc-card]").forEach(function (card) {
+    const img = card.querySelector("[data-doc-image]");
+    const preview = card.querySelector("[data-doc-preview]");
+    const url = card.getAttribute("data-doc-url") || "";
+    const name = card.getAttribute("data-doc-name") || "";
+    if (!img || !preview) return;
+    if (!isImageFile(url, name)) {
+      img.remove();
+      renderIcon(preview, url, name);
+      return;
+    }
+    img.addEventListener("error", function () {
+      img.remove();
+      renderIcon(preview, url, name);
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Inventory Usage{% endblock %}
+{% block page_heading %}Inventory Usage{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Inventory Usage</h1>
+      <p class="page-subtitle">Track internal consumption and deduct corporate main stock.</p>
+    </div>
+  </div>
+  <div class="module-card form-shell">
+    <div class="module-card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Record Usage</button>
+        <a href="{% url 'grn-list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

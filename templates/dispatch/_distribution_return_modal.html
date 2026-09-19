@@ -1,0 +1,168 @@
+<style>
+  .dispatch-return-modal .qty-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  .dispatch-return-modal .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+  }
+  .dispatch-return-modal .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+</style>
+<div class="modal fade dispatch-return-modal" id="dispatchReturnModal" tabindex="-1" aria-labelledby="dispatchReturnModalLabel" aria-hidden="true" data-kg-to-liters="{{ MILK_LITER_FACTOR_JS }}">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="dispatchReturnForm" action="">
+        {% csrf_token %}
+        <input type="hidden" name="next" id="dispatchReturnNext" value="{{ request.get_full_path }}">
+        <input type="hidden" name="status" id="dispatchReturnStatus" value="completed">
+        <input type="hidden" name="delivered_qty_unit" id="dispatchReturnDeliveredUnit" value="liters">
+        <input type="hidden" name="return_qty_unit" id="dispatchReturnQtyUnit" value="liters">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dispatchReturnModalLabel">Buyer result</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="dispatchReturnSubtitle"></p>
+          <div id="dispatchReturnFormErrors" class="alert alert-danger d-none" role="alert"></div>
+          <p class="small text-muted mb-3" id="dispatchReturnDispatchedHint"></p>
+          <input type="hidden" name="result_kind" id="dispatchReturnKind" value="delivered">
+          <div class="mb-3">
+            <div class="qty-segment" role="group" aria-label="Result type">
+              <button type="button" class="qty-segment__btn is-active" data-result-kind="delivered" aria-pressed="true">Delivered</button>
+              <button type="button" class="qty-segment__btn" data-result-kind="returned" aria-pressed="false">Returned</button>
+            </div>
+          </div>
+          <div id="dispatchReturnDeliveredPanel">
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                <label class="form-label mb-0" for="dispatchReturnDeliveredQty">Delivered quantity</label>
+                <div class="qty-segment" role="group" aria-label="Delivered quantity unit">
+                  <button type="button" class="qty-segment__btn" data-delivered-qty-unit="kg" aria-pressed="false">Kg</button>
+                  <button type="button" class="qty-segment__btn is-active" data-delivered-qty-unit="liters" aria-pressed="true">Liters</button>
+                </div>
+              </div>
+              <input type="number" class="form-control" name="delivered_qty" id="dispatchReturnDeliveredQty" step="0.01" min="0">
+            </div>
+            <div class="mb-0" id="dispatchReturnDeliveredTsWrap">
+              <label class="form-label mb-0" for="dispatchReturnDeliveredTs">TS (buyer)</label>
+              <input type="number" class="form-control" name="delivered_ts" id="dispatchReturnDeliveredTs" step="0.01" min="0">
+              <p class="form-text text-muted small mb-0">Total solids as measured at the buyer.</p>
+            </div>
+          </div>
+          <div id="dispatchReturnReturnedPanel" class="d-none">
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                <label class="form-label mb-0" for="dispatchReturnQty" id="dispatchReturnQtyLabel">Returned quantity</label>
+                <div class="qty-segment" role="group" aria-label="Returned quantity unit">
+                  <button type="button" class="qty-segment__btn" data-return-qty-unit="kg" aria-pressed="false">Kg</button>
+                  <button type="button" class="qty-segment__btn is-active" data-return-qty-unit="liters" aria-pressed="true">Liters</button>
+                </div>
+              </div>
+              <input type="number" class="form-control" name="buyer_result_liters" id="dispatchReturnQty" step="0.01" min="0">
+              <p class="form-text text-muted small mb-0" id="dispatchReturnAvailableQty"></p>
+              <p class="form-text text-muted small mb-0">Returned milk is converted to kg and added to the selected branch stock.</p>
+            </div>
+            <div class="mb-0" id="dispatchReturnBranchWrap">
+              <label class="form-label" for="dispatchReturnBranch">Returned branch</label>
+              <select class="form-select" name="returned_branch" id="dispatchReturnBranch">
+                <option value="">Select branch</option>
+                {% for b in return_branches %}
+                <option value="{{ b.id }}">{{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save result</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<style>
+  .dispatch-delivered-popover {
+    position: fixed;
+    z-index: 1080;
+    width: 280px;
+    padding: 0.85rem 0.9rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+  }
+  .dispatch-delivered-popover__title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.55rem;
+  }
+  .dispatch-delivered-popover .qty-segment {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  .dispatch-delivered-popover .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 6px;
+    color: #64748b;
+    cursor: pointer;
+  }
+  .dispatch-delivered-popover .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .dispatch-delivered-hint {
+    text-decoration: none;
+    border: 0;
+    background: transparent;
+    font-size: 0.75rem;
+  }
+</style>
+<div id="dispatchDeliveredPopover" class="dispatch-delivered-popover d-none" role="dialog" aria-label="Delivered quantity">
+  <form id="dispatchDeliveredForm">
+    <div class="dispatch-delivered-popover__title">Delivered quantity</div>
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+      <label class="form-label small mb-0" for="dispatchDeliveredQty" id="dispatchDeliveredQtyLabel">Liters</label>
+      <div class="qty-segment" role="group" aria-label="Quantity unit">
+        <button type="button" class="qty-segment__btn" data-delivered-unit="kg" aria-pressed="false">Kg</button>
+        <button type="button" class="qty-segment__btn is-active" data-delivered-unit="liters" aria-pressed="true">Liters</button>
+      </div>
+    </div>
+    <input type="number" class="form-control form-control-sm mb-1" id="dispatchDeliveredQty" step="0.01" min="0.01" required>
+    <p class="form-text text-muted small mb-2" id="dispatchDeliveredAvailableQty"></p>
+    <p class="form-text text-warning small mb-2 d-none" id="dispatchDeliveredQtyLocked">Quantity is locked after a payment. Buyer TS can still be updated.</p>
+    <label class="form-label small mb-1" for="dispatchDeliveredTs">TS (buyer)</label>
+    <input type="number" class="form-control form-control-sm mb-1" id="dispatchDeliveredTs" step="0.01" min="0">
+    <p class="form-text text-muted small mb-2">Total solids as measured at the buyer.</p>
+    <div id="dispatchDeliveredFormErrors" class="alert alert-danger py-1 px-2 small d-none mb-2" role="alert"></div>
+    <div class="d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="dispatchDeliveredCancel">Cancel</button>
+      <button type="submit" class="btn btn-sm btn-primary">Save</button>
+    </div>
+  </form>
+</div>

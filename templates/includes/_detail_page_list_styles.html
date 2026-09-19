@@ -1,0 +1,929 @@
+﻿{# Shared milk-list / period / actions-bar / financial-split styles used by Farmer and Collection point detail pages. #}
+<style>
+  .farmer-collection-card {
+    margin-top: 1.25rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+    overflow: visible;
+  }
+  .card.farmer-collection-card,
+  .card.farmer-advance-aside-card,
+  .card.point-financial-card {
+    overflow: visible;
+  }
+  .farmer-collection-card .card-body {
+    padding: 1rem;
+    overflow: visible;
+  }
+  .farmer-row-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  .farmer-milk-list-card {
+    margin-top: 0;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .farmer-milk-list-card .card-body.table-wrap {
+    padding: 0.85rem;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .farmer-milk-list-card .table-wrap,
+  .farmer-milk-list-card .dataTables_wrapper,
+  .farmer-milk-list-card div.dt-container,
+  .farmer-milk-list-card div.dt-scroll,
+  .farmer-milk-list-card div.dt-scroll-head,
+  .farmer-milk-list-card div.dt-scroll-body,
+  .farmer-milk-list-card div.dt-scroll-foot,
+  .farmer-milk-list-card .dt-layout-table,
+  .farmer-milk-list-card .dt-layout-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table,
+  .farmer-milk-list-card table.dataTable.farmer-milk-collections-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th,
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td,
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th {
+    width: 1%;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow: visible;
+    text-overflow: clip;
+    padding: 0.45rem 0.55rem;
+    vertical-align: middle;
+    box-sizing: border-box;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.farmer-milk-route-col,
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td.farmer-milk-route-col,
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th.farmer-milk-route-col {
+    width: auto;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.milk-collection-actions-cell,
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td.milk-collection-actions-cell,
+  .farmer-milk-list-card .farmer-milk-collections-table thead th:last-child,
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td:last-child,
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th:last-child {
+    width: 2.75rem !important;
+    max-width: 2.75rem !important;
+    overflow: visible;
+    text-overflow: clip;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th {
+    font-size: 0.7rem;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+    vertical-align: bottom;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.dt-orderable-asc,
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.dt-orderable-desc,
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.dt-ordering-asc,
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.dt-ordering-desc {
+    padding-right: 1.35rem;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td {
+    font-size: 0.8125rem;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .farmer-milk-list-card .dt-bottom-row,
+  .farmer-milk-list-card div.dt-container .dt-layout-row {
+    max-width: 100%;
+  }
+  .farmer-milk-list-card .dt-bottom-row {
+    flex-wrap: wrap;
+  }
+  .farmer-milk-list-card .smart-dt-name-text {
+    display: inline-block;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    vertical-align: bottom;
+  }
+  /*
+    DataTables writes <col style="width:â€¦"> that beats cell CSS.
+    Pin the select column on both cells and the first colgroup col.
+  */
+  .farmer-milk-list-card .farmer-milk-collections-table colgroup col.farmer-milk-select-col {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table th.farmer-milk-select-col,
+  .farmer-milk-list-card .farmer-milk-collections-table td.farmer-milk-select-col {
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    padding: 0.5rem 0.35rem !important;
+    text-align: center;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table th.farmer-milk-select-col.dt-orderable-none,
+  .farmer-milk-list-card .farmer-milk-collections-table th.farmer-milk-select-col.dt-ordering-none {
+    background-image: none !important;
+    padding-right: 0.35rem !important;
+    cursor: default;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table th.farmer-milk-select-col:before,
+  .farmer-milk-list-card .farmer-milk-collections-table td.farmer-milk-select-col:before,
+  .farmer-milk-list-card .farmer-milk-collections-table th.farmer-milk-select-col:after,
+  .farmer-milk-list-card .farmer-milk-collections-table td.farmer-milk-select-col:after {
+    display: none !important;
+    content: none !important;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .farmer-milk-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .farmer-milk-list-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap !important;
+    gap: 0.45rem !important;
+    align-items: center !important;
+  }
+  .farmer-milk-list-card .dt-smart-filters-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .farmer-milk-list-card .dt-smart-filters-wrap .smart-dt-filters {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  .farmer-milk-list-card .dt-smart-actions {
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    margin-left: auto;
+  }
+  .farmer-milk-list-card div.dt-container .dt-search input {
+    min-width: 7.25rem;
+    width: 8.25rem;
+    max-width: 9rem;
+  }
+  .farmer-milk-period-filter {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .farmer-milk-period-filter .flatpickr-range-wrap {
+    flex-wrap: nowrap;
+    width: auto;
+  }
+  .farmer-milk-period-filter .flatpickr-range-wrap .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    padding: 0.28rem 0.45rem;
+    font-size: 0.76rem;
+    background: #fff;
+  }
+  .farmer-milk-period-filter .flatpickr-range-wrap .form-control,
+  .farmer-milk-period-filter .flatpickr-range-wrap .fp-range-alt-input,
+  .farmer-milk-period-filter .flatpickr-range-wrap input.js-datepicker-range-iso {
+    width: 9.25rem;
+    max-width: 9.25rem;
+    border-radius: 0 999px 999px 0;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.55rem;
+  }
+  .farmer-milk-period-filter .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.55rem;
+    border-radius: 999px;
+    line-height: 1.2;
+  }
+  .farmer-milk-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem 0.85rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .farmer-milk-actions-bar__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 0;
+  }
+  .farmer-milk-actions-bar__groups {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .farmer-milk-actions-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .farmer-milk-actions-group + .farmer-milk-actions-group {
+    padding-left: 0.65rem;
+    border-left: 1px solid #e2e8f0;
+  }
+  .farmer-milk-actions-group .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .farmer-detail-split-row {
+    --bs-gutter-x: 0.75rem;
+    --bs-gutter-y: 0.75rem;
+    margin-top: 1.25rem;
+  }
+  .farmer-detail-split-row .farmer-collection-card {
+    margin-top: 0;
+  }
+  .farmer-detail-split-row > [class*="col-"] {
+    display: flex;
+  }
+  .farmer-detail-split-row > [class*="col-"] > .card {
+    width: 100%;
+  }
+  .farmer-advance-aside-card {
+    overflow: visible;
+  }
+  .farmer-advance-aside-card .card-body {
+    padding: 0.85rem 0.9rem 1rem;
+    overflow: visible;
+  }
+  .farmer-advance-aside-card .farmer-financial-block--aside {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .farmer-advance-aside-card .farmer-financial-table {
+    font-size: 0.84rem;
+  }
+  .farmer-advance-aside-card .farmer-financial-table thead th {
+    font-size: 0.66rem;
+  }
+  .point-advance-stack {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .point-advance-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 0.75rem 0.8rem;
+  }
+  .point-advance-card.is-settled {
+    background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+    border-color: #bbf7d0;
+  }
+  .point-advance-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.7rem;
+  }
+  .point-advance-card__date {
+    font-weight: 700;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+  .point-advance-card__paid-on {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.1rem;
+  }
+  .point-advance-card__paid-on-btn {
+    display: inline-block;
+    margin-top: 0.1rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: 0.75rem;
+    color: #0369a1;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .point-advance-card__paid-on-btn:hover,
+  .point-advance-card__paid-on-btn:focus {
+    color: #0c4a6e;
+    outline: none;
+  }
+  .point-advance-card__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+  .point-advance-card__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .point-advance-card__label {
+    display: block;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 0.15rem;
+  }
+  .point-advance-card__value {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .point-advance-card__value.is-open {
+    color: #b45309;
+  }
+  .farmer-financial-block + .farmer-financial-block {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e2e8f0;
+  }
+  .point-financial-card {
+    overflow: visible;
+  }
+  .point-finance-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.85rem 1.25rem;
+    margin-bottom: 0.85rem;
+  }
+  .point-finance-head__title {
+    margin: 0 0 0.22rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    text-transform: none;
+  }
+  .point-finance-head__lede {
+    margin: 0;
+    max-width: 42rem;
+    font-size: 0.82rem;
+    color: #64748b;
+    line-height: 1.45;
+  }
+  .point-finance-kpis {
+    margin-bottom: 1rem;
+  }
+  .point-finance-stack {
+    display: grid;
+    gap: 0.85rem;
+  }
+  .point-finance-split {
+    display: grid;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+  @media (min-width: 992px) {
+    .point-finance-split--two {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+  .point-loan-id {
+    display: block;
+    font-weight: 700;
+  }
+  .point-loan-id-meta {
+    display: block;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    line-height: 1.3;
+    margin-top: 0.1rem;
+  }
+  .point-finance-split--two .point-finance-pane .farmer-financial-table thead th,
+  .point-finance-split--two .point-finance-pane .farmer-financial-table tbody td {
+    font-size: 0.75rem;
+    padding: 0.42rem 0.35rem;
+  }
+  .point-finance-split--two .point-finance-pane__tools .dt-search input,
+  .point-finance-split--two .point-finance-pane .dt-search input {
+    min-width: 5.5rem;
+    width: 5.5rem;
+    max-width: 6.25rem;
+  }
+  .point-finance-split--two table.point-loan-table,
+  .point-finance-split--two table.dataTable.point-loan-table {
+    table-layout: fixed !important;
+  }
+  .point-finance-split--two .point-loan-table th:nth-child(2),
+  .point-finance-split--two .point-loan-table td:nth-child(2) {
+    width: 6.25rem;
+  }
+  .point-finance-split--two .point-finance-actions-col,
+  .point-finance-split--two .point-loan-table thead th.point-finance-actions-col,
+  .point-finance-split--two .point-loan-table tbody td.point-finance-actions-col {
+    width: 2.6rem !important;
+    min-width: 2.6rem;
+    max-width: 2.6rem;
+    white-space: nowrap;
+    position: sticky;
+    right: 0;
+    background: #fff;
+    box-shadow: -8px 0 8px -8px rgba(15, 23, 42, 0.18);
+    z-index: 2;
+  }
+  .point-finance-split--two .point-finance-pane__table {
+    overflow-x: auto;
+  }
+  .point-finance-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.85rem 0.9rem 0.95rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow: visible;
+  }
+  .point-finance-pane .farmer-financial-block__title,
+  .point-finance-pane .farmer-financial-block__subtitle {
+    margin-bottom: 0.15rem;
+  }
+  .point-finance-pane__title {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.45rem 0.75rem;
+    margin-bottom: 0.55rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid #e7edf5;
+    min-width: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #475569;
+  }
+  .point-finance-pane__title .text-muted {
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 600;
+  }
+  .point-finance-pane__tools {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    margin-left: auto;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .point-finance-pane__tools .dt-search,
+  .point-finance-pane__tools .dt-buttons,
+  .point-finance-pane__tools .dt-buttons .dt-button {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    float: none !important;
+  }
+  .point-finance-pane__tools .dt-search label {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    gap: 0;
+  }
+  .point-finance-pane__title .dt-search input,
+  .point-finance-pane__tools .dt-search input,
+  .point-finance-pane .dt-search input {
+    min-width: 8.25rem;
+    width: 8.25rem;
+    max-width: 9rem;
+    height: 2rem;
+    margin: 0 !important;
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.2rem 0.85rem 0.2rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    box-shadow: none;
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+  .point-finance-pane__tools .dt-export-trigger {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 2rem;
+    line-height: 1;
+  }
+  .point-finance-pane .point-finance-pane__title div.dt-smart-toolbar {
+    display: none !important;
+  }
+  .point-finance-pane .dt-smart-toolbar.row,
+  .point-finance-pane .dt-bottom-row.row {
+    --bs-gutter-x: 0;
+    --bs-gutter-y: 0;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100%;
+  }
+  .point-finance-pane .dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.45rem 0.75rem !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .point-finance-pane .point-finance-pane__title div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    width: auto;
+    margin-left: auto;
+    gap: 0.45rem !important;
+  }
+  .point-finance-pane .point-finance-pane__title .dt-smart-actions {
+    flex-wrap: nowrap !important;
+  }
+  .point-finance-pane .point-finance-pane__title .dt-search input {
+    min-width: 7.25rem;
+    width: 8.25rem;
+    max-width: 9rem;
+  }
+  .point-finance-pane .dt-smart-filters-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .point-finance-pane .dt-smart-actions {
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    margin-left: auto;
+  }
+  .smart-list-card .point-finance-pane div.dt-container .dt-search input {
+    min-width: 7.25rem;
+    width: 8.25rem;
+    max-width: 9rem;
+  }
+  .point-finance-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem 0.7rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .point-finance-heading__title {
+    flex: 0 0 auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #475569;
+    white-space: nowrap;
+  }
+  .point-finance-heading__amount {
+    flex: 0 0 auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #0f172a;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .point-finance-heading__note {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .point-finance-pane div.dt-container,
+  .point-finance-pane .dt-layout-table,
+  .point-finance-pane .dt-layout-full {
+    min-width: 0;
+    max-width: 100%;
+    width: 100% !important;
+  }
+  .point-finance-pane .dt-smart-toolbar {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .point-finance-pane div.dt-container .dt-layout-row {
+    max-width: 100%;
+  }
+  .point-finance-pane__table {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .point-finance-pane:has(.point-goods-issues-table) .point-finance-pane__table,
+  .point-finance-pane:has(.point-goods-summary-table) .point-finance-pane__table,
+  .point-finance-pane:has(.point-finance-fit-table) .point-finance-pane__table {
+    overflow-x: hidden;
+  }
+  .point-finance-pane .farmer-financial-table,
+  .point-finance-pane table.dataTable.farmer-financial-table {
+    width: 100% !important;
+    max-width: 100%;
+    table-layout: auto;
+    margin: 0 !important;
+  }
+  .point-finance-pane table.point-goods-issues-table,
+  .point-finance-pane table.dataTable.point-goods-issues-table,
+  .point-finance-pane table.point-goods-summary-table,
+  .point-finance-pane table.dataTable.point-goods-summary-table,
+  .point-finance-pane table.point-finance-fit-table,
+  .point-finance-pane table.dataTable.point-finance-fit-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+  }
+  .point-goods-issues-table colgroup col,
+  .point-goods-summary-table colgroup col,
+  .point-finance-fit-table colgroup col {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+  .point-goods-issues-table thead th:not(.point-finance-actions-col),
+  .point-goods-issues-table tbody td:not(.point-finance-actions-col),
+  .point-goods-summary-table thead th:not(.point-finance-actions-col),
+  .point-goods-summary-table tbody td:not(.point-finance-actions-col) {
+    width: 1%;
+  }
+  .point-goods-issues-table thead th:nth-child(2),
+  .point-goods-issues-table tbody td:nth-child(2),
+  .point-goods-summary-table thead th:nth-child(2),
+  .point-goods-summary-table tbody td:nth-child(2) {
+    width: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .point-goods-summary-table tfoot th {
+    white-space: normal;
+  }
+  .point-goods-issues-table thead th.point-finance-actions-col,
+  .point-goods-issues-table tbody td.point-finance-actions-col,
+  .point-goods-summary-table thead th.point-finance-actions-col,
+  .point-goods-summary-table tbody td.point-finance-actions-col {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .point-goods-issues-table .farmer-row-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .point-finance-pane .farmer-financial-table thead th,
+  .point-finance-pane .farmer-financial-table tbody td.text-end,
+  .point-finance-pane .farmer-financial-table tfoot th {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .point-finance-pane .farmer-financial-table tbody td {
+    vertical-align: middle;
+  }
+  .point-finance-fit-table tbody td.all:not(.text-end) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .point-finance-pane .farmer-issued-products-table tbody td:nth-child(2) {
+    white-space: normal;
+    min-width: 8rem;
+  }
+  .point-finance-pane .farmer-row-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+  .point-finance-pane .farmer-row-actions .btn,
+  .point-finance-pane td.text-end > .btn,
+  .point-finance-pane td.text-end > a.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem;
+    height: 1.9rem;
+    padding: 0 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+  .point-finance-pane .farmer-row-actions .btn i,
+  .point-finance-pane td.text-end > .btn i,
+  .point-finance-pane td.text-end > a.btn i {
+    font-size: 0.86rem;
+    margin: 0 !important;
+  }
+  .point-finance-pane .finance-btn--icon,
+  .point-finance-pane td.text-end > .finance-btn--icon,
+  .point-finance-pane td.text-end > a.finance-btn--icon {
+    width: 1.9rem;
+    padding: 0;
+    font-size: 0;
+  }
+  .point-finance-pane .finance-btn--icon i {
+    font-size: 0.88rem;
+  }
+  .point-finance-pane .finance-btn--icon .finance-btn-count {
+    display: none;
+  }
+  .point-finance-pane .finance-btn--icon.dropdown-toggle::after {
+    display: none;
+  }
+  .point-finance-pane .farmer-row-actions .dropdown {
+    display: inline-flex;
+  }
+  .farmer-goods-split-block {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .farmer-issued-products-table .btn-link {
+    font-size: inherit;
+    text-decoration: none;
+  }
+  .farmer-issued-products-table .btn-link:hover {
+    text-decoration: underline;
+  }
+  .farmer-financial-block__title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    margin-bottom: 0.5rem;
+  }
+  .farmer-financial-block__subtitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .farmer-financial-table thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .farmer-financial-table .money-col,
+  .farmer-financial-table td.text-end {
+    font-variant-numeric: tabular-nums;
+  }
+  /* DataTables auto-types dates/numbers and right-aligns them; keep first data column left. */
+  .farmer-detail-card table.datatable > thead > tr > th:first-child,
+  .farmer-detail-card table.datatable > tbody > tr > td:first-child,
+  .farmer-collection-card table.datatable > thead > tr > th:first-child,
+  .farmer-collection-card table.datatable > tbody > tr > td:first-child,
+  .farmer-advance-aside-card table.datatable > thead > tr > th:first-child,
+  .farmer-advance-aside-card table.datatable > tbody > tr > td:first-child,
+  .farmer-milk-list-card table.datatable > thead > tr > th:first-child,
+  .farmer-milk-list-card table.datatable > tbody > tr > td:first-child,
+  .farmer-milk-list-card table.datatable > tfoot > tr > th:first-child {
+    text-align: left !important;
+  }
+  .farmer-milk-list-card table.datatable th.farmer-milk-select-col,
+  .farmer-milk-list-card table.datatable td.farmer-milk-select-col {
+    text-align: center !important;
+  }
+  .farmer-milk-list-card table.datatable th.farmer-milk-select-col + th,
+  .farmer-milk-list-card table.datatable td.farmer-milk-select-col + td,
+  .farmer-milk-list-card table.datatable tfoot th.farmer-milk-select-col + th {
+    text-align: left !important;
+  }
+  .farmer-financial-row--settled td {
+    background: #f0fdf4;
+  }
+  .farmer-financial-block--outstanding-open {
+    padding: 0.85rem 0.9rem 0.95rem;
+    border: 1px solid #f59e0b;
+    border-radius: 12px;
+    background: #fffbeb;
+  }
+  .farmer-financial-block + .farmer-financial-block--outstanding-open {
+    border-top: 1px solid #f59e0b;
+    padding-top: 0.85rem;
+  }
+  .farmer-financial-block--outstanding-open .farmer-financial-block__title {
+    color: #b45309;
+  }
+  .farmer-outstanding-open-amount {
+    font-weight: 800;
+    color: #b91c1c;
+    font-variant-numeric: tabular-nums;
+  }
+  .farmer-financial-row--outstanding td {
+    background: #ffedd5 !important;
+    color: #9a3412;
+  }
+  .farmer-financial-row--outstanding td.text-end {
+    font-weight: 800;
+    color: #b91c1c;
+  }
+  .point-meta-row--outstanding th,
+  .point-meta-row--outstanding td {
+    background: #fffbeb !important;
+    color: #9a3412;
+  }
+  .point-meta-row--outstanding .point-outstanding-amount {
+    font-weight: 800;
+    color: #b91c1c;
+    font-variant-numeric: tabular-nums;
+  }
+  .smart-row--paid td,
+  .milk-collection-row--paid td {
+    background: #f0fdf4;
+  }
+  .smart-row--unpaid td,
+  .milk-collection-row--unpaid td {
+    background: #fffbeb;
+  }
+  .farmer-milk-collections-table .milk-collection-actions-trigger::after {
+    display: none;
+  }
+  .smart-dt-chip--warn.is-active {
+    border-color: rgba(217, 119, 6, 0.45);
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+  }
+  .smart-dt-chip--warn.is-active .smart-dt-chip-count {
+    background: rgba(217, 119, 6, 0.18);
+    color: #b45309;
+  }
+  @media (max-width: 767.98px) {
+    .farmer-milk-list-card .card-body.table-wrap {
+      padding: 0.75rem;
+    }
+    .farmer-milk-list-card div.dt-smart-toolbar > [class*="col-"] {
+      flex-wrap: wrap !important;
+    }
+    .farmer-milk-list-card div.dt-container .dt-search input {
+      min-width: 8rem;
+      width: 100%;
+      max-width: none;
+    }
+  }
+</style>

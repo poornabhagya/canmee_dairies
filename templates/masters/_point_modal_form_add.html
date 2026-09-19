@@ -1,0 +1,42 @@
+<div class="smart-form-sections">
+  <section class="smart-form-section">
+    <h6 class="smart-form-section-title"><i class="bi bi-geo-alt" aria-hidden="true"></i>Route &amp; identity</h6>
+    <div class="smart-form-grid">
+      <div class="smart-field span-2">
+        <label class="form-label" for="{{ form.route.id_for_label }}">Route</label>
+        {{ form.route }}
+        <div class="invalid-feedback" data-modal-error-for="route"></div>
+      </div>
+      <div class="smart-field">
+        <label class="form-label" for="{{ form.number.id_for_label }}">Point no</label>
+        {{ form.number }}
+        <div class="invalid-feedback" data-modal-error-for="number"></div>
+      </div>
+      <div class="smart-field">
+        <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+        {{ form.name }}
+        <div class="invalid-feedback" data-modal-error-for="name"></div>
+      </div>
+    </div>
+  </section>
+  <section class="smart-form-section mb-0">
+    <h6 class="smart-form-section-title"><i class="bi bi-pin-map" aria-hidden="true"></i>Location &amp; fee</h6>
+    <div class="smart-form-grid">
+      <div class="smart-field span-2">
+        <label class="form-label" for="{{ form.location.id_for_label }}">Location</label>
+        {{ form.location }}
+        <div class="invalid-feedback" data-modal-error-for="location"></div>
+      </div>
+      <div class="smart-field">
+        <label class="form-label" for="{{ form.collector_fee.id_for_label }}">Collector fee</label>
+        {{ form.collector_fee }}
+        <div class="invalid-feedback" data-modal-error-for="collector_fee"></div>
+      </div>
+      <div class="smart-field">
+        <label class="form-label" for="{{ form.additional.id_for_label }}">Additional</label>
+        {{ form.additional }}
+        <div class="invalid-feedback" data-modal-error-for="additional"></div>
+      </div>
+    </div>
+  </section>
+</div>

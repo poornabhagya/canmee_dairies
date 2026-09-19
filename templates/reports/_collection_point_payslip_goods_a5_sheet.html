@@ -1,0 +1,42 @@
+{% load loan_extras static %}
+{# Continues on the same page as the payment sheet when content fits. #}
+<div class="payslip-a5-sheet payslip-a5-point-sheet payslip-a5-sheet--attachment{% if pl.lang == 'si' %} payslip-a5-sheet--si{% endif %}">
+  <p class="payslip-a5-attachment-title">{{ pl.attachment }} — {{ pl.goods_deduction_attachment }}</p>
+
+  <table class="payslip-a5-table payslip-a5-goods-summary">
+    <thead>
+      <tr>
+        <th>{{ pl.product }}</th>
+        <th>{{ pl.qty }}</th>
+        <th>{{ pl.rate }}</th>
+        <th>{{ pl.amount }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in ps.goods_by_product %}
+      <tr>
+        <td class="product-col">{{ row.product_name }}</td>
+        <td class="num">{{ row.quantity|money }}</td>
+        <td class="num">{{ row.unit_price|money }}</td>
+        <td class="num">{{ row.amount|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="shaded bold">
+        <td colspan="3">{{ pl.total }}</td>
+        <td class="num">{{ ps.goods_by_product_total|money }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="payslip-a5-sheet__closing">
+    <div class="payslip-a5-signature">
+      <div class="payslip-a5-signature__space" aria-hidden="true"></div>
+      <p class="payslip-a5-signature__label">{{ pl.authorized_by }}</p>
+    </div>
+    {% if pl.footer %}
+    <p class="payslip-a5-footer">{{ pl.footer }}</p>
+    {% endif %}
+  </div>
+</div>

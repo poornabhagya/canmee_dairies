@@ -1,0 +1,14 @@
+{# Expects `asset` or `status` + `label`. #}
+<span class="asset-status-badge">
+  {% if asset.status == "active" %}
+  <span class="smart-badge smart-badge--success">{{ asset.get_status_display }}</span>
+  {% elif asset.status == "in_storage" %}
+  <span class="smart-badge smart-badge--secondary">{{ asset.get_status_display }}</span>
+  {% elif asset.status == "under_maintenance" %}
+  <span class="smart-badge smart-badge--primary">{{ asset.get_status_display }}</span>
+  {% elif asset.status == "lost" or asset.status == "disposed" %}
+  <span class="smart-badge smart-badge--dark">{{ asset.get_status_display }}</span>
+  {% else %}
+  <span class="smart-badge smart-badge--secondary">{{ asset.get_status_display }}</span>
+  {% endif %}
+</span>

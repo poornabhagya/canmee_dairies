@@ -1,0 +1,137 @@
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-geo-alt"></i> Trip</div>
+      <div class="dispatch-modal-row-3">
+        <div>
+          {{ form.date.errors }}
+          <label class="form-label" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+          {{ form.date }}
+        </div>
+        <div>
+          <label class="form-label">Branch</label>
+          {{ form.branch.as_hidden }}
+          <div class="form-control dispatch-modal-static">{{ object.branch.name|default:"—" }}</div>
+        </div>
+        <div>
+          <label class="form-label" id="dispatch-destination-label" for="{{ form.buyer.id_for_label }}">Destination</label>
+          {{ form.dispatch_to.errors }}
+          <div class="dispatch-modal-combo" id="dispatch-to-wrap">
+            <div class="dispatch-segment dispatch-to-segment" role="group" aria-label="Dispatch to">
+              {% for radio in form.dispatch_to %}
+              <label class="dispatch-segment__option">
+                {{ radio.tag }}
+                <span>{{ radio.choice_label }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            <div id="buyer-field-wrap" class="dispatch-modal-combo__grow">
+              {{ form.buyer.errors }}
+              {{ form.buyer }}
+            </div>
+            <div id="destination-branch-wrap" class="dispatch-modal-combo__grow d-none">
+              {{ form.destination_branch.errors }}
+              {{ form.destination_branch }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-truck"></i> Dispatch details</div>
+      <div class="dispatch-modal-row-3">
+        <div id="dispatch-qty-wrap">
+          {{ form.kg.errors }}
+          <label class="form-label" for="{{ form.kg.id_for_label }}" id="dispatch-qty-label">Quantity (liters)</label>
+          <div class="dispatch-modal-combo">
+            <div class="qty-segment" role="group" aria-label="Quantity unit">
+              <button type="button" class="qty-segment__btn" data-qty-unit="kg" aria-pressed="false"{% if view_only %} disabled{% endif %}>Kg</button>
+              <button type="button" class="qty-segment__btn is-active" data-qty-unit="liters" aria-pressed="true"{% if view_only %} disabled{% endif %}>Liters</button>
+            </div>
+            {{ form.kg }}
+            <input type="hidden" name="quantity_unit" id="id_quantity_unit" value="{% if request.POST.quantity_unit %}{{ request.POST.quantity_unit }}{% else %}liters{% endif %}">
+          </div>
+        </div>
+        <div>
+          {{ form.dispatch_no.errors }}
+          <label class="form-label" for="{{ form.dispatch_no.id_for_label }}">{{ form.dispatch_no.label }}</label>
+          {{ form.dispatch_no }}
+        </div>
+        <div>
+          {{ form.browser_number.errors }}
+          <label class="form-label" for="{{ form.browser_number.id_for_label }}">{{ form.browser_number.label }}</label>
+          {{ form.browser_number }}
+        </div>
+      </div>
+      <div class="dispatch-modal-row-3 mt-2">
+        <div>
+          {{ form.driver.errors }}
+          <label class="form-label" for="{{ form.driver.id_for_label }}">{{ form.driver.label }}</label>
+          {{ form.driver }}
+        </div>
+        <div>
+          {{ form.in_time.errors }}
+          <label class="form-label" for="{{ form.in_time.id_for_label }}">{{ form.in_time.label }}</label>
+          {{ form.in_time }}
+        </div>
+        <div>
+          {{ form.out_time.errors }}
+          <label class="form-label" for="{{ form.out_time.id_for_label }}">{{ form.out_time.label }}</label>
+          {{ form.out_time }}
+        </div>
+      </div>
+      <div class="dispatch-modal-row-3 mt-2">
+        <div>
+          {{ form.sealing_numbers.errors }}
+          <label class="form-label" for="{{ form.sealing_numbers.id_for_label }}">{{ form.sealing_numbers.label }}</label>
+          {{ form.sealing_numbers }}
+        </div>
+        <div>
+          {{ form.temperature.errors }}
+          <label class="form-label" for="{{ form.temperature.id_for_label }}">{{ form.temperature.label }}</label>
+          {{ form.temperature }}
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-clipboard2-pulse"></i> Quality readings</div>
+      <div class="dispatch-modal-row-quality">
+        <div>
+          {{ form.fat.errors }}
+          <label class="form-label" for="{{ form.fat.id_for_label }}">{{ form.fat.label }}</label>
+          {{ form.fat }}
+        </div>
+        <div>
+          {{ form.lr.errors }}
+          <label class="form-label" for="{{ form.lr.id_for_label }}">{{ form.lr.label }}</label>
+          {{ form.lr }}
+        </div>
+        <div>
+          {{ form.snf.errors }}
+          <label class="form-label" for="{{ form.snf.id_for_label }}">{{ form.snf.label }}</label>
+          {{ form.snf }}
+        </div>
+        <div>
+          <label class="form-label" for="id_ts">TS</label>
+          <input type="text" class="form-control" id="id_ts" readonly value="" inputmode="decimal" tabindex="-1">
+        </div>
+        <div>
+          {{ form.alcohol_result.errors }}
+          <label class="form-label" for="{{ form.alcohol_result.id_for_label }}">{{ form.alcohol_result.label }}</label>
+          {{ form.alcohol_result }}
+          {{ form.alcohol }}
+        </div>
+        <div>
+          {{ form.kq.errors }}
+          <label class="form-label" for="{{ form.kq.id_for_label }}">{{ form.kq.label }}</label>
+          {{ form.kq }}
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-chat-left-text"></i> Notes</div>
+      {{ form.remarks.errors }}
+      <label class="form-label" for="{{ form.remarks.id_for_label }}">{{ form.remarks.label }}</label>
+      {{ form.remarks }}
+    </section>

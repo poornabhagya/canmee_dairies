@@ -1,0 +1,51 @@
+<div class="modal fade" id="rawMilkPaymentModal" tabindex="-1" aria-labelledby="rawMilkPaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="rawMilkPaymentForm" action="">
+        {% csrf_token %}
+        <input type="hidden" name="next" id="rawMilkPaymentNext" value="{{ request.get_full_path }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="rawMilkPaymentModalLabel">Make payment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="rawMilkPaymentSubtitle"></p>
+          <div id="rawMilkPaymentFormErrors" class="alert alert-danger d-none" role="alert"></div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <div class="small text-muted">Total billed</div>
+              <div class="fw-semibold" id="rawMilkPaymentTotal">—</div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted">Outstanding</div>
+              <div class="fw-semibold" id="rawMilkPaymentOutstanding">—</div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="rawMilkPaymentDate">Date</label>
+            <input type="text" class="form-control js-datepicker js-focus-next" name="date" id="rawMilkPaymentDate" placeholder="Payment date" autocomplete="off" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="rawMilkPaymentAmount">Amount</label>
+            <input type="text" class="form-control js-money-input js-focus-next" name="amount" id="rawMilkPaymentAmount" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="rawMilkPaymentReference">Reference</label>
+            <input type="text" class="form-control js-focus-next" name="reference" id="rawMilkPaymentReference" maxlength="80" placeholder="Receipt / ref (optional)" autocomplete="off">
+          </div>
+          <div class="mb-0">
+            <label class="form-label" for="rawMilkPaymentNote">Note</label>
+            <input type="text" class="form-control js-focus-next" name="note" id="rawMilkPaymentNote" maxlength="255" placeholder="Note (optional)" autocomplete="off">
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <a href="#" class="btn btn-link px-0" id="rawMilkPaymentAccountLink" target="_blank" rel="noopener">Open supplier account</a>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary js-focus-next"><i class="bi bi-cash-coin me-1"></i>Make payment</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

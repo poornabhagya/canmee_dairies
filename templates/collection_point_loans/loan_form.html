@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Edit Loan{% else %}Create Loan{% endif %} · Canmee Dairies{% endblock %}
+{% block page_heading %}{% if object %}Edit Loan{% else %}Create Loan{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+  .loan-installment-mode {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .loan-installment-mode label {
+    margin: 0;
+    cursor: pointer;
+  }
+  .loan-installment-mode input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loan-installment-mode span {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    background: #fff;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .loan-installment-mode input:checked + span {
+    background: rgba(5, 150, 105, 0.1);
+    border-color: #059669;
+    color: #047857;
+  }
+  .loan-installment-panel[hidden] {
+    display: none !important;
+  }
+  .loan-installment-preview {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.8125rem;
+    color: #334155;
+  }
+</style>
+{% endblock %}
+{% block content %}
+{{ loan_point_rows|json_script:"loan-point-rows-data" }}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if object %}Edit Loan{% else %}Create New Loan{% endif %}</h1>
+    <p class="page-subtitle">Select collection point details and loan details. Draft loans can be edited/deleted until submission.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" id="cp-loan-form" style="max-width: 50rem;">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <h6 class="mb-3">Collection point details</h6>
+      <div class="row g-3">
+        <div class="col-md-6">{{ form.branch.label_tag }} {{ form.branch }} {{ form.branch.errors }}</div>
+        <div class="col-md-6">{{ form.collection_point.label_tag }} {{ form.collection_point }} {{ form.collection_point.errors }}</div>
+        <div class="col-md-6">{{ form.point_reference.label_tag }} {{ form.point_reference }} {{ form.point_reference.errors }}</div>
+        <div class="col-md-6">{{ form.average_monthly_milk_production.label_tag }} {{ form.average_monthly_milk_production }} {{ form.average_monthly_milk_production.errors }}</div>
+        <div class="col-md-6">{{ form.average_monthly_milk_income.label_tag }} {{ form.average_monthly_milk_income }} {{ form.average_monthly_milk_income.errors }}</div>
+      </div>
+      <hr class="my-4">
+      <h6 class="mb-3">Loan Details</h6>
+      <div class="row g-3">
+        <div class="col-md-6">{{ form.loan_amount.label_tag }} {{ form.loan_amount }} {{ form.loan_amount.errors }}</div>
+        <div class="col-md-6">{{ form.loan_date.label_tag }} {{ form.loan_date }} {{ form.loan_date.errors }}</div>
+        <div class="col-md-6">{{ form.first_repayment_date.label_tag }} {{ form.first_repayment_date }} {{ form.first_repayment_date.errors }}</div>
+        <div class="col-12">
+          <label class="form-label d-block">{{ form.installment_method.label }}</label>
+          <div class="loan-installment-mode">
+            {% for radio in form.installment_method %}
+            <label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>
+            {% endfor %}
+          </div>
+          {{ form.installment_method.errors }}
+        </div>
+        <div class="col-12">
+          <label class="form-label d-block">{{ form.installment_mode.label }}</label>
+          <div class="loan-installment-mode">
+            {% for radio in form.installment_mode %}
+            <label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>
+            {% endfor %}
+          </div>
+          {{ form.installment_mode.errors }}
+        </div>
+        <div class="col-md-6 loan-installment-panel" id="loan-installment-count-panel">
+          {{ form.installment_count.label_tag }} {{ form.installment_count }} {{ form.installment_count.errors }}
+        </div>
+        <div class="col-md-6 loan-installment-panel" id="loan-installment-request-panel" hidden>
+          {{ form.requested_installment_amount.label_tag }} {{ form.requested_installment_amount }} {{ form.requested_installment_amount.errors }}
+        </div>
+        <div class="col-12">
+          <p class="small text-muted mb-2" id="loan-installment-method-help">Instalments follow the 15th and last day of each month after the first repayment date (about 2 per month).</p>
+          <div class="loan-installment-preview d-none" id="loan-installment-preview"></div>
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            {{ form.is_existing_loan }}
+            <label class="form-check-label" for="{{ form.is_existing_loan.id_for_label }}">Existing loan (already started before system entry)</label>
+          </div>
+          {{ form.is_existing_loan.errors }}
+        </div>
+        <div class="col-md-6 loan-installment-panel" id="loan-prior-paid-panel" hidden>
+          {{ form.prior_paid_amount.label_tag }} {{ form.prior_paid_amount }}
+          <p class="small text-muted mb-0 mt-1">Total already paid on this loan. Applied to instalments when the loan is submitted.</p>
+          {{ form.prior_paid_amount.errors }}
+        </div>
+        <div class="col-12">{{ form.reason.label_tag }} {{ form.reason }} {{ form.reason.errors }}</div>
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save draft</button>
+        <a href="{% url 'cp-loan-list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var branchSel = document.getElementById("id_branch");
+  var pointSel = document.getElementById("id_collection_point");
+  var registrationEl = document.getElementById("id_point_reference");
+  var productionEl = document.getElementById("id_average_monthly_milk_production");
+  var incomeEl = document.getElementById("id_average_monthly_milk_income");
+  var loanAmountEl = document.getElementById("id_loan_amount");
+  var installmentCountEl = document.getElementById("id_installment_count");
+  var requestedInstallmentEl = document.getElementById("id_requested_installment_amount");
+  var installmentPreviewEl = document.getElementById("loan-installment-preview");
+  var loanForm = document.getElementById("cp-loan-form");
+  var pointRows = [];
+  try {
+    var rowsEl = document.getElementById("loan-point-rows-data");
+    pointRows = rowsEl ? JSON.parse(rowsEl.textContent || "[]") : [];
+  } catch (e) {
+    pointRows = [];
+  }
+
+  function parseMoney(value) {
+    var text = String(value || "").replace(/,/g, "").trim();
+    if (!text) return NaN;
+    var n = Number(text);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function formatMoney(value) {
+    var n = parseMoney(value);
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function isMoneyField(el) {
+    return el && el.classList && el.classList.contains("js-money-input");
+  }
+
+  function formatMoneyFields() {
+    [incomeEl, loanAmountEl, requestedInstallmentEl].forEach(function (el) {
+      if (!el || !isMoneyField(el) || document.activeElement === el) return;
+      if (!String(el.value || "").trim()) return;
+      el.value = formatMoney(el.value);
+    });
+  }
+
+  function bindMoneyInputs() {
+    if (!loanForm) return;
+    loanForm.querySelectorAll(".js-money-input").forEach(function (el) {
+      el.setAttribute("type", "text");
+      el.setAttribute("inputmode", "decimal");
+      el.setAttribute("autocomplete", "off");
+    });
+    loanForm.addEventListener("focusin", function (ev) {
+      var t = ev.target;
+      if (!isMoneyField(t)) return;
+      t.value = String(t.value || "").replace(/,/g, "");
+      if (typeof t.select === "function") t.select();
+    });
+    loanForm.addEventListener("focusout", function (ev) {
+      var t = ev.target;
+      if (!isMoneyField(t)) return;
+      if (!String(t.value || "").trim()) return;
+      t.value = formatMoney(t.value);
+    });
+    loanForm.addEventListener("submit", function () {
+      loanForm.querySelectorAll(".js-money-input").forEach(function (el) {
+        el.value = String(el.value || "").replace(/,/g, "");
+      });
+    });
+  }
+
+  function resetMetricFields() {
+    if (registrationEl) {
+      registrationEl.readOnly = false;
+      if (!registrationEl.value) registrationEl.value = "";
+    }
+    if (productionEl) {
+      productionEl.readOnly = false;
+      if (!productionEl.value) productionEl.value = "";
+    }
+    if (incomeEl) {
+      incomeEl.readOnly = false;
+      if (!incomeEl.value) incomeEl.value = "";
+    }
+  }
+
+  function applyMetricState(row) {
+    if (!row) {
+      resetMetricFields();
+      return;
+    }
+    if (registrationEl) {
+      registrationEl.value = row.point_reference || "";
+      registrationEl.readOnly = !!row.point_reference;
+    }
+    if (productionEl) {
+      productionEl.value = row.auto_production || "";
+      productionEl.readOnly = !!row.metrics_locked;
+    }
+    if (incomeEl) {
+      incomeEl.value = row.auto_income ? formatMoney(row.auto_income) : "";
+      incomeEl.readOnly = !!row.metrics_locked;
+    }
+  }
+
+  function refreshPointSelect2() {
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+      var $ = window.jQuery;
+      var $el = $(pointSel);
+      if ($el.hasClass("select2-hidden-accessible")) {
+        $el.select2("destroy");
+      }
+      $el.select2({
+        width: "100%",
+        placeholder: "Select option",
+        allowClear: true,
+      });
+      $el.val(pointSel.value || "").trigger("change");
+    } else if (pointSel) {
+      pointSel.dispatchEvent(new Event("change"));
+    }
+  }
+
+  function getBranchValue() {
+    var domValue = branchSel ? (branchSel.value || "") : "";
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 && branchSel) {
+      var jqValue = window.jQuery(branchSel).val();
+      if (jqValue !== null && jqValue !== undefined && String(jqValue).trim() !== "") {
+        return String(jqValue);
+      }
+    }
+    return String(domValue || "");
+  }
+
+  function loadPointsByBranch(keepPointId) {
+    if (!branchSel || !pointSel) return;
+    var branchId = getBranchValue();
+    pointSel.innerHTML = '<option value="">---------</option>';
+    if (!branchId) {
+      resetMetricFields();
+      refreshPointSelect2();
+      return;
+    }
+    var filtered = pointRows.filter(function (row) {
+      return String(row.branch_id || "") === String(branchId);
+    });
+    filtered.forEach(function (row) {
+      var opt = document.createElement("option");
+      opt.value = row.id;
+      opt.textContent = row.label;
+      opt.dataset.pointReference = row.point_reference || "";
+      opt.dataset.autoProduction = row.auto_production || "";
+      opt.dataset.autoIncome = row.auto_income || "";
+      opt.dataset.metricsLocked = row.metrics_locked ? "1" : "";
+      pointSel.appendChild(opt);
+    });
+    if (keepPointId) pointSel.value = keepPointId;
+    if (keepPointId && pointSel.value !== keepPointId) pointSel.value = "";
+    refreshPointSelect2();
+  }
+
+  if (branchSel) {
+    var onBranchChanged = function () {
+      loadPointsByBranch("");
+    };
+    branchSel.addEventListener("change", onBranchChanged);
+    if (window.jQuery && window.jQuery.fn) {
+      window.jQuery(branchSel).on("change select2:select select2:clear", onBranchChanged);
+    }
+  }
+  if (pointSel) {
+    var onPointChanged = function () {
+      var selected = pointSel.options[pointSel.selectedIndex];
+      if (!selected || !selected.value) {
+        resetMetricFields();
+        return;
+      }
+      applyMetricState({
+        point_reference: selected.dataset.pointReference || "",
+        auto_production: selected.dataset.autoProduction || "",
+        auto_income: selected.dataset.autoIncome || "",
+        metrics_locked: selected.dataset.metricsLocked === "1"
+      });
+    };
+    pointSel.addEventListener("change", onPointChanged);
+    if (window.jQuery && window.jQuery.fn) {
+      window.jQuery(pointSel).on("change select2:select select2:clear", onPointChanged);
+    }
+  }
+  if (branchSel && pointSel) {
+    loadPointsByBranch(pointSel.value);
+  }
+
+  var installmentModeInputs = document.querySelectorAll(".loan-installment-mode-input");
+  var countPanel = document.getElementById("loan-installment-count-panel");
+  var requestPanel = document.getElementById("loan-installment-request-panel");
+  var methodHelpEl = document.getElementById("loan-installment-method-help");
+  var methodInputs = document.querySelectorAll(".loan-installment-method-input");
+
+  function getInstallmentMode() {
+    var selected = document.querySelector(".loan-installment-mode-input:checked");
+    return selected ? selected.value : "count";
+  }
+
+  function getInstallmentMethod() {
+    var selected = document.querySelector(".loan-installment-method-input:checked");
+    return selected ? selected.value : "semi_monthly";
+  }
+
+  function syncInstallmentMethodHelp() {
+    if (!methodHelpEl) return;
+    if (getInstallmentMethod() === "monthly") {
+      methodHelpEl.textContent =
+        "Instalments fall on the same day each month after the first repayment date (or the last day of shorter months).";
+    } else {
+      methodHelpEl.textContent =
+        "Instalments follow the 15th and last day of each month after the first repayment date (about 2 per month).";
+    }
+  }
+
+  function syncInstallmentPanels() {
+    var mode = getInstallmentMode();
+    if (countPanel) countPanel.hidden = mode !== "count";
+    if (requestPanel) requestPanel.hidden = mode !== "request";
+    updateInstallmentPreview();
+  }
+
+  function breakdownFromRequest(loanAmount, requested) {
+    var full = Math.floor(loanAmount / requested);
+    var remainder = Math.round((loanAmount - full * requested) * 100) / 100;
+    if (remainder <= 0) {
+      return { count: Math.max(1, full), regular: requested, last: requested };
+    }
+    return { count: full + 1, regular: requested, last: remainder };
+  }
+
+  function updateInstallmentPreview() {
+    if (!installmentPreviewEl) return;
+    var loanAmount = parseMoney(loanAmountEl && loanAmountEl.value);
+    var mode = getInstallmentMode();
+    if (!isFinite(loanAmount) || loanAmount <= 0) {
+      installmentPreviewEl.textContent = "";
+      installmentPreviewEl.classList.add("d-none");
+      return;
+    }
+    if (mode === "request") {
+      var requested = parseMoney(requestedInstallmentEl && requestedInstallmentEl.value);
+      if (!isFinite(requested) || requested <= 0) {
+        installmentPreviewEl.textContent = "";
+        installmentPreviewEl.classList.add("d-none");
+        return;
+      }
+      var breakdown = breakdownFromRequest(loanAmount, requested);
+      if (breakdown.count === 1 || breakdown.last === breakdown.regular) {
+        installmentPreviewEl.innerHTML =
+          "<strong>" + breakdown.count + "</strong> instalment(s) at <strong>" + formatMoney(breakdown.regular) + "</strong> each.";
+      } else {
+        installmentPreviewEl.innerHTML =
+          "<strong>" + breakdown.count + "</strong> instalments: "
+          + (breakdown.count - 1) + " × <strong>" + formatMoney(breakdown.regular) + "</strong>, "
+          + "last instalment <strong>" + formatMoney(breakdown.last) + "</strong>.";
+      }
+      installmentPreviewEl.classList.remove("d-none");
+      return;
+    }
+    var count = installmentCountEl && String(installmentCountEl.value || "").trim();
+    if (count && Number(count) > 0) {
+      var perInst = loanAmount / Number(count);
+      installmentPreviewEl.innerHTML =
+        "<strong>" + count + "</strong> equal instalments of about <strong>" + formatMoney(perInst) + "</strong> each.";
+      installmentPreviewEl.classList.remove("d-none");
+      return;
+    }
+    installmentPreviewEl.textContent = "";
+    installmentPreviewEl.classList.add("d-none");
+  }
+
+  installmentModeInputs.forEach(function (input) {
+    input.addEventListener("change", syncInstallmentPanels);
+  });
+  methodInputs.forEach(function (input) {
+    input.addEventListener("change", syncInstallmentMethodHelp);
+  });
+  if (installmentCountEl) {
+    installmentCountEl.addEventListener("input", updateInstallmentPreview);
+  }
+  if (requestedInstallmentEl) {
+    requestedInstallmentEl.addEventListener("input", updateInstallmentPreview);
+  }
+  if (loanAmountEl) {
+    loanAmountEl.addEventListener("input", updateInstallmentPreview);
+    loanAmountEl.addEventListener("focusout", updateInstallmentPreview);
+  }
+  syncInstallmentMethodHelp();
+  syncInstallmentPanels();
+
+  var existingLoanEl = document.getElementById("id_is_existing_loan");
+  var priorPaidPanel = document.getElementById("loan-prior-paid-panel");
+  function syncExistingLoanPanel() {
+    if (!priorPaidPanel) return;
+    var show = existingLoanEl && existingLoanEl.checked;
+    priorPaidPanel.hidden = !show;
+  }
+  if (existingLoanEl) {
+    existingLoanEl.addEventListener("change", syncExistingLoanPanel);
+  }
+  syncExistingLoanPanel();
+
+  bindMoneyInputs();
+  formatMoneyFields();
+})();
+</script>
+{% endblock %}

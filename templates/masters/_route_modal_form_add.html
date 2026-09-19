@@ -1,0 +1,56 @@
+<div class="smart-form-sections">
+  <section class="smart-form-section">
+    <h6 class="smart-form-section-title"><i class="bi bi-signpost-split" aria-hidden="true"></i>Route details</h6>
+    <div class="smart-form-grid">
+      <div class="smart-field span-2">
+        <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+        {{ form.name }}
+        <div class="invalid-feedback" data-modal-error-for="name"></div>
+      </div>
+      <div class="smart-field span-2">
+        <label class="form-label" for="{{ form.branch.id_for_label }}">Branch</label>
+        {{ form.branch }}
+        <div class="invalid-feedback" data-modal-error-for="branch"></div>
+      </div>
+    </div>
+  </section>
+  <section class="smart-form-section">
+    <h6 class="smart-form-section-title"><i class="bi bi-truck" aria-hidden="true"></i>Vehicle &amp; driver</h6>
+    <div class="smart-form-grid">
+      <div class="smart-field">
+        <label class="form-label" for="{{ form.vehicle_name.id_for_label }}">Vehicle</label>
+        {{ form.vehicle_name }}
+        <div class="invalid-feedback" data-modal-error-for="vehicle_name"></div>
+      </div>
+      <div class="smart-field">
+        <label class="form-label" for="{{ form.driver_name.id_for_label }}">Driver</label>
+        {{ form.driver_name }}
+        <div class="invalid-feedback" data-modal-error-for="driver_name"></div>
+      </div>
+    </div>
+  </section>
+  <section class="smart-form-section mb-0">
+    <h6 class="smart-form-section-title"><i class="bi bi-shield-lock" aria-hidden="true"></i>Driver portal access</h6>
+    {% load user_tags %}
+    {% if user|is_admin_or_superuser %}
+    <p class="smart-form-section-hint">A unique access code is generated when the route is saved.</p>
+    {% endif %}
+    <div class="smart-permissions-box">
+      <div class="smart-permission-item">
+        <input type="hidden" name="driver_can_view_route_summary" value="0">
+        {{ form.driver_can_view_route_summary }}
+        <label class="form-check-label mb-0" for="{{ form.driver_can_view_route_summary.id_for_label }}">Route milk summary</label>
+      </div>
+      <div class="smart-permission-item">
+        <input type="hidden" name="driver_can_view_point_summary" value="0">
+        {{ form.driver_can_view_point_summary }}
+        <label class="form-check-label mb-0" for="{{ form.driver_can_view_point_summary.id_for_label }}">Point milk collection</label>
+      </div>
+      <div class="smart-permission-item">
+        <input type="hidden" name="driver_can_view_farmer_goods" value="0">
+        {{ form.driver_can_view_farmer_goods }}
+        <label class="form-check-label mb-0" for="{{ form.driver_can_view_farmer_goods.id_for_label }}">Issued farmer goods</label>
+      </div>
+    </div>
+  </section>
+</div>

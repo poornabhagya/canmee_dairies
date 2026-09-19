@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}GRN {{ grn.grn_number }}{% endblock %}
+{% block page_heading %}Print GRN{% endblock %}
+{% block extra_css %}
+<style>
+  @media print {
+    .no-print, .sidebar, .topbar, .sidebar-backdrop { display: none !important; }
+    .app-shell { display: block !important; }
+    .app-main { margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+    .content-wrap { padding: 0 !important; }
+    .grn-print-sheet { box-shadow: none !important; border: none !important; }
+  }
+  .grn-print-sheet {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+  }
+  .grn-print-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    border-bottom: 2px solid var(--color-text);
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .grn-print-logo {
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: var(--color-primary);
+  }
+  .grn-print-meta { font-size: 0.9rem; }
+  .grn-print-meta dt { color: var(--color-text-muted); font-weight: 500; }
+  .grn-print-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
+  .grn-print-table td { font-variant-numeric: tabular-nums; vertical-align: middle; }
+  .grn-print-totals { max-width: 320px; margin-left: auto; margin-top: 1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="module-shell no-print mb-3">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <a href="{% url 'grn-list' %}" class="btn btn-outline-secondary btn-sm">&larr; Back to GRN list</a>
+    <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i> Print
+    </button>
+  </div>
+</div>
+
+<div class="grn-print-sheet">
+  <div class="grn-print-head">
+    <div>
+      <div class="grn-print-logo">Canmee Dairies</div>
+      <div class="text-muted small">Goods Received Note</div>
+    </div>
+    <div class="text-end">
+      <div class="fs-4 fw-bold">{{ grn.grn_number }}</div>
+      <div class="small text-muted">{{ grn.get_status_display }} · {{ grn.date }}</div>
+    </div>
+  </div>
+
+  <dl class="row grn-print-meta mb-4">
+    <dt class="col-sm-3">Supplier</dt>
+    <dd class="col-sm-9">{{ grn.supplier.name }}</dd>
+    {% if grn.branch %}
+    <dt class="col-sm-3">Branch</dt>
+    <dd class="col-sm-9">{{ grn.branch.name }}</dd>
+    {% endif %}
+    <dt class="col-sm-3">GRN type</dt>
+    <dd class="col-sm-9">{{ grn.get_grn_type_display }}</dd>
+    <dt class="col-sm-3">Discount mode</dt>
+    <dd class="col-sm-9">{{ grn.get_discount_scope_display }}</dd>
+  </dl>
+
+  <div class="table-responsive">
+    <table class="table table-bordered grn-print-table mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Product</th>
+          <th class="text-end">Qty</th>
+          <th class="text-end">Free</th>
+          <th class="text-end">Rate</th>
+          <th class="text-end">Issue price</th>
+          <th class="text-end">Line %</th>
+          <th class="text-end">Line amt</th>
+          <th class="text-end">Line total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in grn.items.all %}
+        <tr>
+          <td>{{ item.product.name }}</td>
+          <td class="text-end">{{ item.quantity }}</td>
+          <td class="text-end">{{ item.free_quantity }}</td>
+          <td class="text-end">{{ item.unit_price|money }}</td>
+          <td class="text-end">{{ item.issuing_price|money }}</td>
+          <td class="text-end">{{ item.line_discount_percent }}</td>
+          <td class="text-end">{{ item.line_discount_amount|money }}</td>
+          <td class="text-end fw-semibold">{{ item.total_price|money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grn-print-totals">
+    <table class="table table-sm mb-0">
+      <tbody>
+        <tr>
+          <td class="text-muted">Lines subtotal</td>
+          <td class="text-end">{{ lines_subtotal|money }}</td>
+        </tr>
+        {% if grn.discount_scope == "document" and grn_document_discount_value > 0 %}
+        <tr>
+          <td class="text-muted">
+            {% if grn.document_discount_percent > 0 %}GRN discount ({{ grn.document_discount_percent }}%){% else %}GRN discount (flat){% endif %}
+          </td>
+          <td class="text-end text-danger">−{{ grn_document_discount_value|money }}</td>
+        </tr>
+        {% endif %}
+        <tr class="border-top">
+          <td class="fw-bold">Payable total</td>
+          <td class="text-end fw-bold fs-5">{{ grn.total_amount|money }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

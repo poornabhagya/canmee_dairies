@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Supplier Form{% endblock %}
+{% block page_heading %}Supplier Form{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Supplier Form</h1>
+      <p class="page-subtitle">Create or update supplier profile and status details.</p>
+    </div>
+  </div>
+  <div class="module-card form-shell">
+    <div class="module-card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+          {{ form.name }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.category.id_for_label }}">Category</label>
+          {{ form.category }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.contact_number.id_for_label }}">Contact number</label>
+          {{ form.contact_number }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.address.id_for_label }}">Address</label>
+          {{ form.address }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+          {{ form.email }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+          {{ form.status }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.branches.id_for_label }}">Branches</label>
+          {{ form.branches }}
+          <div class="form-text">Supplier will appear only for users and transactions linked to these branches.</div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{% url 'supplier-list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

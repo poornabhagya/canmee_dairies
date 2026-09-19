@@ -1,0 +1,1033 @@
+{% extends "base.html" %}
+{% load static format_extras %}
+{% block title %}Farmer {{ farmer.common_name|default:farmer.full_name }} · Canmee Dairies{% endblock %}
+{% block page_heading %}{{ farmer.common_name|default:farmer.full_name }}{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "includes/_detail_page_list_styles.html" %}
+{% include "collection_point_loans/_cp_loan_page_styles.html" %}
+<style>
+  .farmer-detail-card,
+  .point-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    max-width: 100%;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+  .cp-loan-screen > .point-detail-card,
+  .cp-loan-screen > #farmer-bank-accounts {
+    margin-bottom: 0.85rem;
+  }
+  #farmer-bank-accounts .cp-loan-statement__head-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+  .point-bank-table {
+    table-layout: auto;
+    width: 100%;
+  }
+  .point-bank-col-primary {
+    width: 5.5rem;
+  }
+  .point-bank-col-actions {
+    width: 5.5rem;
+  }
+  .point-bank-primary-form {
+    display: inline-flex;
+    justify-content: center;
+    margin: 0;
+  }
+  .point-bank-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .custom-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    border: 1.5px solid #94a3b8;
+    border-radius: 0.3rem;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .custom-check:hover { border-color: #059669; }
+  .custom-check:checked { border-color: #059669; background: #059669; }
+  .custom-check:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.3rem;
+    top: 0.08rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .custom-check:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+  .point-detail-card .cp-loan-statement__head-actions {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .point-detail-card .cp-loan-statement__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .point-detail-card .cp-loan-statement__grid dl:first-child {
+    border-right: 1px solid #eef2f7;
+    border-bottom: 0;
+  }
+  @media (max-width: 767.98px) {
+    .point-detail-card .cp-loan-statement__grid {
+      grid-template-columns: 1fr;
+    }
+    .point-detail-card .cp-loan-statement__grid dl:first-child {
+      border-right: 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+  }
+  #farmerRateUpdateModal .farmer-rate-history-section.has-form {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #eef2f7;
+  }
+  #farmerRateUpdateModal .farmer-rate-history-table {
+    width: 100%;
+    margin: 0;
+  }
+  #farmerRateUpdateModal .farmer-rate-history-table th,
+  #farmerRateUpdateModal .farmer-rate-history-table td {
+    font-size: 0.82rem;
+    vertical-align: middle;
+  }
+  #farmerRateUpdateModal .farmer-rate-history-empty {
+    margin: 0;
+    padding: 0.35rem 0 0.1rem;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table,
+  .farmer-milk-list-card table.dataTable.farmer-milk-collections-table {
+    width: auto !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th:not(.farmer-milk-select-col):not(.milk-collection-actions-cell),
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td:not(.farmer-milk-select-col):not(.milk-collection-actions-cell),
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th:not(.farmer-milk-select-col) {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .farmer-milk-list-card .farmer-milk-collections-table thead th.farmer-milk-route-col,
+  .farmer-milk-list-card .farmer-milk-collections-table tbody td.farmer-milk-route-col,
+  .farmer-milk-list-card .farmer-milk-collections-table tfoot th.farmer-milk-route-col {
+    width: auto;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis > div {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 0.55rem 0.65rem;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis span {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-kpis strong {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-table {
+    margin: 0;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-table th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .point-loan-instalments-modal .point-loan-instalments-table td {
+    font-size: 0.84rem;
+    vertical-align: middle;
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions cp-loan-page-actions">
+  <a class="btn btn-outline-secondary" href="{% url 'farmer-list' %}"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+  {% if perms.reports.view_paymentsettlement %}
+  <a
+    class="btn btn-outline-secondary"
+    href="{% url 'farmer-payment-sheet' %}{% if statement_period_active %}?start={{ statement_from }}&amp;end={{ statement_to }}{% if farmer.branch_id %}&amp;branches={{ farmer.branch_id }}{% endif %}{% endif %}"
+  ><i class="bi bi-receipt me-1"></i>Payment sheet</a>
+  {% endif %}
+  {% if perms.masters.change_farmer %}
+  <a class="btn btn-outline-primary" href="{% url 'farmer-edit' farmer.pk %}">Edit</a>
+  {% endif %}
+  {% if perms.masters.delete_farmer %}
+  <a
+    class="btn btn-outline-danger js-swal-delete-post"
+    href="{% url 'farmer-delete' farmer.pk %}"
+    data-swal-title="Delete farmer {{ farmer.common_name|default:farmer.full_name }}?"
+    data-swal-text="This cannot be undone."
+  >Delete</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="cp-loan-screen">
+<div class="smart-stat-grid cp-loan-kpi-grid">
+  <a class="smart-stat-card cp-loan-kpi--count" href="#farmer-milk-collections" title="View milk collections">
+    <span class="smart-stat-card__icon smart-stat-card__icon--sky"><i class="bi bi-droplet-half" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Milk</span>
+      <span class="smart-stat-card__value">{{ farmer_collection.total_entries }}</span>
+      <span class="smart-stat-card__hint">Collection entries</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--amount" href="#farmer-milk-collections" title="View milk collections">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Total kg</span>
+      <span class="smart-stat-card__value">{{ farmer_collection.total_kg|floatformat:2 }}</span>
+      <span class="smart-stat-card__hint">Milk collected</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--paid" href="#farmer-milk-collections" title="View milk collections">
+    <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-droplet" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Total L</span>
+      <span class="smart-stat-card__value">{{ farmer_collection.total_liters|floatformat:2 }}</span>
+      <span class="smart-stat-card__hint">Liters</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--instalments" href="#farmer-milk-collections" title="Latest collection">
+    <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Latest</span>
+      <span class="smart-stat-card__value">{% if farmer_collection.latest_date %}{{ farmer_collection.latest_date|date:"Y-m-d" }}{% else %}—{% endif %}</span>
+      <span class="smart-stat-card__hint">Last collection date</span>
+    </span>
+  </a>
+  {% if can_view_milk_payment_status %}
+  <a class="smart-stat-card{% if farmer_collection.unpaid_entries %} smart-stat-card--warn cp-loan-kpi--balance{% else %} cp-loan-kpi--paid{% endif %}" href="#farmer-milk-collections" title="Paid and unpaid collections">
+    <span class="smart-stat-card__icon {% if farmer_collection.unpaid_entries %}smart-stat-card__icon--amber{% else %}smart-stat-card__icon--teal{% endif %}"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Paid / unpaid</span>
+      <span class="smart-stat-card__value">{{ farmer_collection.paid_entries }} / {{ farmer_collection.unpaid_entries }}</span>
+      <span class="smart-stat-card__hint">{% if farmer_collection.unpaid_entries %}{{ farmer_collection.unpaid_entries }} unpaid{% else %}All paid{% endif %}</span>
+    </span>
+  </a>
+  {% endif %}
+  <a class="smart-stat-card cp-loan-kpi--amount" href="#farmer-details" title="Rate management">
+    <span class="smart-stat-card__icon smart-stat-card__icon--orange"><i class="bi bi-currency-exchange" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Current rate</span>
+      <span class="smart-stat-card__value">{{ farmer.rate|money }}</span>
+      <span class="smart-stat-card__hint">Active farmer rate</span>
+    </span>
+  </a>
+</div>
+
+<div class="card farmer-detail-card point-detail-card cp-loan-page-card smart-list-card">
+  <div class="card-body">
+    <article class="cp-loan-statement" id="farmer-details">
+      <header class="cp-loan-statement__head">
+        <div>
+          <span class="cp-loan-statement__kicker">Farmer</span>
+          <h2 class="cp-loan-statement__title">Farmer details</h2>
+          <p class="cp-loan-statement__meta">{% if farmer.collection_point %}{{ farmer.collection_point.route.name }} · Point {{ farmer.collection_point.number }}{% elif farmer.branch %}{{ farmer.branch.name }}{% else %}Farmer profile{% endif %}</p>
+        </div>
+        <div class="cp-loan-statement__head-actions">
+          <span class="cp-loan-statement__account">{{ farmer.registration_number|default:"—" }}</span>
+          <span class="cp-loan-statement__account">{{ farmer.rate|money }}</span>
+          <div class="cp-loan-statement__exports">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="farmer-rate-add-btn">
+              {% if perms.masters.change_farmerrate %}
+              <i class="bi bi-plus-lg me-1"></i>Update rate
+              {% else %}
+              <i class="bi bi-clock-history me-1"></i>Rate history
+              {% endif %}
+            </button>
+          </div>
+        </div>
+      </header>
+      <div class="cp-loan-statement__grid">
+        <dl>
+          <div class="cp-loan-statement__row">
+            <dt>Registration number</dt>
+            <dd>{{ farmer.registration_number|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Full name</dt>
+            <dd>{{ farmer.full_name }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Initial</dt>
+            <dd>{{ farmer.initial|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Common name</dt>
+            <dd>{{ farmer.common_name|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Branch</dt>
+            <dd>{% if farmer.branch %}{{ farmer.branch.name }}{% else %}—{% endif %}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Route</dt>
+            <dd>{% if farmer.route %}{{ farmer.route.name }}{% else %}—{% endif %}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Collection point</dt>
+            <dd>{% if farmer.collection_point %}{{ farmer.collection_point.number }} — {{ farmer.collection_point.name }}{% else %}—{% endif %}</dd>
+          </div>
+        </dl>
+        <dl>
+          <div class="cp-loan-statement__row">
+            <dt>Current rate</dt>
+            <dd>{{ farmer.rate|money }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>NIC</dt>
+            <dd>{{ farmer.nic|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Mobile</dt>
+            <dd>{{ farmer.mobile|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>WhatsApp</dt>
+            <dd>{{ farmer.whatsapp|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Email</dt>
+            <dd>{{ farmer.email|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Address</dt>
+            <dd>{{ farmer.address|default:"—" }}</dd>
+          </div>
+        </dl>
+      </div>
+      <div class="cp-loan-statement__footer" aria-label="Farmer rate">
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Current rate</span>
+          <span class="cp-loan-statement__figure-value">{{ farmer.rate|money }}</span>
+        </div>
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Milk entries</span>
+          <span class="cp-loan-statement__figure-value">{{ farmer_collection.total_entries }}</span>
+        </div>
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Total kg</span>
+          <span class="cp-loan-statement__figure-value">{{ farmer_collection.total_kg|floatformat:2 }}</span>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>
+
+{% include "masters/_farmer_bank_accounts.html" %}
+
+<div class="modal fade smart-modal smart-modal--wide" id="farmerRateUpdateModal" tabindex="-1" aria-labelledby="farmerRateUpdateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-currency-exchange"></i></span>
+          <div>
+            <h5 class="modal-title" id="farmerRateUpdateModalLabel">{% if perms.masters.change_farmerrate %}Update rate{% else %}Rate history{% endif %}</h5>
+            <p class="modal-subtitle">{% if perms.masters.change_farmerrate %}New rate applies from the effective date.{% else %}Rate history for this farmer.{% endif %}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% if perms.masters.change_farmerrate %}
+        <form method="post" action="{% url 'farmer-rate-update' farmer.pk %}" id="farmer-rate-update-form">
+          {% csrf_token %}
+          {{ rate_form.apply_rate_paid }}
+          {% if rate_form.errors %}
+          <div class="text-danger small mb-2">
+            {% for field in rate_form %}
+              {% for error in field.errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in rate_form.non_field_errors %}
+              <div>{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div class="smart-form-sections">
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-receipt" aria-hidden="true"></i>Rate amount</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="{{ rate_form.rate.id_for_label }}">New rate</label>
+                  {{ rate_form.rate }}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ rate_form.effective_from.id_for_label }}">Effective date</label>
+                  {{ rate_form.effective_from }}
+                </div>
+              </div>
+            </section>
+          </div>
+        </form>
+        {% endif %}
+        <section class="smart-form-section mb-0 farmer-rate-history-section{% if perms.masters.change_farmerrate %} has-form{% endif %}">
+          <h6 class="smart-form-section-title"><i class="bi bi-clock-history" aria-hidden="true"></i>Rate history</h6>
+          {% if farmer_rate_history %}
+          <table class="table table-hover align-middle mb-0 farmer-rate-history-table">
+            <thead>
+              <tr>
+                <th>Effective at</th>
+                <th class="text-end">Rate</th>
+                {% if user.is_superuser %}
+                <th class="text-end"><span class="visually-hidden">Actions</span></th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in farmer_rate_history %}
+              <tr>
+                <td class="text-nowrap">{{ item.effective_at|date:"Y-m-d H:i" }}</td>
+                <td class="text-end">{{ item.rate|money }}</td>
+                {% if user.is_superuser %}
+                <td class="text-end">
+                  <span class="farmer-row-actions">
+                    <a
+                      class="icon-action-btn icon-action-danger js-swal-delete-post"
+                      href="{% url 'farmer-rate-history-delete' farmer.pk item.pk %}"
+                      data-swal-title="Delete this rate record?"
+                      data-swal-text="Current rate will be recalculated from remaining history."
+                      title="Delete rate record"
+                      aria-label="Delete rate record"
+                    ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+                  </span>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="farmer-rate-history-empty">No rate history yet.</p>
+          {% endif %}
+        </section>
+      </div>
+      <div class="modal-footer">
+        {% if perms.masters.change_farmerrate %}
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="farmer-rate-update-form" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save rate</button>
+        {% else %}
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row farmer-detail-split-row">
+  <div class="{% if can_view_farmer_advances %}col-xl-7 col-lg-7{% else %}col-12{% endif %}">
+<div class="card card-table farmer-milk-list-card smart-list-card" id="farmer-milk-collections">
+  <div class="card-body table-wrap">
+    <div class="farmer-milk-actions-bar" aria-label="Milk collection actions">
+      <p class="farmer-milk-actions-bar__label">Milk collection</p>
+      <div class="farmer-milk-actions-bar__groups">
+        {% if user.is_superuser %}
+        <div class="farmer-milk-actions-group" aria-label="Delete">
+          <button
+            type="submit"
+            form="farmer-milk-bulk-form"
+            class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger"
+            name="bulk_action"
+            value="delete_selected"
+            hidden
+            data-swal-title="Delete selected records?"
+            data-swal-text="All checked milk collection rows will be removed."
+          ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete selected</button>
+          <button
+            type="submit"
+            form="farmer-milk-bulk-form"
+            class="btn btn-sm btn-outline-danger js-swal-submit-trigger"
+            name="bulk_action"
+            value="delete_all"
+            data-swal-title="Delete all milk collections{% if statement_period_active %} in this period{% endif %}?"
+            data-swal-text="This removes every milk collection row{% if statement_period_active %} matching the selected period{% else %} for this farmer{% endif %} (superuser only)."
+          ><i class="bi bi-trash3 me-1" aria-hidden="true"></i>Delete all</button>
+        </div>
+        {% endif %}
+        <div class="farmer-milk-actions-group" aria-label="Statements">
+          <a
+            class="btn btn-sm btn-outline-secondary"
+            href="{% url 'farmer-statement-print' farmer.pk %}?full=1"
+            target="_blank"
+            rel="noopener"
+          ><i class="bi bi-printer me-1" aria-hidden="true"></i>Full statement</a>
+          {% if statement_period_active %}
+          <a
+            class="btn btn-sm btn-primary"
+            href="{% url 'farmer-statement-print' farmer.pk %}?from={{ statement_from }}&amp;to={{ statement_to }}"
+            target="_blank"
+            rel="noopener"
+          ><i class="bi bi-printer me-1" aria-hidden="true"></i>Period statement</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div id="farmerMilkDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter milk collections">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ farmer_collection.total_entries }}</span>
+      </button>
+      {% if can_view_milk_payment_status %}
+      <button type="button" class="smart-dt-chip" data-smart-filter="paid">
+        Paid<span class="smart-dt-chip-count">{{ farmer_collection.paid_entries }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="unpaid">
+        Unpaid<span class="smart-dt-chip-count">{{ farmer_collection.unpaid_entries }}</span>
+      </button>
+      {% endif %}
+      <form method="get" id="farmer-milk-period-filter" class="farmer-milk-period-filter" role="search">
+        <label class="visually-hidden" for="farmer-milk-period">Period</label>
+        <div class="input-group input-group-sm flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+          <input
+            type="text"
+            id="farmer-milk-period"
+            class="form-control border-start-0 js-datepicker-range js-datepicker-range-iso"
+            data-range-start="from"
+            data-range-end="to"
+            placeholder="Period"
+            autocomplete="off"
+            readonly
+            aria-label="Date period"
+            value="{% if statement_from and statement_to %}{{ statement_from }} to {{ statement_to }}{% elif statement_from %}{{ statement_from }}{% elif statement_to %}{{ statement_to }}{% endif %}"
+          >
+        </div>
+        <input type="hidden" name="from" value="{{ statement_from }}">
+        <input type="hidden" name="to" value="{{ statement_to }}">
+        {% if statement_period_active %}
+        <a href="{% url 'farmer-detail' farmer.pk %}" class="btn btn-sm btn-outline-secondary" title="Clear period">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% if user.is_superuser %}
+    <form method="post" id="farmer-milk-bulk-form" class="js-swal-submit-guard farmer-milk-bulk-form d-none" aria-hidden="true">
+      {% csrf_token %}
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+      {% if statement_from %}<input type="hidden" name="from" value="{{ statement_from }}">{% endif %}
+      {% if statement_to %}<input type="hidden" name="to" value="{{ statement_to }}">{% endif %}
+    </form>
+    {% endif %}
+    <table
+      class="table table-hover datatable datatable-smart datatable-no-responsive farmer-milk-collections-table smart-dt-table mb-0"
+      data-page-length="25"
+      data-empty-table="No milk collection records for this period."
+      data-filters-target="farmerMilkDtFilters"
+      data-footer-sum-cols="{% if user.is_superuser %}3,4{% else %}2,3{% endif %}"
+      data-default-order-col="{% if user.is_superuser %}1{% else %}0{% endif %}"
+      data-smart-order="{% if user.is_superuser %}1,desc{% else %}0,desc{% endif %}"
+      data-print-title="Milk collections"
+    >
+      <thead>
+        <tr>
+          {% if user.is_superuser %}
+          <th class="all no-export farmer-milk-select-col"><input type="checkbox" class="form-check-input custom-check js-select-all-rows" form="farmer-milk-bulk-form" aria-label="Select all rows"></th>
+          {% endif %}
+          <th class="all">Date</th>
+          <th class="min-tablet-l farmer-milk-route-col">Route</th>
+          <th class="all text-end">Kg</th>
+          <th class="all text-end">Liters</th>
+          {% if can_view_milk_payment_status %}<th class="min-tablet-l">Payment</th>{% endif %}
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in farmer_milk_collections %}
+        <tr class="{% if can_view_milk_payment_status %}{% if o.is_paid %}smart-row--paid milk-collection-row--paid{% else %}smart-row--unpaid milk-collection-row--unpaid{% endif %}{% endif %}">
+          {% if user.is_superuser %}
+          <td class="all farmer-milk-select-col"><input type="checkbox" class="form-check-input custom-check js-row-select" form="farmer-milk-bulk-form" name="selected_ids" value="{{ o.pk }}" aria-label="Select row"></td>
+          {% endif %}
+          <td class="all text-nowrap" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"Y-m-d" }}</td>
+          <td class="min-tablet-l farmer-milk-route-col"><span class="smart-dt-name-text">{{ o.route.name }}</span></td>
+          <td class="all text-end dt-num" data-order="{{ o.kg }}">{{ o.kg }}</td>
+          <td class="all text-end dt-num" data-order="{{ o.liters }}">{{ o.liters }}</td>
+          {% if can_view_milk_payment_status %}{% include "collections/_milk_collection_payment_cell.html" %}{% endif %}
+          <td class="all text-end milk-collection-actions-cell">
+            {% include "collections/_milk_collection_row_actions_dropdown.html" with collection=o %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if farmer_collection.total_entries %}
+      <tfoot>
+        <tr>
+          {% if user.is_superuser %}<th class="all farmer-milk-select-col"></th>{% endif %}
+          <th class="all"></th>
+          <th class="min-tablet-l farmer-milk-route-col text-end">Totals</th>
+          <th class="all text-end dt-foot-total"></th>
+          <th class="all text-end dt-foot-total"></th>
+          {% if can_view_milk_payment_status %}<th class="min-tablet-l"></th>{% endif %}
+          <th class="all"></th>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+  </div>
+  {% if can_view_farmer_advances %}
+  <div class="col-xl-5 col-lg-5">
+    <div class="card farmer-collection-card farmer-advance-aside-card">
+      <div class="card-body">
+        {% include "masters/_farmer_advance_payments_block.html" with aside=1 %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% include "masters/_farmer_detail_financial_sections.html" with hide_advance_payments=1 %}
+
+{% if can_view_farmer_loans %}
+<div class="modal fade smart-modal smart-modal--wide point-loan-instalments-modal" id="farmerLoanInstalmentsModal" tabindex="-1" aria-labelledby="farmerLoanInstalmentsTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-calendar2-check"></i></span>
+          <div>
+            <h5 class="modal-title js-loan-instalments-title" id="farmerLoanInstalmentsTitle">Loan instalments</h5>
+            <p class="modal-subtitle js-loan-instalments-subtitle" id="farmerLoanInstalmentsSubtitle"></p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% for loan in farmer_loans %}
+        <div class="js-loan-instalments-panel d-none" data-loan-id="{{ loan.pk }}">
+          <div class="point-loan-instalments-kpis" aria-label="Loan totals">
+            <div>
+              <span>Amount</span>
+              <strong>{{ loan.loan_amount|money }}</strong>
+            </div>
+            <div>
+              <span>Paid</span>
+              <strong>{{ loan.paid_total|money }}</strong>
+            </div>
+            <div>
+              <span>Balance</span>
+              <strong>{{ loan.balance_total|money }}</strong>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 point-loan-instalments-table">
+              <thead>
+                <tr>
+                  <th>Inst.</th>
+                  <th>Due date</th>
+                  <th class="text-end">Amount</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inst in loan.repayment_schedules.all %}
+                <tr class="{% if inst.is_paid %}farmer-financial-row--settled{% endif %}">
+                  <td>{{ inst.installment_number }}</td>
+                  <td class="text-nowrap">{{ inst.due_date|date:"Y-m-d" }}</td>
+                  <td class="text-end">{{ inst.installment_amount|money }}</td>
+                  {% include "reports/_payslip_recovery_status.html" with is_paid=inst.is_paid paid_on=inst.paid_on %}
+                  <td class="text-end text-nowrap">
+                    {% include "reports/_loan_instalment_manual_settle_action.html" with instalment=inst %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center text-muted py-3">No instalments on this loan yet.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">No loans recorded.</p>
+        {% endfor %}
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-secondary js-loan-instalments-detail" id="farmerLoanInstalmentsDetailBtn"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Full loan</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if can_view_farmer_goods %}
+{% include "reports/_payslip_embed_modal.html" %}
+<div class="modal fade" id="farmerGoodsActionModal" tabindex="-1" aria-labelledby="farmerGoodsActionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fs-6" id="farmerGoodsActionModalLabel">Goods</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="farmerGoodsActionModalBody">
+        <div class="text-center py-4 text-muted small">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  if (typeof bootstrap === "undefined") return;
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-point-loan-instalments");
+    if (!btn) return;
+    var modalId = btn.getAttribute("data-loan-instalments-modal");
+    var modalEl = modalId ? document.getElementById(modalId) : null;
+    if (!modalEl) return;
+    e.preventDefault();
+    var loanId = btn.getAttribute("data-loan-id") || "";
+    modalEl.querySelectorAll(".js-loan-instalments-panel").forEach(function (panel) {
+      panel.classList.toggle("d-none", panel.getAttribute("data-loan-id") !== loanId);
+    });
+    var titleEl = modalEl.querySelector(".js-loan-instalments-title");
+    var subEl = modalEl.querySelector(".js-loan-instalments-subtitle");
+    var detailBtn = modalEl.querySelector(".js-loan-instalments-detail");
+    if (titleEl) titleEl.textContent = loanId ? "Loan #" + loanId + " instalments" : "Loan instalments";
+    if (subEl) {
+      subEl.textContent = [
+        btn.getAttribute("data-status"),
+        btn.getAttribute("data-loan-date"),
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    if (detailBtn) {
+      detailBtn.href = btn.getAttribute("data-detail-url") || "#";
+      detailBtn.classList.toggle("d-none", !btn.getAttribute("data-detail-url"));
+    }
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  });
+})();
+</script>
+{% if can_view_farmer_goods %}
+{% include "reports/_payslip_embed_script.html" %}
+<script>
+(function () {
+  var modalEl = document.getElementById("farmerGoodsActionModal");
+  var bodyEl = document.getElementById("farmerGoodsActionModalBody");
+  var titleEl = document.getElementById("farmerGoodsActionModalLabel");
+  if (!modalEl || !bodyEl || !window.bootstrap) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  function bindPaymentPanel(root) {
+    var form = root.querySelector("#goods-partial-payment-form");
+    if (!form) return;
+    var selectAll = root.querySelector("#goods-pay-select-all");
+    var lineChecks = Array.prototype.slice.call(root.querySelectorAll(".js-goods-pay-line"));
+    var totalEl = root.querySelector("#goods-selected-total");
+    function formatMoney(value) {
+      var n = Number(value);
+      if (!isFinite(n)) return "0.00";
+      return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function sync() {
+      var total = lineChecks.reduce(function (sum, el) {
+        return el.checked ? sum + Number(el.getAttribute("data-amount") || 0) : sum;
+      }, 0);
+      if (totalEl) totalEl.textContent = formatMoney(total);
+      if (selectAll) {
+        var checked = lineChecks.filter(function (el) { return el.checked; });
+        selectAll.checked = lineChecks.length > 0 && checked.length === lineChecks.length;
+        selectAll.indeterminate = checked.length > 0 && checked.length < lineChecks.length;
+      }
+    }
+    if (selectAll) {
+      selectAll.addEventListener("change", function () {
+        lineChecks.forEach(function (el) { el.checked = selectAll.checked; });
+        sync();
+      });
+    }
+    lineChecks.forEach(function (el) {
+      el.addEventListener("change", sync);
+    });
+    sync();
+  }
+
+  function loadPanel(url, title) {
+    titleEl.textContent = title || "Goods";
+    bodyEl.innerHTML =
+      '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+    modal.show();
+    fetch(url, { credentials: "same-origin", headers: { Accept: "text/html" } })
+      .then(function (res) {
+        if (!res.ok) throw new Error("load failed");
+        return res.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var root =
+          doc.querySelector(".goods-payment-embed-root") ||
+          doc.querySelector(".goods-line-edit-embed-root");
+        bodyEl.innerHTML = root ? root.innerHTML : html;
+        bindPaymentPanel(bodyEl);
+        var editForm = bodyEl.querySelector(".js-goods-line-edit-form");
+        if (editForm) {
+          var nextInput = editForm.querySelector('input[name="next"]');
+          if (nextInput && !nextInput.value) {
+            nextInput.value = window.location.pathname + window.location.search;
+          }
+        }
+      })
+      .catch(function () {
+        bodyEl.innerHTML =
+          '<div class="text-center py-4 text-danger small">Could not load details.</div>';
+      });
+  }
+
+  document.addEventListener("click", function (e) {
+    var payBtn = e.target.closest(".js-goods-pay-modal");
+    if (payBtn) {
+      e.preventDefault();
+      loadPanel(
+        payBtn.getAttribute("data-panel-url"),
+        payBtn.getAttribute("data-modal-title") || "Record payment"
+      );
+      return;
+    }
+    var editBtn = e.target.closest(".js-goods-line-edit-modal");
+    if (editBtn) {
+      e.preventDefault();
+      loadPanel(
+        editBtn.getAttribute("data-panel-url"),
+        editBtn.getAttribute("data-modal-title") || "Edit issued product"
+      );
+    }
+  });
+
+  modalEl.addEventListener("hidden.bs.modal", function () {
+    bodyEl.innerHTML = "";
+  });
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  var form = document.getElementById("farmer-milk-period-filter");
+  if (!form) return;
+  var rangeInput = form.querySelector("#farmer-milk-period");
+  if (!rangeInput) return;
+
+  function submitPeriodFilter() {
+    if (typeof form.requestSubmit === "function") {
+      form.requestSubmit();
+    } else {
+      form.submit();
+    }
+  }
+
+  window.setTimeout(function () {
+    var fp = rangeInput._flatpickrInstance || rangeInput._flatpickr;
+    if (!fp) return;
+    var fromEl = form.querySelector('input[name="from"]');
+    var toEl = form.querySelector('input[name="to"]');
+    var dateSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+    var prevOnChange = fp.config.onChange;
+    fp.set("onChange", function (selectedDates, dateStr, instance) {
+      if (typeof prevOnChange === "function") {
+        prevOnChange(selectedDates, dateStr, instance);
+      } else if (Array.isArray(prevOnChange)) {
+        prevOnChange.forEach(function (fn) { fn(selectedDates, dateStr, instance); });
+      }
+      var nextSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+      if (nextSnapshot !== dateSnapshot && (selectedDates.length === 2 || selectedDates.length === 0)) {
+        dateSnapshot = nextSnapshot;
+        submitPeriodFilter();
+      }
+    });
+  }, 200);
+})();
+</script>
+<script>
+(function () {
+  var modalEl = document.getElementById("farmerRateUpdateModal");
+  var openBtn = document.getElementById("farmer-rate-add-btn");
+  if (modalEl && openBtn && window.bootstrap) {
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    openBtn.addEventListener("click", function () {
+      modal.show();
+    });
+    {% if rate_form.errors %}
+    modal.show();
+    {% endif %}
+  }
+  var form = document.getElementById("farmer-rate-update-form");
+  if (!form || form.dataset.submitGuardBound === "1") return;
+  form.dataset.submitGuardBound = "1";
+  form.addEventListener("submit", function () {
+    if (form.dataset.submitting === "1") return false;
+    form.dataset.submitting = "1";
+    var btn = document.querySelector('button[type="submit"][form="farmer-rate-update-form"]') || form.querySelector('button[type="submit"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+    }
+  });
+})();
+</script>
+{% if user.is_superuser %}
+<script>
+(function () {
+  var table = document.querySelector(".farmer-milk-collections-table");
+  var deleteBtn = document.querySelector("#farmer-milk-collections .delete-selected-btn");
+  if (!table) return;
+
+  function rowChecks() {
+    return table.querySelectorAll(".js-row-select");
+  }
+
+  function syncBulkDeleteVisibility() {
+    if (!deleteBtn) return;
+    var anyChecked = false;
+    rowChecks().forEach(function (cb) { if (cb.checked) anyChecked = true; });
+    deleteBtn.hidden = !anyChecked;
+  }
+
+  table.addEventListener("change", function (e) {
+    var target = e.target;
+    if (!target) return;
+    if (target.classList.contains("js-select-all-rows")) {
+      rowChecks().forEach(function (cb) { cb.checked = target.checked; });
+    }
+    if (target.classList.contains("js-select-all-rows") || target.classList.contains("js-row-select")) {
+      syncBulkDeleteVisibility();
+    }
+  });
+  syncBulkDeleteVisibility();
+})();
+</script>
+{% endif %}
+{% if perms.masters.change_farmer %}
+<script>
+(function () {
+  var modalEl = document.getElementById("farmerBankAccountModal");
+  var form = document.getElementById("farmer-bank-account-form");
+  if (!modalEl || !form || !window.bootstrap) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  var titleEl = document.getElementById("farmerBankAccountModalLabel");
+  var idInput = document.getElementById("id_farmer_bank_account_id");
+  var nameInput = form.querySelector('[name="account_name"]');
+  var numberInput = form.querySelector('[name="account_number"]');
+  var bankInput = form.querySelector('[name="bank_name"]');
+  var bankCodeInput = form.querySelector('[name="bank_code"]');
+  var branchInput = form.querySelector('[name="bank_branch"]');
+  var branchCodeInput = form.querySelector('[name="branch_code"]');
+  var primaryInput = form.querySelector('[name="is_primary"]');
+
+  function setTitle(isEdit) {
+    if (titleEl) titleEl.textContent = isEdit ? "Edit bank account" : "Add bank account";
+  }
+
+  function clearForm() {
+    if (idInput) idInput.value = "";
+    if (nameInput) nameInput.value = "";
+    if (numberInput) numberInput.value = "";
+    if (bankInput) bankInput.value = "";
+    if (bankCodeInput) bankCodeInput.value = "";
+    if (branchInput) branchInput.value = "";
+    if (branchCodeInput) branchCodeInput.value = "";
+    if (primaryInput) primaryInput.checked = false;
+    form.querySelectorAll(".invalid-feedback, .text-danger").forEach(function (el) {
+      if (el.closest(".modal-body")) el.remove();
+    });
+  }
+
+  function fillForm(btn) {
+    if (idInput) idInput.value = btn.getAttribute("data-id") || "";
+    if (nameInput) nameInput.value = btn.getAttribute("data-account-name") || "";
+    if (numberInput) numberInput.value = btn.getAttribute("data-account-number") || "";
+    if (bankInput) {
+      var bankName = btn.getAttribute("data-bank-name") || "";
+      bankInput.value = bankName;
+      if (bankName && bankInput.value !== bankName) {
+        var option = document.createElement("option");
+        option.value = bankName;
+        option.textContent = bankName;
+        bankInput.appendChild(option);
+        bankInput.value = bankName;
+      }
+    }
+    if (bankCodeInput) bankCodeInput.value = btn.getAttribute("data-bank-code") || "";
+    if (branchInput) branchInput.value = btn.getAttribute("data-bank-branch") || "";
+    if (branchCodeInput) branchCodeInput.value = btn.getAttribute("data-branch-code") || "";
+    if (primaryInput) primaryInput.checked = btn.getAttribute("data-is-primary") === "1";
+  }
+
+  document.querySelectorAll(".js-farmer-bank-add").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      clearForm();
+      setTitle(false);
+      modal.show();
+    });
+  });
+  document.querySelectorAll(".js-farmer-bank-edit").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      clearForm();
+      fillForm(btn);
+      setTitle(true);
+      modal.show();
+    });
+  });
+  {% if bank_account_form.errors %}
+  modal.show();
+  {% endif %}
+})();
+</script>
+{% endif %}
+{% endblock %}

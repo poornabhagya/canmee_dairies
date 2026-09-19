@@ -1,0 +1,675 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}GRN · Canmee Dairies{% endblock %}
+{% block page_heading %}GRN{% endblock %}
+{% block topbar_actions %}
+{% if perms.suppliers.add_grn %}
+<a class="btn btn-primary" href="{% url 'grn-add' %}"><i class="bi bi-plus-lg me-1"></i>Create GRN</a>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .grn-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .grn-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .grn-list-card .table-wrap,
+  .grn-list-card .dataTables_wrapper,
+  .grn-list-card div.dt-container,
+  .grn-list-card div.dt-scroll,
+  .grn-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .grn-list-card .grn-table {
+    width: 100% !important;
+  }
+  .grn-list-card .grn-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .grn-list-card .grn-table tbody td {
+    white-space: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .grn-list-card .grn-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .grn-list-card .grn-table tbody td.dt-seq,
+  .grn-list-card .grn-table thead th.dt-seq {
+    width: 2.5rem;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .grn-list-card .grn-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .grn-list-card .grn-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 0.55rem 0.4rem;
+    white-space: nowrap;
+  }
+  .grn-list-card .grn-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .grn-list-card .smart-dt-name-link {
+    color: #0f766e;
+    text-decoration: none;
+    font-weight: 600;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+  .grn-list-card .smart-dt-name-link:hover {
+    color: #115e59;
+    text-decoration: underline;
+  }
+  .grn-list-card .smart-dt-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+  }
+  .grn-list-card .smart-dt-actions .btn {
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 0.24rem 0.55rem;
+    border-radius: 999px;
+  }
+  .grn-list-card .smart-dt-actions .form-select {
+    font-size: 0.72rem;
+    font-weight: 600;
+    min-height: 1.7rem;
+    padding: 0.15rem 1.6rem 0.15rem 0.5rem;
+    border-radius: 999px;
+    width: auto;
+  }
+  .grn-status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .grn-status-pill.is-draft {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+  .grn-status-pill.is-confirmed {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .grn-audit-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .grn-audit-pill.is-created { background: #eff6ff; color: #1d4ed8; }
+  .grn-audit-pill.is-updated { background: #f1f5f9; color: #475569; }
+  .grn-audit-pill.is-confirmed { background: #ecfdf5; color: #047857; }
+  .grn-audit-pill.is-reverted_to_draft { background: #fff7ed; color: #c2410c; }
+  .grn-audit-pill.is-deleted { background: #fef2f2; color: #b91c1c; }
+  .grn-type-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .grn-advanced-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: end;
+    margin: 0 0 0.85rem;
+  }
+  .grn-advanced-filters .form-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+  }
+  .grn-advanced-filters .form-select,
+  .grn-advanced-filters .form-control,
+  .grn-advanced-filters .input-group-text {
+    min-height: 34px;
+    height: 34px;
+    font-size: 0.8rem;
+    border-radius: 999px;
+  }
+  .grn-advanced-filters .flatpickr-range-wrap {
+    min-width: 11rem;
+  }
+  .grn-advanced-filters .btn {
+    border-radius: 999px;
+    min-height: 34px;
+  }
+  @media (max-width: 768px) {
+    .smart-dt-stats--four {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table grn-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="GRN summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Total GRNs</span>
+        <span class="smart-dt-stat-value">{{ grn_summary.count }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Draft</span>
+        <span class="smart-dt-stat-value">{{ grn_summary.draft_count }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">Confirmed</span>
+        <span class="smart-dt-stat-value">{{ grn_summary.confirmed_count }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Payable total</span>
+        <span class="smart-dt-stat-value">{{ grn_summary.total_amount|money }}</span>
+      </div>
+    </div>
+
+    <div id="grnDtFilters" class="smart-dt-filters" role="toolbar" aria-label="GRN filters">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ grn_summary.count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="draft">
+        Draft<span class="smart-dt-chip-count">{{ grn_summary.draft_count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="confirmed">
+        Confirmed<span class="smart-dt-chip-count">{{ grn_summary.confirmed_count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="farmer-goods">
+        Farmer goods<span class="smart-dt-chip-count">{{ grn_summary.farmer_goods_count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="corporate">
+        Corporate<span class="smart-dt-chip-count">{{ grn_summary.corporate_count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="stock-correction">
+        Stock correction<span class="smart-dt-chip-count">{{ grn_summary.stock_correction_count }}</span>
+      </button>
+    </div>
+
+    <form method="get" class="grn-advanced-filters" role="search">
+      <div>
+        <label class="form-label" for="grn-filter-product">Product</label>
+        <select id="grn-filter-product" name="product" class="form-select">
+          <option value="">All products</option>
+          {% for p in grn_products %}
+          <option value="{{ p.id }}" {% if p.id|stringformat:'d' == selected_product %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="grn-filter-supplier">Supplier</label>
+        <select id="grn-filter-supplier" name="supplier" class="form-select">
+          <option value="">All suppliers</option>
+          {% for s in grn_suppliers %}
+          <option value="{{ s.id }}" {% if s.id|stringformat:'d' == selected_supplier %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="grn-filter-branch">Branch</label>
+        <select id="grn-filter-branch" name="branch" class="form-select no-global-select2">
+          <option value="">All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="grn-filter-date-range">Date range</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted"><i class="bi bi-calendar3"></i></span>
+          <input
+            type="text"
+            id="grn-filter-date-range"
+            class="form-control border-start-0 js-datepicker-range"
+            data-range-start="date_from"
+            data-range-end="date_to"
+            placeholder="All dates"
+            autocomplete="off"
+            readonly
+            aria-label="Date range"
+          >
+        </div>
+        <input type="hidden" name="date_from" value="{{ date_from }}">
+        <input type="hidden" name="date_to" value="{{ date_to }}">
+      </div>
+      {% if selected_grn_type %}
+      <input type="hidden" name="grn_type" value="{{ selected_grn_type }}">
+      {% endif %}
+      <div class="d-flex gap-1">
+        <button type="submit" class="btn btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i></button>
+        <a href="{% url 'grn-list' %}" class="btn btn-outline-secondary" title="Clear filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+      </div>
+    </form>
+
+    {% if selected_product_obj %}
+    <div class="alert alert-info py-2 mb-3" role="status">
+      Showing GRNs that include <strong>{{ selected_product_obj.name }}</strong>
+      — use Rate / Issue price columns to compare receiving layers.
+    </div>
+    {% endif %}
+
+    <table
+      class="table table-hover datatable datatable-smart grn-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No GRNs match your filters."
+      data-filters-target="grnDtFilters"
+      data-footer-sum-cols="{% if show_product_price_cols %}9{% else %}6{% endif %}"
+      data-smart-order="5,desc"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">GRN #</th>
+          <th class="min-tablet-l">Supplier</th>
+          <th class="min-desktop">Branch</th>
+          <th class="min-tablet-l">Type</th>
+          <th class="all">Date</th>
+          {% if show_product_price_cols %}
+          <th class="min-desktop text-end">Qty</th>
+          <th class="min-desktop text-end">Rate</th>
+          <th class="min-desktop text-end">Issue price</th>
+          {% endif %}
+          <th class="all text-end">Total</th>
+          <th class="min-tablet-l">Status</th>
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in object_list %}
+        <tr
+          class="{% if g.status == 'draft' %}smart-row--draft{% elif g.status == 'confirmed' %}smart-row--confirmed{% endif %}{% if g.grn_type == 'farmer_goods' %} smart-row--farmer-goods{% elif g.grn_type == 'corporate' %} smart-row--corporate{% elif g.grn_type == 'stock_correction' %} smart-row--stock-correction{% endif %}"
+          data-order-date="{{ g.date|date:'Y-m-d' }}"
+        >
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">
+            <button
+              type="button"
+              class="smart-dt-name-link js-grn-view-modal"
+              data-grn-id="{{ g.pk }}"
+              data-grn-number="{{ g.grn_number }}"
+              title="View GRN details"
+            >{{ g.grn_number }}</button>
+          </td>
+          <td class="min-tablet-l">{{ g.supplier.name }}</td>
+          <td class="min-desktop">{% if g.branch %}{{ g.branch.name }}{% else %}—{% endif %}</td>
+          <td class="min-tablet-l"><span class="grn-type-pill">{{ g.get_grn_type_display }}</span></td>
+          <td class="all" data-order="{{ g.date|date:'Y-m-d' }}-{{ g.pk|stringformat:'010d' }}">{{ g.date }}</td>
+          {% if show_product_price_cols %}
+          <td class="min-desktop dt-num text-end">{{ g.filtered_product_qty }}</td>
+          <td class="min-desktop dt-num text-end">{{ g.filtered_product_rate|money }}</td>
+          <td class="min-desktop dt-num text-end">{{ g.filtered_product_issue_price|money }}</td>
+          {% endif %}
+          <td class="all dt-num text-end" data-order="{{ g.total_amount|default:'0' }}">{{ g.total_amount|money }}</td>
+          <td class="min-tablet-l">
+            <span class="grn-status-pill {% if g.status == 'draft' %}is-draft{% else %}is-confirmed{% endif %}">
+              {{ g.get_status_display }}
+            </span>
+          </td>
+          <td class="all text-end">
+            <div class="smart-dt-actions">
+              <button
+                type="button"
+                class="btn btn-outline-primary js-grn-view-modal"
+                data-grn-id="{{ g.pk }}"
+                data-grn-number="{{ g.grn_number }}"
+              >View</button>
+              {% if user.is_superuser %}
+              <button
+                type="button"
+                class="btn btn-outline-secondary js-grn-audit-modal"
+                data-grn-id="{{ g.pk }}"
+                data-grn-number="{{ g.grn_number }}"
+              >Audit</button>
+              {% endif %}
+              <a class="btn btn-outline-secondary" href="{% url 'grn-print' g.pk %}" target="_blank" rel="noopener">Print</a>
+              {% if perms.suppliers.change_grn and g.status == "draft" %}
+              <a class="btn btn-outline-primary" href="{% url 'grn-edit' g.pk %}">Edit</a>
+              <form method="post" action="{% url 'grn-confirm' g.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-success">Confirm</button>
+              </form>
+              {% endif %}
+              {% if perms.suppliers.change_grn %}
+              <form method="post" action="{% url 'grn-status' g.pk %}" class="d-inline">
+                {% csrf_token %}
+                <select name="status" class="form-select" onchange="this.form.submit()" aria-label="Change status">
+                  <option value="draft" {% if g.status == "draft" %}selected{% endif %}>Draft</option>
+                  <option value="confirmed" {% if g.status == "confirmed" %}selected{% endif %}>Confirmed</option>
+                </select>
+              </form>
+              {% endif %}
+              {% if perms.suppliers.delete_grn %}
+              <form method="post" action="{% url 'grn-delete' g.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger" {% if g.status != "draft" %}disabled title="Only draft GRNs can be deleted"{% endif %}>Delete</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-desktop"></th>
+          <th class="min-tablet-l"></th>
+          <th class="all text-end">Totals</th>
+          {% if show_product_price_cols %}
+          <th class="min-desktop"></th>
+          <th class="min-desktop"></th>
+          <th class="min-desktop"></th>
+          {% endif %}
+          <th class="all text-end dt-foot-total"></th>
+          <th class="min-tablet-l"></th>
+          <th class="all"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="grnViewModal" tabindex="-1" aria-labelledby="grnViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="grnViewModalLabel">View GRN</h5>
+          <p class="text-muted small mb-0" id="grnViewModalSubtitle">Products, rates, and issue prices</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="grnViewLoading" class="text-muted py-4 text-center">Loading…</div>
+        <div id="grnViewContent" class="d-none">
+          <div class="row g-3 mb-3" id="grnViewMeta"></div>
+          <div class="table-wrap">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th class="text-end">Qty</th>
+                  <th class="text-end">Free</th>
+                  <th class="text-end">Rate</th>
+                  <th class="text-end">Issue price</th>
+                  <th class="text-end">Line %</th>
+                  <th class="text-end">Line amt</th>
+                  <th class="text-end">Line total</th>
+                </tr>
+              </thead>
+              <tbody id="grnViewItemsBody"></tbody>
+            </table>
+          </div>
+          <div class="row justify-content-end mt-3">
+            <div class="col-md-5">
+              <dl class="row mb-0 small" id="grnViewTotals"></dl>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="grnViewPrintLink" class="btn btn-outline-secondary" href="#" target="_blank" rel="noopener">Print</a>
+        <a id="grnViewEditLink" class="btn btn-outline-primary d-none" href="#">Edit</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if user.is_superuser %}
+<div class="modal fade" id="grnAuditModal" tabindex="-1" aria-labelledby="grnAuditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="grnAuditModalLabel">Audit log</h5>
+          <p class="text-muted small mb-0" id="grnAuditModalSubtitle">User and timestamp history</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="grnAuditLoading" class="text-muted py-4 text-center">Loading…</div>
+        <div id="grnAuditContent" class="d-none">
+          <div class="row g-3 mb-3" id="grnAuditMeta"></div>
+          <div class="fw-semibold mb-2">Activity</div>
+          <div class="table-wrap">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Action</th>
+                  <th>User</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="grnAuditEventsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function openGrnViewModal(grnId, grnNumber) {
+    var el = document.getElementById("grnViewModal");
+    if (!el || !window.bootstrap || !bootstrap.Modal) return;
+    var modal = bootstrap.Modal.getOrCreateInstance(el);
+    document.getElementById("grnViewModalLabel").textContent = "View · " + (grnNumber || ("GRN #" + grnId));
+    document.getElementById("grnViewModalSubtitle").textContent = "Products, rates, and issue prices";
+    document.getElementById("grnViewLoading").classList.remove("d-none");
+    document.getElementById("grnViewLoading").textContent = "Loading…";
+    document.getElementById("grnViewContent").classList.add("d-none");
+    document.getElementById("grnViewItemsBody").innerHTML = "";
+    document.getElementById("grnViewMeta").innerHTML = "";
+    document.getElementById("grnViewTotals").innerHTML = "";
+    document.getElementById("grnViewEditLink").classList.add("d-none");
+    modal.show();
+
+    fetch("{% url 'grn-view-modal' 0 %}".replace("/0/", "/" + grnId + "/"), {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed to load GRN");
+        return r.json();
+      })
+      .then(function (data) {
+        var g = data.grn || {};
+        document.getElementById("grnViewLoading").classList.add("d-none");
+        document.getElementById("grnViewModalLabel").textContent = "View · " + (g.number || grnNumber);
+        document.getElementById("grnViewModalSubtitle").textContent =
+          (g.status || "") + (g.date ? " · " + g.date : "");
+        document.getElementById("grnViewMeta").innerHTML =
+          '<div class="col-md-3"><div class="text-muted small">Supplier</div><div class="fw-semibold">' + esc(g.supplier) + "</div></div>" +
+          '<div class="col-md-3"><div class="text-muted small">Branch</div><div class="fw-semibold">' + esc(g.branch) + "</div></div>" +
+          '<div class="col-md-3"><div class="text-muted small">Type</div><div class="fw-semibold">' + esc(g.type) + "</div></div>" +
+          '<div class="col-md-3"><div class="text-muted small">Discount mode</div><div class="fw-semibold">' + esc(g.discount_scope) + "</div></div>";
+
+        var items = data.items || [];
+        document.getElementById("grnViewItemsBody").innerHTML = items.length
+          ? items
+              .map(function (item) {
+                return (
+                  "<tr>" +
+                  "<td>" + esc(item.product) + (item.unit ? ' <span class="text-muted">(' + esc(item.unit) + ")</span>" : "") + "</td>" +
+                  '<td class="text-end">' + esc(item.quantity) + "</td>" +
+                  '<td class="text-end">' + esc(item.free_quantity) + "</td>" +
+                  '<td class="text-end">' + esc(item.rate) + "</td>" +
+                  '<td class="text-end">' + esc(item.issue_price) + "</td>" +
+                  '<td class="text-end">' + esc(item.line_discount_percent) + "</td>" +
+                  '<td class="text-end">' + esc(item.line_discount_amount) + "</td>" +
+                  '<td class="text-end">' + esc(item.line_total) + "</td>" +
+                  "</tr>"
+                );
+              })
+              .join("")
+          : '<tr><td colspan="8" class="text-center text-muted py-4">No line items.</td></tr>';
+
+        document.getElementById("grnViewTotals").innerHTML =
+          '<dt class="col-6">Lines subtotal</dt><dd class="col-6 text-end">' + esc(g.lines_subtotal) + "</dd>" +
+          '<dt class="col-6">Document discount</dt><dd class="col-6 text-end">' + esc(g.document_discount) + "</dd>" +
+          '<dt class="col-6">Payable total</dt><dd class="col-6 text-end fw-semibold">' + esc(g.payable_total || g.total_amount) + "</dd>";
+
+        var printLink = document.getElementById("grnViewPrintLink");
+        printLink.href = g.print_url || "#";
+        var editLink = document.getElementById("grnViewEditLink");
+        if (g.edit_url) {
+          editLink.href = g.edit_url;
+          editLink.classList.remove("d-none");
+        }
+        document.getElementById("grnViewContent").classList.remove("d-none");
+      })
+      .catch(function () {
+        document.getElementById("grnViewLoading").textContent = "Could not load GRN details.";
+      });
+  }
+
+  function openGrnAuditModal(grnId, grnNumber) {
+    var el = document.getElementById("grnAuditModal");
+    if (!el || !window.bootstrap || !bootstrap.Modal) return;
+    var modal = bootstrap.Modal.getOrCreateInstance(el);
+    document.getElementById("grnAuditModalLabel").textContent = "Audit · " + (grnNumber || ("GRN #" + grnId));
+    document.getElementById("grnAuditModalSubtitle").textContent = "User and timestamp history";
+    document.getElementById("grnAuditLoading").classList.remove("d-none");
+    document.getElementById("grnAuditLoading").textContent = "Loading…";
+    document.getElementById("grnAuditContent").classList.add("d-none");
+    document.getElementById("grnAuditMeta").innerHTML = "";
+    document.getElementById("grnAuditEventsBody").innerHTML = "";
+    modal.show();
+
+    fetch("{% url 'grn-audit-modal' 0 %}".replace("/0/", "/" + grnId + "/"), {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed to load audit log");
+        return r.json();
+      })
+      .then(function (data) {
+        var g = data.grn || {};
+        document.getElementById("grnAuditLoading").classList.add("d-none");
+        document.getElementById("grnAuditModalLabel").textContent = "Audit · " + (g.number || grnNumber);
+        document.getElementById("grnAuditModalSubtitle").textContent =
+          (g.status || "") + (g.business_date ? " · " + g.business_date : "");
+        document.getElementById("grnAuditMeta").innerHTML =
+          '<div class="col-6 col-md-3"><div class="text-muted small">Created by</div><div class="fw-semibold">' + esc(g.created_by) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Created on</div><div class="fw-semibold">' + esc(g.created_at) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Confirmed by</div><div class="fw-semibold">' + esc(g.confirmed_by) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Confirmed on</div><div class="fw-semibold">' + esc(g.confirmed_at) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Supplier</div><div class="fw-semibold">' + esc(g.supplier) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Branch</div><div class="fw-semibold">' + esc(g.branch) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Type</div><div class="fw-semibold">' + esc(g.type) + "</div></div>" +
+          '<div class="col-6 col-md-3"><div class="text-muted small">Last updated</div><div class="fw-semibold">' + esc(g.updated_at) + "</div></div>";
+
+        var events = data.events || [];
+        document.getElementById("grnAuditEventsBody").innerHTML = events.length
+          ? events
+              .map(function (ev) {
+                var key = ev.action_key || "";
+                return (
+                  "<tr>" +
+                  "<td>" + esc(ev.at) + "</td>" +
+                  '<td><span class="grn-audit-pill is-' + esc(key) + '">' + esc(ev.action) + "</span></td>" +
+                  "<td>" + esc(ev.user) + "</td>" +
+                  "<td class=\"small text-muted\">" + esc(ev.notes || "—") + "</td>" +
+                  "</tr>"
+                );
+              })
+              .join("")
+          : '<tr><td colspan="4" class="text-center text-muted py-4">No audit events yet for this GRN.</td></tr>';
+        document.getElementById("grnAuditContent").classList.remove("d-none");
+      })
+      .catch(function () {
+        document.getElementById("grnAuditLoading").textContent = "Could not load audit log.";
+      });
+  }
+
+  document.addEventListener("click", function (event) {
+    var auditBtn = event.target.closest(".js-grn-audit-modal");
+    if (auditBtn) {
+      event.preventDefault();
+      openGrnAuditModal(
+        auditBtn.getAttribute("data-grn-id"),
+        auditBtn.getAttribute("data-grn-number") || ""
+      );
+      return;
+    }
+    var btn = event.target.closest(".js-grn-view-modal");
+    if (!btn) return;
+    event.preventDefault();
+    openGrnViewModal(btn.getAttribute("data-grn-id"), btn.getAttribute("data-grn-number") || "");
+  });
+})();
+</script>
+{% endblock %}

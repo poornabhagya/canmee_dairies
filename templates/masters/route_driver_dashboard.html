@@ -1,0 +1,204 @@
+{% extends "masters/route_driver_base.html" %}
+{% block title %}Driver dashboard · {{ route.name }}{% endblock %}
+{% block extra_css %}
+<style>
+  .driver-smart-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  }
+  .driver-filter-shell {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+  .driver-filter-shell .input-group-text {
+    background: #fff;
+  }
+  .driver-report-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .driver-report-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.10);
+  }
+  .driver-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0f766e;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5rem;
+  }
+  @media (max-width: 768px) {
+    .page-header {
+      padding-top: 0.35rem;
+      margin-bottom: 1.15rem !important;
+    }
+    .driver-filter-shell .card-body,
+    .driver-report-card .card-body {
+      padding: 1.15rem 1rem;
+    }
+    .driver-report-card .btn {
+      margin-top: 0.35rem;
+    }
+    .row.g-3 {
+      --bs-gutter-y: 1rem;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <div>
+    <h1 class="page-title h3 mb-1">{{ route.name }}</h1>
+    <p class="page-subtitle text-muted mb-0">
+      {% if route.branch %}{{ route.branch.name }}{% endif %}
+      {% if driver_name %} · Driver: {{ driver_name }}{% endif %}
+      {% if vehicle_label != "—" %} · Vehicle: {{ vehicle_label }}{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="card mb-3 driver-smart-card border-primary-subtle js-driver-pending-panel" {% if not pending_goods_count %}hidden{% endif %}>
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+      <div>
+        <h2 class="h6 mb-1"><i class="bi bi-bell me-1 text-primary"></i>Pending farmer goods</h2>
+        <p class="text-muted small mb-0">Accept or reject collection-point issues for your route. Only accepted issues affect payment sheets.</p>
+      </div>
+      <span class="badge text-bg-primary js-driver-pending-panel-count">{{ pending_goods_count|default:0 }}</span>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <div class="js-driver-pending-panel-list small text-muted">Open the bell menu to review each issue.</div>
+      <button type="button" class="btn btn-sm btn-outline-primary js-driver-enable-desktop-notif">
+        <i class="bi bi-phone-vibrate me-1"></i>Enable alerts
+      </button>
+      <span class="small js-driver-desktop-notif-status" hidden></span>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3 driver-smart-card driver-filter-shell">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-lg-4">
+        <label class="form-label" for="driver-date-range">Date range</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+          <input
+            type="text"
+            id="driver-date-range"
+            class="form-control border-start-0 js-datepicker-range"
+            data-range-start="from"
+            data-range-end="to"
+            placeholder="Select date range"
+            autocomplete="off"
+            readonly
+            aria-label="Date range"
+          >
+        </div>
+        <input type="hidden" name="from" value="{{ from_date|date:'Y-m-d' }}">
+        <input type="hidden" name="to" value="{{ to_date|date:'Y-m-d' }}">
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label" for="driver-point">Point</label>
+        <select class="form-select" id="driver-point" name="point">
+          <option value="">All points</option>
+          {% for point in point_options %}
+          <option value="{{ point.id }}" {% if selected_point_id == point.id %}selected{% endif %}>{{ point.number }} — {{ point.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <label class="form-label" for="driver-kind">Details</label>
+        <select class="form-select" id="driver-kind" name="kind">
+          <option value="all" {% if detail_kind == 'all' %}selected{% endif %}>Milk + Goods</option>
+          <option value="milk" {% if detail_kind == 'milk' %}selected{% endif %}>Milk only</option>
+          <option value="goods" {% if detail_kind == 'goods' %}selected{% endif %}>Goods only</option>
+        </select>
+      </div>
+      <div class="col-lg-2">
+        <button type="submit" class="btn btn-primary w-100">Update period</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% if route.driver_can_view_route_summary and show_milk_reports %}
+  <div class="col-md-4">
+    <div class="card h-100 driver-report-card">
+      <div class="card-body d-flex flex-column">
+        <span class="driver-chip"><i class="bi bi-diagram-3"></i> Milk</span>
+        <h2 class="h6">Route Summary</h2>
+        <p class="text-muted small flex-grow-1">Daily milk totals by collection point for your route.</p>
+        <a
+          class="btn btn-outline-primary"
+          href="{% url 'route-driver-route-summary' %}?{{ report_query }}&kind={{ detail_kind }}"
+        >Open report</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if route.driver_can_view_point_summary and show_milk_reports %}
+  <div class="col-md-4">
+    <div class="card h-100 driver-report-card">
+      <div class="card-body d-flex flex-column">
+        <span class="driver-chip"><i class="bi bi-geo-alt"></i> Milk</span>
+        <h2 class="h6">Point Collection</h2>
+        <p class="text-muted small flex-grow-1">Day-wise liters and kilograms for each point on your route.</p>
+        <a
+          class="btn btn-outline-primary"
+          href="{% url 'route-driver-point-summary' %}?{{ report_query }}&kind={{ detail_kind }}"
+        >Open report</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if route.driver_can_view_farmer_goods and show_goods_reports %}
+  <div class="col-md-4">
+    <div class="card h-100 driver-report-card">
+      <div class="card-body d-flex flex-column">
+        <span class="driver-chip"><i class="bi bi-box-seam"></i> Goods</span>
+        <h2 class="h6">Farmer Goods</h2>
+        <p class="text-muted small flex-grow-1">Goods issued to collection points on your route.</p>
+        <a
+          class="btn btn-outline-primary"
+          href="{% url 'route-driver-farmer-goods' %}?{{ report_query }}&kind={{ detail_kind }}"
+        >Open report</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if route.driver_can_view_farmer_goods %}
+  <div class="col-md-4">
+    <div class="card h-100 driver-report-card">
+      <div class="card-body d-flex flex-column">
+        <span class="driver-chip"><i class="bi bi-send"></i> Goods</span>
+        <h2 class="h6">Goods Request</h2>
+        <p class="text-muted small flex-grow-1">Ask branch staff for products needed at your collection points.</p>
+        <a class="btn btn-outline-primary" href="{% url 'route-driver-goods-request' %}">Open request</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if not route.driver_can_view_route_summary and not route.driver_can_view_point_summary and not route.driver_can_view_farmer_goods %}
+<div class="alert alert-warning mt-3 mb-0">
+  No reports are enabled for this route. Contact your branch administrator.
+</div>
+{% endif %}
+{% if show_milk_reports == False and show_goods_reports == False %}
+<div class="alert alert-info mt-3 mb-0">
+  Select a valid details filter.
+</div>
+{% endif %}
+{% endblock %}

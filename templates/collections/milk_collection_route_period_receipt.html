@@ -1,0 +1,60 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Route period receipt</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 18px; color: #111; }
+    h3 { margin: 0 0 8px; }
+    .meta { margin: 0 0 12px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #dbe3ee; padding: 6px 8px; }
+    th { background: #f8fafc; text-align: left; }
+    td.num, th.num { text-align: right; }
+    tfoot td { font-weight: 700; background: #f8fafc; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()">Print</button>
+  <h3>Route period receipt</h3>
+  <p class="meta">
+    Route: {{ route.code }} — {{ route.name }}<br>
+    Period: {{ from_date|date:"Y-m-d" }} to {{ to_date|date:"Y-m-d" }}<br>
+    Total days: {{ total_days }} · Entries: {{ total_entries }} · Kg: {{ total_kg }} · Liters: {{ total_liters }}
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th class="num">Entries</th>
+        <th class="num">Kg</th>
+        <th class="num">Liters</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.date|date:"Y-m-d" }}</td>
+        <td class="num">{{ r.total_entries }}</td>
+        <td class="num">{{ r.total_kg }}</td>
+        <td class="num">{{ r.total_liters }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" style="text-align:center;">No collection point totals in this period.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td class="num">{{ total_entries }}</td>
+        <td class="num">{{ total_kg }}</td>
+        <td class="num">{{ total_liters }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<div class="modal fade" id="dispatchRateModal" tabindex="-1" aria-labelledby="dispatchRateModalLabel" aria-hidden="true" data-period-rate-url="{% url 'dispatch-buyer-rate' %}">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <form method="post" id="dispatchRateForm" action="">
+        {% csrf_token %}
+        <input type="hidden" name="next" id="dispatchRateNext" value="{{ request.get_full_path }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dispatchRateModalLabel">Dispatch rate</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="dispatchRateSubtitle"></p>
+          <div id="dispatchRateFormErrors" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="use_period_rate" id="dispatchRateUsePeriod" value="on">
+            <label class="form-check-label" for="dispatchRateUsePeriod">Use buyer period rate</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="dispatchRateAmount">Rate</label>
+            <input type="text" class="form-control text-end" name="unit_rate" id="dispatchRateAmount" inputmode="decimal" autocomplete="off">
+            <div class="form-text" id="dispatchRateHint">Leave unchecked to set a rate for this dispatch only.</div>
+          </div>
+          <div class="mb-0">
+            <label class="form-label" for="dispatchRateUnit">Rate unit</label>
+            <select class="form-select" name="rate_unit" id="dispatchRateUnit">
+              <option value="liter">Per liter</option>
+              <option value="kg">Per kg</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="dispatchRateSave"><i class="bi bi-check2 me-1"></i>Save rate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

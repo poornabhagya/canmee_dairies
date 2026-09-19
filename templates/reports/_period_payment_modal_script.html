@@ -1,0 +1,956 @@
+<script>
+(function () {
+  var farmerUrl = "{% url 'farmer-period-payment-record' %}";
+  var pointUrl = "{% url 'collection-point-period-payment-record' %}";
+
+  var CP_BALANCE_STEPS = [
+    "Validating payment amount",
+    "Recording period payment",
+    "Settling advances, goods & loans",
+    "Marking milk collections paid",
+    "Refreshing payment sheet totals",
+    "Finishing up",
+  ];
+  var CP_FEE_STEPS = [
+    "Validating collector fee amount",
+    "Recording collector fee payment",
+    "Marking paid collections",
+    "Refreshing payment sheet totals",
+    "Finishing up",
+  ];
+  var FARMER_STEPS = [
+    "Validating payment amount",
+    "Recording farmer period payment",
+    "Settling advances, goods & loans",
+    "Marking milk collections paid",
+    "Refreshing payment sheet totals",
+    "Finishing up",
+  ];
+  var BULK_CP_STEPS = [
+    "Preparing selected collection points",
+    "Recording payments for each point",
+    "Settling linked farmer deductions",
+    "Marking milk collections paid",
+    "Updating paid sheet totals",
+    "Finishing up",
+  ];
+  var BULK_FARMER_STEPS = [
+    "Preparing selected farmers",
+    "Recording payments for each farmer",
+    "Settling advances, goods & loans",
+    "Marking milk collections paid",
+    "Updating paid sheet totals",
+    "Finishing up",
+  ];
+  var GENERATE_CP_STEPS = [
+    "Reading period and branch filters",
+    "Loading collection point milk for the period",
+    "Calculating collector fees and additional",
+    "Aggregating linked farmer advances, goods & loans",
+    "Applying paid settlements and balances",
+    "Building payment sheet rows",
+  ];
+  var GENERATE_FARMER_STEPS = [
+    "Reading period and branch filters",
+    "Loading farmer milk for the period",
+    "Calculating rates and gross amounts",
+    "Aggregating advances, goods & loans",
+    "Applying paid settlements and balances",
+    "Building payment sheet rows",
+  ];
+
+  function formatAmount(value) {
+    var n = Number(String(value || "0").replace(/,/g, ""));
+    if (!isFinite(n)) return "0.00";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function todayYmd() {
+    var d = new Date();
+    var month = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + month + "-" + day;
+  }
+
+  window.periodPaymentTodayYmd = todayYmd;
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function getModalInstance() {
+    var modalEl = document.getElementById("periodPaymentModal");
+    if (!modalEl || !window.bootstrap || !window.bootstrap.Modal) {
+      return null;
+    }
+    return window.bootstrap.Modal.getOrCreateInstance(modalEl);
+  }
+
+  function buildProgressHtml(options) {
+    var steps = options.steps || [];
+    var activeIdx = options.activeIdx || 0;
+    var pct = options.pct || 0;
+    var detail = options.detail || "";
+    var elapsedSec = options.elapsedSec || 0;
+    var subPct = options.subPct;
+    var lastIdx = steps.length - 1;
+    var stepsHtml = steps
+      .map(function (step, i) {
+        var stateClass = "text-muted";
+        var mark = "○";
+        if (i < activeIdx) {
+          stateClass = "text-success";
+          mark = "✓";
+        } else if (i === activeIdx) {
+          stateClass = "fw-semibold text-body";
+          mark = "●";
+        }
+        var row =
+          '<div class="' +
+          stateClass +
+          ' small mb-1 d-flex gap-2">' +
+          "<span>" +
+          mark +
+          "</span><span>" +
+          escapeHtml(step) +
+          "</span></div>";
+        if (
+          i === activeIdx &&
+          i === lastIdx &&
+          typeof subPct === "number" &&
+          isFinite(subPct)
+        ) {
+          row +=
+            '<div class="ms-3 mb-2 text-start">' +
+            '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+            Math.round(subPct) +
+            '" style="height: 8px;">' +
+            '<div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: ' +
+            subPct +
+            '%;"></div>' +
+            "</div>" +
+            '<div class="d-flex justify-content-between small text-muted mt-1">' +
+            "<span>Building rows…</span><span>" +
+            Math.round(subPct) +
+            "%</span></div></div>";
+        }
+        return row;
+      })
+      .join("");
+
+    return (
+      (options.subtitle
+        ? '<p class="small text-muted mb-2 text-start">' + escapeHtml(options.subtitle) + "</p>"
+        : "") +
+      '<div class="progress mb-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+      Math.round(pct) +
+      '" style="height: 12px;">' +
+      '<div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: ' +
+      pct +
+      '%;"></div>' +
+      "</div>" +
+      '<div class="d-flex justify-content-between small text-muted mb-2">' +
+      "<span>" +
+      Math.round(pct) +
+      "%</span>" +
+      "<span>" +
+      elapsedSec +
+      "s elapsed</span>" +
+      "</div>" +
+      '<div class="text-start mb-2">' +
+      stepsHtml +
+      "</div>" +
+      (detail
+        ? '<p class="small text-muted mb-0 text-start border-top pt-2">' +
+          escapeHtml(detail) +
+          "</p>"
+        : "")
+    );
+  }
+
+  function sequentialLogRowHtml(item) {
+    var mark = item.status === "ok" ? "✓" : item.status === "skip" ? "–" : "✗";
+    var cls =
+      item.status === "ok"
+        ? "text-success"
+        : item.status === "skip"
+          ? "text-muted"
+          : "text-danger";
+    return (
+      '<div class="' +
+      cls +
+      ' small mb-1 d-flex gap-2">' +
+      "<span>" +
+      mark +
+      "</span><span>" +
+      escapeHtml(item.label) +
+      (item.detail ? ' <span class="text-muted">(' + escapeHtml(item.detail) + ")</span>" : "") +
+      "</span></div>"
+    );
+  }
+
+  function buildSequentialProgressHtml(options) {
+    var pct = options.pct || 0;
+    var detail = options.detail || "";
+    var elapsedSec = options.elapsedSec || 0;
+    var currentLabel = options.currentLabel || "";
+    var countsLabel = options.countsLabel || "";
+    var logItems = options.logItems || [];
+    var logHtml = logItems.map(sequentialLogRowHtml).join("");
+
+    return (
+      (options.subtitle
+        ? '<p class="small text-muted mb-2 text-start">' + escapeHtml(options.subtitle) + "</p>"
+        : "") +
+      '<div class="progress mb-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+      Math.round(pct) +
+      '" style="height: 12px;">' +
+      '<div id="js-payment-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: ' +
+      pct +
+      '%;"></div>' +
+      "</div>" +
+      '<div class="d-flex justify-content-between small text-muted mb-2">' +
+      '<span id="js-payment-progress-counts">' +
+      Math.round(pct) +
+      "% · " +
+      escapeHtml(countsLabel) +
+      "</span>" +
+      '<span id="js-payment-progress-elapsed">' +
+      elapsedSec +
+      "s elapsed</span>" +
+      "</div>" +
+      '<p id="js-payment-progress-current" class="small fw-semibold text-start mb-2"' +
+      (currentLabel ? "" : ' style="display:none"') +
+      ">" +
+      (currentLabel ? "Now: " + escapeHtml(currentLabel) : "") +
+      "</p>" +
+      '<div id="js-payment-progress-log" class="text-start mb-2" style="max-height: 220px; overflow-y: auto; overscroll-behavior: contain;">' +
+      logHtml +
+      "</div>" +
+      (detail
+        ? '<p id="js-payment-progress-detail" class="small text-muted mb-0 text-start border-top pt-2">' +
+          escapeHtml(detail) +
+          "</p>"
+        : "")
+    );
+  }
+
+  /**
+   * Pay entities one-by-one via AJAX and show point/farmer-wise progress.
+   * options.items: [{ id, name, amount }]
+   * options.buildBody(item) -> FormData or URLSearchParams
+   * options.payUrl: POST url
+   */
+  function runSequentialPaymentWithProgress(options) {
+    options = options || {};
+    var items = options.items || [];
+    var payUrl = options.payUrl || "";
+    var title = options.title || "Paying selected…";
+    var subtitle = options.subtitle || "";
+    var detail =
+      options.detail ||
+      "Each item is settled individually so progress can be shown.";
+    var buildBody = options.buildBody;
+    var onDone = options.onDone;
+    var startedAt = Date.now();
+    var logItems = [];
+    var paid = 0;
+    var skipped = 0;
+    var failed = 0;
+    var index = 0;
+    var elapsedTimer = null;
+    var followLogBottom = true;
+    var logScrollBound = false;
+
+    if (!items.length || !payUrl || typeof buildBody !== "function") {
+      if (typeof onDone === "function") onDone({ paid: 0, skipped: 0, failed: 0 });
+      return;
+    }
+
+    if (typeof Swal === "undefined") {
+      // Fallback: no UI — still pay sequentially then reload.
+      (async function () {
+        for (var i = 0; i < items.length; i++) {
+          try {
+            await fetch(payUrl, {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+              },
+              body: buildBody(items[i]),
+              credentials: "same-origin",
+            });
+          } catch (e) {
+            /* continue */
+          }
+        }
+        if (typeof onDone === "function") onDone({ paid: items.length, skipped: 0, failed: 0 });
+      })();
+      return;
+    }
+
+    function countsLabel() {
+      return (
+        index +
+        " / " +
+        items.length +
+        " · paid " +
+        paid +
+        (skipped ? " · skipped " + skipped : "") +
+        (failed ? " · failed " + failed : "")
+      );
+    }
+
+    function getLogEl() {
+      return document.getElementById("js-payment-progress-log");
+    }
+
+    function bindLogScroll() {
+      var logEl = getLogEl();
+      if (!logEl || logScrollBound) return;
+      logScrollBound = true;
+      logEl.addEventListener("scroll", function () {
+        var nearBottom =
+          logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight <= 24;
+        followLogBottom = nearBottom;
+      });
+    }
+
+    function updateElapsedOnly() {
+      var el = document.getElementById("js-payment-progress-elapsed");
+      if (el) {
+        el.textContent = Math.floor((Date.now() - startedAt) / 1000) + "s elapsed";
+      }
+    }
+
+    function updateProgressUi(currentLabel, done, appendedItem) {
+      var pct = items.length ? Math.min(100, (index / items.length) * 100) : 100;
+      if (done) pct = 100;
+      var bar = document.getElementById("js-payment-progress-bar");
+      var countsEl = document.getElementById("js-payment-progress-counts");
+      var currentEl = document.getElementById("js-payment-progress-current");
+      var logEl = getLogEl();
+      if (!bar || !countsEl || !logEl) return;
+
+      bar.style.width = pct + "%";
+      if (bar.parentElement) {
+        bar.parentElement.setAttribute("aria-valuenow", String(Math.round(pct)));
+      }
+      countsEl.textContent = Math.round(pct) + "% · " + countsLabel();
+      updateElapsedOnly();
+
+      if (currentEl) {
+        if (currentLabel) {
+          currentEl.style.display = "";
+          currentEl.textContent = "Now: " + currentLabel;
+        } else {
+          currentEl.style.display = "none";
+          currentEl.textContent = "";
+        }
+      }
+
+      if (appendedItem) {
+        logEl.insertAdjacentHTML("beforeend", sequentialLogRowHtml(appendedItem));
+        if (followLogBottom) {
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+      }
+    }
+
+    async function finish() {
+      if (elapsedTimer) {
+        window.clearInterval(elapsedTimer);
+        elapsedTimer = null;
+      }
+      var summary =
+        "Paid " +
+        paid +
+        (skipped ? " · skipped " + skipped : "") +
+        (failed ? " · failed " + failed : "");
+      await Swal.fire({
+        title: failed && !paid ? "Payment finished with errors" : "Payment complete",
+        html: buildSequentialProgressHtml({
+          subtitle: subtitle,
+          pct: 100,
+          countsLabel: countsLabel(),
+          elapsedSec: Math.floor((Date.now() - startedAt) / 1000),
+          currentLabel: "",
+          logItems: logItems,
+          detail: summary,
+        }),
+        icon: failed && !paid ? "error" : failed ? "warning" : "success",
+        confirmButtonText: "Reload sheet",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        buttonsStyling: false,
+        customClass: { popup: "app-swal-popup", confirmButton: "btn btn-success" },
+        didOpen: function () {
+          var logEl = getLogEl();
+          if (logEl) logEl.scrollTop = logEl.scrollHeight;
+        },
+      });
+      if (typeof onDone === "function") {
+        onDone({ paid: paid, skipped: skipped, failed: failed, logItems: logItems });
+      } else {
+        window.location.reload();
+      }
+    }
+
+    async function payNext() {
+      if (index >= items.length) {
+        finish();
+        return;
+      }
+
+      var item = items[index];
+      updateProgressUi(item.name || ("#" + item.id), false, null);
+      var status = "fail";
+      var statusDetail = "";
+      try {
+        var response = await fetch(payUrl, {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            Accept: "application/json",
+          },
+          body: buildBody(item),
+          credentials: "same-origin",
+        });
+        var data = {};
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          data = {};
+        }
+        if (response.ok && data.ok) {
+          status = "ok";
+          paid += 1;
+          statusDetail = data.amount ? formatAmount(data.amount) : "";
+        } else {
+          var err = (data && data.error) || "Payment failed";
+          // Treat already-paid / nothing-to-pay as skip for clearer UX
+          var lower = String(err).toLowerCase();
+          if (
+            lower.indexOf("already recorded") !== -1 ||
+            lower.indexOf("nothing remaining") !== -1
+          ) {
+            status = "skip";
+            skipped += 1;
+            statusDetail = err;
+          } else {
+            failed += 1;
+            statusDetail = err;
+          }
+        }
+      } catch (netErr) {
+        failed += 1;
+        statusDetail = "Network error";
+      }
+      var logEntry = {
+        label: item.name || ("#" + item.id),
+        status: status,
+        detail: statusDetail,
+      };
+      logItems.push(logEntry);
+      index += 1;
+      updateProgressUi(
+        index < items.length ? items[index].name || ("#" + items[index].id) : "",
+        false,
+        logEntry
+      );
+      window.setTimeout(payNext, 40);
+    }
+
+    Swal.fire({
+      title: title,
+      html: buildSequentialProgressHtml({
+        subtitle: subtitle,
+        pct: 0,
+        countsLabel: "0 / " + items.length,
+        elapsedSec: 0,
+        currentLabel: items[0] ? items[0].name || ("#" + items[0].id) : "",
+        logItems: [],
+        detail: detail,
+      }),
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      buttonsStyling: false,
+      customClass: { popup: "app-swal-popup" },
+      didOpen: function () {
+        bindLogScroll();
+        elapsedTimer = window.setInterval(updateElapsedOnly, 1000);
+        window.setTimeout(payNext, 80);
+      },
+      willClose: function () {
+        if (elapsedTimer) {
+          window.clearInterval(elapsedTimer);
+          elapsedTimer = null;
+        }
+      },
+    });
+  }
+
+  /**
+   * Show a progress dialog, then run `submitFn` (usually a native form submit).
+   * Steps advance on a timer while the server request is in flight.
+   */
+  function runPaymentWithProgress(options) {
+    options = options || {};
+    var steps = options.steps && options.steps.length ? options.steps : CP_BALANCE_STEPS;
+    var title = options.title || "Recording payment…";
+    var subtitle = options.subtitle || "";
+    var detail = options.detail || "Please wait — settlement can take a while for large periods.";
+    var submitFn = options.submitFn;
+    var activeIdx = 0;
+    var timer = null;
+    var startedAt = Date.now();
+    var lastStepStartedAt = null;
+    var lastIdx = Math.max(0, steps.length - 1);
+
+    function pctForStep(idx, subPct) {
+      if (steps.length <= 1) return 90;
+      var base = Math.min(92, 6 + (idx / (steps.length - 1)) * 86);
+      if (idx >= lastIdx && typeof subPct === "number") {
+        return Math.min(98, base + (subPct / 100) * 6);
+      }
+      return base;
+    }
+
+    function subPctForLastStep() {
+      if (activeIdx < lastIdx || lastStepStartedAt == null) return null;
+      var sec = (Date.now() - lastStepStartedAt) / 1000;
+      // Keep moving while the server builds rows; asymptote near 96%.
+      return Math.min(96, 100 * (1 - Math.exp(-sec / 28)));
+    }
+
+    function tick() {
+      var elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
+      if (activeIdx < lastIdx) {
+        activeIdx += 1;
+        if (activeIdx >= lastIdx && lastStepStartedAt == null) {
+          lastStepStartedAt = Date.now();
+        }
+      } else if (lastStepStartedAt == null) {
+        lastStepStartedAt = Date.now();
+      }
+      var subPct = subPctForLastStep();
+      if (typeof Swal !== "undefined" && Swal.isVisible()) {
+        Swal.update({
+          html: buildProgressHtml({
+            steps: steps,
+            activeIdx: activeIdx,
+            pct: pctForStep(activeIdx, subPct),
+            subPct: subPct,
+            detail: detail,
+            subtitle: subtitle,
+            elapsedSec: elapsedSec,
+          }),
+        });
+      }
+    }
+
+    function startSubmit() {
+      if (typeof submitFn === "function") {
+        submitFn();
+      }
+    }
+
+    if (typeof Swal === "undefined") {
+      startSubmit();
+      return;
+    }
+
+    Swal.fire({
+      title: title,
+      html: buildProgressHtml({
+        steps: steps,
+        activeIdx: 0,
+        pct: pctForStep(0, null),
+        detail: detail,
+        subtitle: subtitle,
+        elapsedSec: 0,
+      }),
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      buttonsStyling: false,
+      customClass: { popup: "app-swal-popup" },
+      didOpen: function () {
+        timer = window.setInterval(tick, 900);
+        window.setTimeout(startSubmit, 120);
+      },
+      willClose: function () {
+        if (timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+      },
+    });
+  }
+
+  function parseBankAccounts(raw) {
+    if (Array.isArray(raw)) return raw;
+    try {
+      var parsed = JSON.parse(raw || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function fillPeriodPaymentMethod(paymentType, bankAccountsRaw, primaryBankId, preferredMethod) {
+    var bankWrap = document.getElementById("ppBankAccountWrap");
+    var methodInput = document.getElementById("ppPaymentMethod");
+    var bankSelect = document.getElementById("ppBankAccount");
+    var hint = document.getElementById("ppBankAccountHint");
+    var isPoint = paymentType === "collection_point";
+    if (!isPoint) {
+      if (bankWrap) bankWrap.hidden = true;
+      if (methodInput) methodInput.value = "cash";
+      if (bankSelect) bankSelect.innerHTML = "";
+      return;
+    }
+    var accounts = parseBankAccounts(bankAccountsRaw);
+    var method = "cash";
+    if (preferredMethod === "bank_transfer" || preferredMethod === "cash") {
+      method = preferredMethod;
+    } else if (accounts.length) {
+      method = "bank_transfer";
+    }
+    if (methodInput) methodInput.value = method;
+    if (bankWrap) bankWrap.hidden = method !== "bank_transfer";
+    if (bankSelect) {
+      bankSelect.innerHTML = "";
+      if (!accounts.length) {
+        var empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "No bank account on this point";
+        bankSelect.appendChild(empty);
+      } else {
+        accounts.forEach(function (account) {
+          var option = document.createElement("option");
+          option.value = String(account.id);
+          option.textContent = account.label + (account.primary ? " (primary)" : "");
+          bankSelect.appendChild(option);
+        });
+        var preferred = String(primaryBankId || "");
+        if (preferred && bankSelect.querySelector('option[value="' + preferred + '"]')) {
+          bankSelect.value = preferred;
+        } else {
+          var primary = accounts.find(function (account) { return account.primary; });
+          bankSelect.value = String((primary || accounts[0]).id);
+        }
+      }
+    }
+    if (hint) {
+      hint.textContent = accounts.length
+        ? "Bank transfer uses the selected collection point account."
+        : "Add bank accounts on the collection point to pay by transfer.";
+    }
+  }
+
+  function openPeriodPaymentModal(options) {
+    var form = document.getElementById("periodPaymentForm");
+    var modal = getModalInstance();
+    if (!form || !modal) {
+      if (typeof window.appAlert === "function") {
+        window.appAlert("Payment dialog is not ready. Please refresh the page and try again.", {
+          icon: "warning",
+          title: "Dialog not ready",
+        });
+      } else {
+        window.alert("Payment dialog is not ready. Please refresh the page and try again.");
+      }
+      return;
+    }
+
+    var paymentType = options.paymentType || "farmer";
+    var entityName = options.entityName || "";
+    var amount = options.amount || "0";
+    var entityId = options.entityId || "";
+    var paymentBasis = options.paymentBasis || "collector_fee";
+    var returnUrl = options.returnUrl || window.location.pathname + window.location.search;
+    var settlementHint = document.getElementById("ppSettlementHint");
+    var carryForward = options.carryForward === true || options.carryForward === "1";
+    var carryAmount = options.carryAmount || "0";
+    var titleEl = document.getElementById("periodPaymentModalLabel");
+    var submitBtn = form.querySelector('button[type="submit"]');
+
+    document.getElementById("ppFarmerId").value = paymentType === "farmer" ? entityId : "";
+    document.getElementById("ppCollectionPointId").value =
+      paymentType === "collection_point" ? entityId : "";
+    document.getElementById("ppPaymentBasis").value = paymentBasis;
+    document.getElementById("ppReturnUrl").value = returnUrl;
+    document.getElementById("ppEntityLabel").textContent = entityName;
+    document.getElementById("ppAmount").value = formatAmount(amount);
+    if (carryForward) {
+      document.getElementById("ppExpectedHint").textContent =
+        "Cash paid is 0.00. Outstanding " + formatAmount(carryAmount) + " will recover on the next payment sheet.";
+      if (titleEl) titleEl.textContent = "Settle negative net";
+      if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Settle & carry forward';
+    } else {
+      document.getElementById("ppExpectedHint").textContent =
+        "Expected payable: " + formatAmount(amount);
+      if (titleEl) titleEl.textContent = "Make payment";
+      if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-cash-stack me-1"></i>Record payment';
+    }
+    document.getElementById("ppNote").value = "";
+    var paidDate = document.getElementById("ppPaidDate");
+    if (paidDate) {
+      if (window.CanmeeDatepicker) {
+        window.CanmeeDatepicker.initSingle(paidDate, { appendTo: document.body, position: "above" });
+      }
+      if (paidDate._flatpickr) {
+        paidDate._flatpickr.setDate(todayYmd(), true);
+      } else {
+        paidDate.value = todayYmd();
+      }
+    }
+    form.dataset.paymentType = paymentType;
+    form.dataset.paymentBasis = paymentBasis;
+    form.dataset.entityName = entityName;
+    fillPeriodPaymentMethod(
+      paymentType,
+      options.bankAccounts || "[]",
+      options.primaryBankId || "",
+      options.paymentMethod || ""
+    );
+    if (settlementHint) {
+      if (carryForward) {
+        settlementHint.textContent =
+          "Milk will be marked paid. Advances, farmer goods, loans, and previous outstanding in this period will be recovered. The minus balance is posted as previous outstanding on the next payment sheet.";
+      } else if (paymentType === "collection_point" && paymentBasis === "collector_fee") {
+        settlementHint.textContent =
+          "This records the collector fee only. Linked farmer deductions are not settled.";
+      } else {
+        settlementHint.textContent =
+          "Advances, goods deductions, and loan instalments included in this payment will be marked recovered or paid.";
+      }
+    }
+    form.action = paymentType === "collection_point" ? pointUrl : farmerUrl;
+    modal.show();
+    window.setTimeout(function () {
+      var amountInput = document.getElementById("ppAmount");
+      if (amountInput) {
+        amountInput.focus();
+        amountInput.select();
+      }
+    }, 200);
+  }
+
+  function bindPeriodPaymentFormProgress() {
+    var form = document.getElementById("periodPaymentForm");
+    if (!form || form.dataset.progressBound === "1") return;
+    form.dataset.progressBound = "1";
+
+    form.addEventListener("submit", function (event) {
+      if (form.dataset.progressSubmitting === "1") return;
+      event.preventDefault();
+
+      var paymentType = form.dataset.paymentType || "farmer";
+      var paymentBasis = form.dataset.paymentBasis || "collector_fee";
+      var entityName =
+        form.dataset.entityName ||
+        (document.getElementById("ppEntityLabel") || {}).textContent ||
+        "";
+      var amount = (document.getElementById("ppAmount") || {}).value || "";
+      var submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      var steps = FARMER_STEPS;
+      if (paymentType === "collection_point") {
+        steps = paymentBasis === "balance" ? CP_BALANCE_STEPS : CP_FEE_STEPS;
+      }
+
+      var modal = getModalInstance();
+      if (modal) modal.hide();
+
+      markPaymentSheetLoading({
+        kind: paymentType === "collection_point" ? "collection_point" : "farmer",
+        title: "Loading payment sheet…",
+      });
+      runPaymentWithProgress({
+        title: "Recording payment…",
+        subtitle: (entityName ? entityName + " · " : "") + "Amount " + formatAmount(amount),
+        detail:
+          paymentType === "collection_point"
+            ? "Settling collection point payment, linked deductions, and paid milk flags."
+            : "Settling farmer payment, deductions, and paid milk flags.",
+        steps: steps,
+        submitFn: function () {
+          form.dataset.progressSubmitting = "1";
+          HTMLFormElement.prototype.submit.call(form);
+        },
+      });
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    var btn = event.target.closest(".js-open-period-payment");
+    if (!btn) return;
+    event.preventDefault();
+    var row = btn.closest("tr");
+    var rowMethod = row ? row.getAttribute("data-payment-method") : "";
+    openPeriodPaymentModal({
+      paymentType: btn.dataset.paymentType || "farmer",
+      entityId: btn.dataset.entityId || "",
+      entityName: btn.dataset.entityName || "",
+      amount: btn.dataset.amount || "0",
+      paymentBasis: btn.dataset.paymentBasis || "collector_fee",
+      returnUrl: btn.dataset.returnUrl || "",
+      carryForward: btn.dataset.carryForward || "0",
+      carryAmount: btn.dataset.carryAmount || "0",
+      bankAccounts: btn.dataset.bankAccounts || "[]",
+      primaryBankId: btn.dataset.primaryBankId || "",
+      paymentMethod: rowMethod || btn.dataset.paymentMethod || "",
+    });
+  });
+
+  var PAYMENT_SHEET_LOAD_KEY = "canmee.paymentSheetLoading";
+
+  function markPaymentSheetLoading(meta) {
+    var payload = Object.assign({ t: Date.now(), pct: 55 }, meta || {});
+    try {
+      sessionStorage.setItem(PAYMENT_SHEET_LOAD_KEY, JSON.stringify(payload));
+    } catch (e) {
+      /* ignore quota / private mode */
+    }
+    try {
+      sessionStorage.setItem("canmee.pageLoading", JSON.stringify(payload));
+    } catch (e2) {
+      /* ignore */
+    }
+    if (typeof window.markPageLoading === "function") {
+      window.markPageLoading(payload);
+    }
+  }
+
+  /**
+   * Show sheet-loading progress, then navigate/reload.
+   * A matching boot loader appears on the next page until window load.
+   */
+  function navigateWithPaymentSheetProgress(options) {
+    options = options || {};
+    var sheetKind = options.sheetKind || "collection_point";
+    var isFarmer = sheetKind === "farmer";
+    var title =
+      options.title ||
+      (isFarmer ? "Loading farmer payment sheet…" : "Loading payment sheet…");
+    markPaymentSheetLoading({
+      kind: sheetKind,
+      title: title,
+    });
+
+    var navigateFn =
+      options.navigateFn ||
+      function () {
+        if (options.url) {
+          window.location.href = options.url;
+        } else {
+          window.location.reload();
+        }
+      };
+
+    if (typeof Swal === "undefined") {
+      navigateFn();
+      return;
+    }
+
+    runPaymentWithProgress({
+      title: title,
+      subtitle: options.subtitle || "",
+      detail:
+        options.detail ||
+        (isFarmer
+          ? "Loading farmer milk, deductions, and paid balances for the selected period."
+          : "Loading collection point milk, collector fees, linked deductions, and paid balances."),
+      steps: isFarmer ? GENERATE_FARMER_STEPS : GENERATE_CP_STEPS,
+      submitFn: navigateFn,
+    });
+  }
+
+  function bindPaymentSheetGenerateProgress() {
+    var forms = document.querySelectorAll("form.payment-sheet-filter-form");
+    forms.forEach(function (form) {
+      if (form.dataset.generateProgressBound === "1") return;
+      form.dataset.generateProgressBound = "1";
+
+      form.addEventListener("submit", function (event) {
+        if (form.dataset.progressSubmitting === "1") return;
+        event.preventDefault();
+
+        var sheetKind = form.dataset.sheetKind || "collection_point";
+        var startEl = form.querySelector('[name="start"]');
+        var endEl = form.querySelector('[name="end"]');
+        var branchSelect = form.querySelector('[name="branches"]');
+        var start = (startEl && startEl.value) || "";
+        var end = (endEl && endEl.value) || "";
+        var branchCount = 0;
+        if (branchSelect) {
+          branchCount = Array.prototype.filter.call(branchSelect.options || [], function (opt) {
+            return opt.selected;
+          }).length;
+        }
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        var isFarmer = sheetKind === "farmer";
+        var subtitleParts = [];
+        if (start || end) subtitleParts.push((start || "?") + " → " + (end || "?"));
+        if (branchCount > 0) {
+          subtitleParts.push(branchCount + " branch" + (branchCount === 1 ? "" : "es"));
+        }
+        var title = isFarmer ? "Generating farmer payment sheet…" : "Generating payment sheet…";
+
+        markPaymentSheetLoading({ kind: sheetKind, title: title });
+        runPaymentWithProgress({
+          title: title,
+          subtitle: subtitleParts.join(" · "),
+          detail: isFarmer
+            ? "Loading farmer milk, deductions, and paid balances for the selected period."
+            : "Loading collection point milk, collector fees, linked deductions, and paid balances.",
+          steps: isFarmer ? GENERATE_FARMER_STEPS : GENERATE_CP_STEPS,
+          submitFn: function () {
+            form.dataset.progressSubmitting = "1";
+            HTMLFormElement.prototype.submit.call(form);
+          },
+        });
+      });
+    });
+  }
+
+  function bootPeriodPaymentProgressUi() {
+    bindPeriodPaymentFormProgress();
+    bindPaymentSheetGenerateProgress();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootPeriodPaymentProgressUi);
+  } else {
+    bootPeriodPaymentProgressUi();
+  }
+
+  window.openPeriodPaymentModal = openPeriodPaymentModal;
+  window.runPaymentWithProgress = runPaymentWithProgress;
+  window.runSequentialPaymentWithProgress = runSequentialPaymentWithProgress;
+  window.navigateWithPaymentSheetProgress = navigateWithPaymentSheetProgress;
+  window.markPaymentSheetLoading = markPaymentSheetLoading;
+  window.PERIOD_PAYMENT_POINT_URL = pointUrl;
+  window.PERIOD_PAYMENT_FARMER_URL = farmerUrl;
+  window.PAYMENT_PROGRESS_STEPS = {
+    collectionPointBalance: CP_BALANCE_STEPS,
+    collectionPointFee: CP_FEE_STEPS,
+    farmer: FARMER_STEPS,
+    bulkCollectionPoint: BULK_CP_STEPS,
+    bulkFarmer: BULK_FARMER_STEPS,
+    generateCollectionPoint: GENERATE_CP_STEPS,
+    generateFarmer: GENERATE_FARMER_STEPS,
+  };
+})();
+</script>

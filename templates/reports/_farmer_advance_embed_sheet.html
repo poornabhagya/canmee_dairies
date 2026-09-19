@@ -1,0 +1,28 @@
+<div class="payslip-embed-sheet">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 payslip-embed-sheet__header">
+    <div>
+      <div class="payslip-embed-sheet__title">Advance payment</div>
+      <div class="payslip-embed-sheet__subtitle">{{ advance.farmer.common_name|default:advance.farmer.full_name }}</div>
+    </div>
+    <div class="text-end">
+      <div class="payslip-embed-sheet__amount">{{ advance.amount|money }}</div>
+      <div class="payslip-embed-sheet__subtitle">{{ advance.date|date:"Y-m-d" }}</div>
+    </div>
+  </div>
+  <dl class="row meta mb-0 g-2">
+    <dt class="col-5 col-sm-4">Farmer</dt>
+    <dd class="col-7 col-sm-8">{{ advance.farmer.common_name|default:advance.farmer.full_name }}</dd>
+    <dt class="col-5 col-sm-4">Type</dt>
+    <dd class="col-7 col-sm-8">{{ advance.get_advance_type_display }}</dd>
+    <dt class="col-5 col-sm-4">Date</dt>
+    <dd class="col-7 col-sm-8">{{ advance.date|date:"Y-m-d" }}</dd>
+    <dt class="col-5 col-sm-4">Amount</dt>
+    <dd class="col-7 col-sm-8">{{ advance.amount|money }}</dd>
+    <dt class="col-5 col-sm-4">Note</dt>
+    <dd class="col-7 col-sm-8">{{ advance.note|default:"—" }}</dd>
+    <dt class="col-5 col-sm-4">Recorded by</dt>
+    <dd class="col-7 col-sm-8">{{ advance.created_by }}</dd>
+    <dt class="col-5 col-sm-4">Recorded at</dt>
+    <dd class="col-7 col-sm-8">{{ advance.created_at|date:"Y-m-d H:i" }}</dd>
+  </dl>
+</div>

@@ -1,0 +1,653 @@
+{% extends "base.html" %}
+{% load cp_loan_extras %}
+{% block title %}Collection point loans · Canmee Dairies{% endblock %}
+{% block page_heading %}Collection point loans{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "collection_point_loans/_cp_loan_page_styles.html" %}
+<style>
+  .cp-loan-list-card.cp-loan-page-card,
+  .cp-loan-list-card .cp-loan-statement,
+  .cp-loan-list-card .dt-smart-toolbar,
+  .cp-loan-list-card .dt-smart-actions,
+  .cp-loan-list-card .dt-buttons,
+  .cp-loan-list-card div.dt-container {
+    overflow: visible;
+  }
+  .cp-loan-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow: visible;
+  }
+  .cp-loan-list-card .table-wrap,
+  .cp-loan-list-card .dataTables_wrapper,
+  .cp-loan-list-card div.dt-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  .cp-loan-list-card .cp-loan-table {
+    width: 100% !important;
+  }
+  .cp-loan-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    margin-bottom: 0.35rem !important;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .cp-loan-list-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap !important;
+    gap: 0.45rem !important;
+    align-items: center !important;
+  }
+  .cp-loan-list-card .dt-smart-filters-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .cp-loan-list-card .dt-smart-actions {
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    margin-left: auto;
+  }
+  .cp-loan-list-card div.dt-container .dt-search input {
+    min-width: 8rem;
+    width: 9.25rem;
+    max-width: 10rem;
+  }
+  .cp-loan-filters {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .cp-loan-branch-filter {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  .cp-loan-branch-filter .loan-branch-select-wrap {
+    width: 12.5rem;
+    min-width: 12.5rem;
+    max-width: 12.5rem;
+  }
+  .cp-loan-branch-filter .form-select.loan-branch-select[multiple] {
+    height: 32px !important;
+    min-height: 32px !important;
+    overflow-y: auto;
+  }
+  .cp-loan-branch-filter .loan-branch-select + .select2 {
+    width: 100% !important;
+  }
+  .cp-loan-branch-filter .loan-branch-select + .select2 .select2-selection--multiple {
+    min-height: 32px !important;
+    height: 32px !important;
+    border-color: #dbe3ef;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    padding: 0 0.7rem;
+    overflow: hidden;
+    background: #fff;
+  }
+  .cp-loan-branch-filter .loan-branch-select + .select2 .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+  }
+  .cp-loan-branch-filter .loan-branch-select + .select2 .select2-selection--multiple .select2-selection__choice {
+    margin: 0 !important;
+    max-width: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.76rem;
+    border-radius: 999px;
+  }
+  .cp-loan-branch-filter .loan-branch-select + .select2 .select2-search--inline .select2-search__field {
+    margin-top: 0 !important;
+    height: 22px;
+    min-width: 5rem !important;
+  }
+  .cp-loan-branch-filter .filter-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+  .cp-loan-branch-filter .filter-actions .btn {
+    height: 32px;
+    min-height: 32px;
+    width: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border-color: #dbe3ef;
+    color: #475569;
+    background: #fff;
+  }
+  .cp-loan-branch-filter .filter-actions .btn:hover,
+  .cp-loan-branch-filter .filter-actions .btn:focus {
+    border-color: rgba(5, 150, 105, 0.35);
+    color: #047857;
+    background: rgba(5, 150, 105, 0.06);
+  }
+  .cp-loan-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.2rem;
+  }
+  .cp-loan-row-actions .icon-action-btn {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+  .cp-loan-list-card .smart-dt-table th.cp-loan-actions-col,
+  .cp-loan-list-card .smart-dt-table td.cp-loan-actions-col {
+    position: sticky;
+    right: 0;
+    z-index: 3;
+    width: 7.5rem;
+    min-width: 7.5rem;
+    white-space: nowrap;
+    background: #fff;
+    box-shadow: -8px 0 12px rgba(15, 23, 42, 0.06);
+  }
+  .cp-loan-list-card .smart-dt-table thead th.cp-loan-actions-col {
+    z-index: 4;
+    background: #fff;
+  }
+  .cp-loan-list-card .smart-dt-table tbody tr:hover td.cp-loan-actions-col {
+    background: #f3faf7;
+  }
+  .smart-row--draft td.cp-loan-actions-col { background-color: #f8fafc; }
+  .smart-row--pending_approval td.cp-loan-actions-col { background-color: #fffbeb; }
+  .smart-row--rejected td.cp-loan-actions-col { background-color: #fef2f2; }
+  .smart-row--settled td.cp-loan-actions-col { background-color: #ecfdf5; }
+  .cp-loan-view-dl {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 0.55rem 0.85rem;
+    margin: 0;
+  }
+  .cp-loan-view-dl dt {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .cp-loan-view-dl dd {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  .cp-loan-view-dl dd.is-paid { color: #047857; }
+  .cp-loan-view-dl dd.is-balance { color: #c2410c; }
+  .cp-loan-view-dl dd.is-cleared { color: #047857; }
+  .cp-loan-list-card .smart-dt-name-link.btn-link {
+    text-decoration: none;
+    color: #0f172a;
+    font-weight: 600;
+  }
+  .cp-loan-list-card .smart-dt-name-link.btn-link:hover,
+  .cp-loan-list-card .smart-dt-name-link.btn-link:focus {
+    color: var(--color-primary, #059669);
+  }
+  .smart-row--draft td {
+    background-color: rgba(241, 245, 249, 0.55);
+  }
+  .smart-row--pending_approval td {
+    background-color: rgba(254, 243, 199, 0.28);
+  }
+  .smart-row--rejected td {
+    background-color: rgba(254, 226, 226, 0.28);
+  }
+  .smart-row--settled td {
+    background-color: rgba(220, 252, 231, 0.38);
+  }
+  .cp-loan-list-card .cp-loan-table thead th.cp-loan-number-col,
+  .cp-loan-list-card .cp-loan-table tbody td.cp-loan-number,
+  .cp-loan-list-card .cp-loan-table tfoot th.cp-loan-number-col {
+    text-align: left !important;
+  }
+  .cp-loan-number {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+  .cp-loan-number .smart-dt-name-row {
+    display: flex;
+    justify-content: flex-start;
+  }
+  .cp-loan-number .cp-loan-id {
+    white-space: nowrap;
+  }
+  .cp-loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control,
+  .cp-loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+    padding-left: 0.5rem;
+    cursor: pointer;
+  }
+  .cp-loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  .cp-loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    line-height: 1.2;
+    color: var(--color-primary, #059669);
+  }
+  .cp-loan-list-card table.dataTable > tbody > tr.child td {
+    padding: 0.65rem 1rem 0.75rem 2.25rem;
+    background: rgba(5, 150, 105, 0.04);
+    border-top: none;
+  }
+  .cp-loan-list-card table.dataTable > tbody > tr.child ul.dtr-details {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+  }
+  .cp-loan-list-card table.dataTable > tbody > tr.child ul.dtr-details > li {
+    border: none;
+    padding: 0.1rem 0;
+  }
+  .cp-loan-list-card table.dataTable > tbody > tr.child span.dtr-title {
+    font-weight: 600;
+    display: inline-block;
+    min-width: 5.5rem;
+    color: var(--color-text-muted, #64748b);
+  }
+  .cp-loan-list-card div.dt-container .dt-layout-row {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .cp-loan-list-card .cp-loan-statement {
+    border: none;
+    border-radius: 0;
+  }
+  .cp-loan-list-card .smart-dt-table tfoot {
+    display: none;
+  }
+  @media (max-width: 767.98px) {
+    .cp-loan-list-card .card-body.table-wrap {
+      padding: 0.75rem;
+    }
+    .cp-loan-list-card .cp-loan-table {
+      table-layout: fixed;
+    }
+    .cp-loan-list-card .cp-loan-table thead th,
+    .cp-loan-list-card .cp-loan-table tbody td {
+      font-size: 0.78rem;
+      padding: 0.4rem 0.3rem;
+    }
+    .cp-loan-list-card div.dt-container .dt-search input {
+      min-width: 7.25rem;
+      width: 8rem;
+      max-width: 8.5rem;
+    }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+{% if perms.collection_point_loans.add_collectionpointloan %}
+<div class="topbar-actions cp-loan-page-actions">
+  <a href="{% url 'cp-loan-add' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Create new loan
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% widthratio loan_totals.paid loan_totals.loan_amount 100 as recovery_pct %}
+<div class="cp-loan-screen">
+<div class="smart-stat-grid cp-loan-kpi-grid loan-account-no-print" aria-label="Loan summary">
+  <div class="smart-stat-card cp-loan-kpi--count" title="Loans in the current filter">
+    <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-files" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Loans</span>
+      <span class="smart-stat-card__value">{{ loan_totals.count }}</span>
+      <span class="smart-stat-card__hint">{{ selected_status_label|default:"All" }}{% if status_counts.all %} · {{ status_counts.all }} total{% endif %}</span>
+    </span>
+  </div>
+  <div class="smart-stat-card cp-loan-kpi--amount" title="Total loan amount">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Loan amount</span>
+      <span class="smart-stat-card__value">{{ loan_totals.loan_amount|money }}</span>
+      <span class="smart-stat-card__hint">{{ loan_totals.count }} loan{{ loan_totals.count|pluralize }} in view</span>
+    </span>
+  </div>
+  <div class="smart-stat-card cp-loan-kpi--paid" title="Total paid">
+    <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Paid</span>
+      <span class="smart-stat-card__value{% if loan_totals.paid %} cp-loan-kpi-paid{% endif %}">{{ loan_totals.paid|money }}</span>
+      <span class="smart-stat-card__hint">{{ recovery_pct|default:0 }}% recovered</span>
+      <span class="smart-stat-card__meter" aria-hidden="true"><span class="smart-stat-card__meter-fill" style="width: {{ recovery_pct|default:0 }}%;"></span></span>
+    </span>
+  </div>
+  <div class="smart-stat-card smart-stat-card--warn cp-loan-kpi--balance" title="Outstanding balance">
+    <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Balance</span>
+      <span class="smart-stat-card__value">{{ loan_totals.balance|money }}</span>
+      <span class="smart-stat-card__hint">
+        {% if loan_totals.balance %}Outstanding{% else %}Fully recovered{% endif %}
+        {% if status_counts.settled %} · {{ status_counts.settled }} settled{% endif %}
+      </span>
+    </span>
+  </div>
+</div>
+
+<div class="cp-loan-recovery loan-account-no-print" aria-label="Loan recovery progress">
+  <div class="cp-loan-recovery__meta">
+    <span class="cp-loan-recovery__label">Recovered</span>
+    <span class="cp-loan-recovery__value">{{ recovery_pct|default:0 }}%</span>
+  </div>
+  <div class="cp-loan-recovery__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ recovery_pct|default:0 }}">
+    <span class="cp-loan-recovery__fill" style="width: {{ recovery_pct|default:0 }}%;"></span>
+  </div>
+</div>
+
+<div class="card card-table cp-loan-page-card cp-loan-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="cp-loan-tabs loan-account-no-print smart-dt-filters" role="tablist" aria-label="Loan status">
+      <a
+        class="smart-dt-chip {% if not selected_status %}is-active{% endif %}{% if not status_counts.all %} is-empty{% endif %}"
+        href="{% url 'cp-loan-list' %}{% if selected_branches %}?{% for branch_id in selected_branches %}branches={{ branch_id }}{% if not forloop.last %}&amp;{% endif %}{% endfor %}{% endif %}"
+      >All<span class="smart-dt-chip-count">{{ status_counts.all }}</span></a>
+      {% for value, label in status_choices %}
+      <a
+        class="smart-dt-chip {% if selected_status == value %}is-active{% endif %}{% if value == 'rejected' %} smart-dt-chip--danger{% elif value == 'pending_approval' %} smart-dt-chip--warn{% endif %}{% if status_counts|get_item:value == 0 %} is-empty{% endif %}"
+        href="{% url 'cp-loan-list' %}?status={{ value }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+      >{{ label }}<span class="smart-dt-chip-count">{{ status_counts|get_item:value }}</span></a>
+      {% endfor %}
+      <a
+        class="smart-dt-chip {% if selected_status == 'settled' %}is-active{% endif %}{% if not status_counts.settled %} is-empty{% endif %}"
+        href="{% url 'cp-loan-list' %}?status=settled{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+      >Settled<span class="smart-dt-chip-count">{{ status_counts.settled }}</span></a>
+    </div>
+    <article class="cp-loan-statement">
+    <div id="cpLoanDtFilters" class="cp-loan-filters d-none">
+      <form method="get" class="cp-loan-branch-filter">
+        {% if selected_status %}
+        <input type="hidden" name="status" value="{{ selected_status }}">
+        {% endif %}
+        <label class="visually-hidden" for="loan-filter-branches">Branches</label>
+        <div class="loan-branch-select-wrap">
+          <select id="loan-filter-branches" name="branches" class="form-select loan-branch-select" multiple size="1">
+            {% for b in branches %}
+            <option value="{{ b.pk }}" {% if b.pk|stringformat:"s" in selected_branches %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-outline-secondary" title="Apply filters" aria-label="Apply filters"><i class="bi bi-funnel"></i></button>
+          <a href="{% url 'cp-loan-list' %}{% if selected_status %}?status={{ selected_status }}{% endif %}" class="btn btn-outline-secondary" title="Clear branch filter" aria-label="Clear branch filter"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+      </form>
+    </div>
+
+    <p class="small text-muted d-md-none mb-2">Tap a row to expand details. Paid and balance are from recorded instalment payments.</p>
+    <table
+      class="table table-hover datatable datatable-smart cp-loan-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No loans yet."
+      data-footer-sum-cols="3,4,5"
+      data-smart-order="1,desc"
+      data-filters-target="cpLoanDtFilters"
+      data-print-mode="statement"
+      data-print-title="Collection point loan register"
+      data-pdf-url="{% url 'cp-loan-list-export-pdf' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all text-start cp-loan-number-col">Loan</th>
+          <th class="all">Collection point</th>
+          <th class="min-tablet-l text-end">Loan amount</th>
+          <th class="min-tablet-l text-end">Paid</th>
+          <th class="all text-end">Balance</th>
+          <th class="min-tablet-l">Status</th>
+          <th class="min-desktop">Instalments</th>
+          <th class="all text-end no-export cp-loan-actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in object_list %}
+        {% widthratio loan.paid_total loan.loan_amount 100 as loan_paid_pct %}
+        <tr class="smart-row--{{ loan.status }}{% if loan.status == 'approved' and loan.balance_total <= 0 %} smart-row--settled{% endif %}">
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all text-start cp-loan-number" data-order="{{ loan.pk }}">
+            <div class="smart-dt-name-row">
+              {% if perms.collection_point_loans.view_collectionpointloan %}
+              <button type="button" class="cp-loan-id js-cp-loan-view-trigger" title="View loan #{{ loan.pk }}" aria-label="View loan #{{ loan.pk }}">#{{ loan.pk }}</button>
+              {% else %}
+              <span class="cp-loan-id">#{{ loan.pk }}</span>
+              {% endif %}
+            </div>
+            <span class="cp-loan-point-meta">{{ loan.branch.name }}</span>
+          </td>
+          <td class="all cp-loan-point-cell">
+            <div class="smart-dt-name-row">
+              {% if perms.collection_point_loans.view_collectionpointloan %}
+              <button type="button" class="smart-dt-name-link btn btn-link p-0 align-baseline js-cp-loan-view-trigger" title="View loan #{{ loan.pk }}">{{ loan.collection_point.number }} — {{ loan.collection_point.name }}</button>
+              {% else %}
+              <span class="smart-dt-name-text">{{ loan.collection_point.number }} — {{ loan.collection_point.name }}</span>
+              {% endif %}
+            </div>
+            {% if loan.collection_point.route %}
+            <span class="cp-loan-point-meta">{{ loan.collection_point.route.name }}</span>
+            {% endif %}
+            <span class="cp-loan-progress{% if not loan_paid_pct %} is-empty{% endif %}" title="{{ loan_paid_pct|default:0 }}% recovered">
+              <span class="cp-loan-progress__fill" style="width: {{ loan_paid_pct|default:0 }}%;"></span>
+            </span>
+          </td>
+          <td class="min-tablet-l text-end dt-num" data-order="{{ loan.loan_amount|default:'0' }}">{{ loan.loan_amount|money }}</td>
+          <td class="min-tablet-l text-end dt-num cp-loan-paid{% if not loan.paid_total %} is-zero{% endif %}" data-order="{{ loan.paid_total|default:'0' }}">{{ loan.paid_total|money }}</td>
+          <td class="all text-end dt-num cp-loan-balance{% if not loan.balance_total %} is-cleared{% endif %}" data-order="{{ loan.balance_total|default:'0' }}">{{ loan.balance_total|money }}</td>
+          <td class="min-tablet-l">
+            {% if loan.status == "approved" and loan.balance_total <= 0 %}
+            <span class="smart-badge smart-badge--success">Settled</span>
+            {% elif loan.status == "approved" %}
+            <span class="smart-badge smart-badge--success">{{ loan.get_status_display }}</span>
+            {% elif loan.status == "pending_approval" %}
+            <span class="smart-badge smart-badge--primary">{{ loan.get_status_display }}</span>
+            {% elif loan.status == "rejected" %}
+            <span class="smart-badge smart-badge--dark">{{ loan.get_status_display }}</span>
+            {% else %}
+            <span class="smart-badge smart-badge--secondary">{{ loan.get_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="min-desktop dt-num">{{ loan.installment_count }}</td>
+          <td class="all text-end cp-loan-actions-col">
+            {% if perms.collection_point_loans.view_collectionpointloan or perms.collection_point_loans.change_collectionpointloan %}
+            <div class="cp-loan-row-actions">
+              {% if perms.collection_point_loans.view_collectionpointloan %}
+              <button
+                type="button"
+                class="icon-action-btn js-cp-loan-view"
+                title="View loan"
+                aria-label="View loan #{{ loan.pk }}"
+                data-loan-number="#{{ loan.pk }}"
+                data-status="{% if loan.status == 'approved' and loan.balance_total <= 0 %}Settled{% else %}{{ loan.get_status_display }}{% endif %}"
+                data-branch="{{ loan.branch.name }}"
+                data-point="{{ loan.collection_point.number }} — {{ loan.collection_point.name }}"
+                data-route="{% if loan.collection_point.route %}{{ loan.collection_point.route.name }}{% else %}—{% endif %}"
+                data-amount="{{ loan.loan_amount|money }}"
+                data-paid="{{ loan.paid_total|money }}"
+                data-balance="{{ loan.balance_total|money }}"
+                data-cleared="{% if loan.balance_total %}0{% else %}1{% endif %}"
+                data-instalments="{{ loan.installment_count }}"
+                data-loan-date="{{ loan.loan_date|date:'Y-m-d' }}"
+                data-first-repay="{{ loan.first_repayment_date|date:'Y-m-d' }}"
+                data-method="{{ loan.get_installment_method_display }}"
+                data-reason="{{ loan.reason|default:'—' }}"
+                data-account-url="{% url 'cp-loan-account' loan.pk %}"
+                data-detail-url="{% url 'cp-loan-detail' loan.pk %}"
+              ><i class="bi bi-eye" aria-hidden="true"></i></button>
+              <a href="{% url 'cp-loan-account' loan.pk %}" class="icon-action-btn" title="Loan account" aria-label="Loan account #{{ loan.pk }}"><i class="bi bi-journal-text" aria-hidden="true"></i></a>
+              {% endif %}
+              {% if loan.can_edit and perms.collection_point_loans.change_collectionpointloan %}
+              <a href="{% url 'cp-loan-edit' loan.pk %}" class="icon-action-btn" title="Edit loan" aria-label="Edit loan #{{ loan.pk }}"><i class="bi bi-pen-fill" aria-hidden="true"></i></a>
+              {% endif %}
+              {% if loan.can_delete and perms.collection_point_loans.change_collectionpointloan %}
+              <a
+                href="{% url 'cp-loan-delete' loan.pk %}"
+                class="icon-action-btn icon-action-danger js-swal-delete-post"
+                title="Delete loan"
+                aria-label="Delete loan #{{ loan.pk }}"
+                data-swal-title="Delete loan #{{ loan.pk }}?"
+                data-swal-text="This cannot be undone. The deletion will be recorded in the audit log."
+              ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+              {% elif user.is_superuser and loan.status == "approved" and perms.collection_point_loans.change_collectionpointloan %}
+              <a
+                href="{% url 'cp-loan-delete' loan.pk %}"
+                class="icon-action-btn icon-action-danger js-swal-delete-post"
+                title="Delete approved loan"
+                aria-label="Delete approved loan #{{ loan.pk }}"
+                data-swal-title="Delete approved loan #{{ loan.pk }}?"
+                data-swal-text="This approved loan and its repayment schedule will be permanently removed."
+              ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+              {% endif %}
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "collection_point_loans/_loan_list_table_footer.html" %}
+    </table>
+        <div class="cp-loan-statement__footer loan-account-no-print" aria-label="Register totals">
+          <div class="cp-loan-statement__figure">
+            <span class="cp-loan-statement__figure-label">Loan amount</span>
+            <span class="cp-loan-statement__figure-value">{{ loan_totals.loan_amount|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-paid{% if not loan_totals.paid %} is-zero{% endif %}">
+            <span class="cp-loan-statement__figure-label">Paid total</span>
+            <span class="cp-loan-statement__figure-value">{{ loan_totals.paid|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-balance">
+            <span class="cp-loan-statement__figure-label">Balance</span>
+            <span class="cp-loan-statement__figure-value">{{ loan_totals.balance|money }}</span>
+          </div>
+        </div>
+    </article>
+  </div>
+</div>
+</div>
+{% include "collection_point_loans/_cp_loan_print_register.html" %}
+
+<div class="modal fade smart-modal" id="cpLoanViewModal" tabindex="-1" aria-labelledby="cpLoanViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-cash-stack"></i></span>
+          <div>
+            <h5 class="modal-title" id="cpLoanViewModalLabel">Loan details</h5>
+            <p class="modal-subtitle" id="cpLoanViewSubtitle"></p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <dl class="cp-loan-view-dl">
+          <dt>Loan number</dt><dd id="cpLoanViewNumber">—</dd>
+          <dt>Status</dt><dd id="cpLoanViewStatus">—</dd>
+          <dt>Branch</dt><dd id="cpLoanViewBranch">—</dd>
+          <dt>Collection point</dt><dd id="cpLoanViewPoint">—</dd>
+          <dt>Route</dt><dd id="cpLoanViewRoute">—</dd>
+          <dt>Loan amount</dt><dd id="cpLoanViewAmount">—</dd>
+          <dt>Paid</dt><dd id="cpLoanViewPaid">—</dd>
+          <dt>Balance</dt><dd id="cpLoanViewBalance">—</dd>
+          <dt>Instalments</dt><dd id="cpLoanViewInstalments">—</dd>
+          <dt>Loan date</dt><dd id="cpLoanViewLoanDate">—</dd>
+          <dt>First repayment</dt><dd id="cpLoanViewFirstRepay">—</dd>
+          <dt>Method</dt><dd id="cpLoanViewMethod">—</dd>
+          <dt>Reason</dt><dd id="cpLoanViewReason">—</dd>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-dark" id="cpLoanViewAccountBtn"><i class="bi bi-journal-text me-1"></i>Account</a>
+        <a href="#" class="btn btn-outline-secondary" id="cpLoanViewDetailBtn">Full details</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var modalEl = document.getElementById("cpLoanViewModal");
+  if (!modalEl || typeof bootstrap === "undefined") return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+  function fillLoanView(trigger) {
+    if (!trigger) return;
+    var subtitle = document.getElementById("cpLoanViewSubtitle");
+    var number = trigger.getAttribute("data-loan-number") || "";
+    if (subtitle) subtitle.textContent = (trigger.getAttribute("data-point") || "") + (number ? " · " + number : "");
+    var map = {
+      cpLoanViewNumber: "data-loan-number",
+      cpLoanViewStatus: "data-status",
+      cpLoanViewBranch: "data-branch",
+      cpLoanViewPoint: "data-point",
+      cpLoanViewRoute: "data-route",
+      cpLoanViewAmount: "data-amount",
+      cpLoanViewPaid: "data-paid",
+      cpLoanViewBalance: "data-balance",
+      cpLoanViewInstalments: "data-instalments",
+      cpLoanViewLoanDate: "data-loan-date",
+      cpLoanViewFirstRepay: "data-first-repay",
+      cpLoanViewMethod: "data-method",
+      cpLoanViewReason: "data-reason",
+    };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = trigger.getAttribute(map[id]) || "—";
+    });
+    var paidEl = document.getElementById("cpLoanViewPaid");
+    var balanceEl = document.getElementById("cpLoanViewBalance");
+    if (paidEl) {
+      paidEl.classList.toggle("is-paid", (trigger.getAttribute("data-paid") || "0") !== "0.00");
+    }
+    if (balanceEl) {
+      var cleared = trigger.getAttribute("data-cleared") === "1";
+      balanceEl.classList.toggle("is-balance", !cleared);
+      balanceEl.classList.toggle("is-cleared", cleared);
+    }
+    var accountBtn = document.getElementById("cpLoanViewAccountBtn");
+    var detailBtn = document.getElementById("cpLoanViewDetailBtn");
+    if (accountBtn) accountBtn.href = trigger.getAttribute("data-account-url") || "#";
+    if (detailBtn) detailBtn.href = trigger.getAttribute("data-detail-url") || "#";
+    modal.show();
+  }
+
+  document.addEventListener("click", function (e) {
+    var viewBtn = e.target.closest(".js-cp-loan-view");
+    if (viewBtn) {
+      e.preventDefault();
+      fillLoanView(viewBtn);
+      return;
+    }
+    var trigger = e.target.closest(".js-cp-loan-view-trigger");
+    if (!trigger) return;
+    e.preventDefault();
+    var row = trigger.closest("tr");
+    var source = row ? row.querySelector(".js-cp-loan-view") : null;
+    fillLoanView(source || trigger);
+  });
+})();
+</script>
+{% endblock %}

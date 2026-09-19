@@ -1,0 +1,844 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Pending farmer goods · Canmee Dairies{% endblock %}
+{% block page_heading %}Pending farmer goods{% endblock %}
+{% block topbar_actions %}
+<button type="button" class="btn btn-primary" id="bulk-accept-btn" disabled>
+  <i class="bi bi-check2-all me-1"></i>Accept selected (<span class="js-selected-count">0</span>)
+</button>
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_detail_page_list_styles.html" %}
+<style>
+  .pending-accept-page .smart-stat-grid {
+    margin-bottom: 1rem;
+  }
+  .pending-accept-page button.smart-stat-card {
+    appearance: none;
+    font: inherit;
+    text-align: left;
+    width: auto;
+    cursor: pointer;
+  }
+  .pending-accept-list-card {
+    margin-top: 0;
+  }
+  .pending-accept-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .pending-accept-list-card .table-wrap,
+  .pending-accept-list-card .dataTables_wrapper,
+  .pending-accept-list-card div.dt-container,
+  .pending-accept-list-card div.dt-scroll,
+  .pending-accept-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .pending-accept-list-card .pending-accept-table {
+    width: 100% !important;
+  }
+  .pending-accept-list-card .pending-accept-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .pending-accept-list-card .pending-accept-table tbody td {
+    white-space: normal;
+    word-break: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .pending-accept-list-card .pending-accept-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .pending-accept-list-card .pending-accept-table tbody td.dt-muted {
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+  .pending-accept-list-card .pending-accept-table tbody td.dt-seq,
+  .pending-accept-list-card .pending-accept-table thead th.dt-seq {
+    width: 2.5rem;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .pending-accept-list-card .pending-accept-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .pending-accept-list-card .pending-accept-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 0.55rem 0.4rem;
+    white-space: nowrap;
+  }
+  .pending-accept-list-card .pending-accept-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .pending-accept-list-card .smart-dt-name-link {
+    color: #0f766e;
+    text-decoration: none;
+    font-weight: 600;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .pending-accept-list-card .smart-dt-name-link:hover {
+    color: #115e59;
+    text-decoration: underline;
+  }
+  .pending-accept-list-card .receipt-ref-link {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.78rem;
+    color: #64748b;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .pending-accept-list-card .receipt-ref-link:hover {
+    color: #0f766e;
+    text-decoration: underline;
+  }
+  .pending-accept-note-wrap input {
+    min-width: 11rem;
+    max-width: 16rem;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+  }
+  .pending-accept-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+  }
+  .pending-accept-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .pending-accept-list-card div.dt-smart-toolbar .dt-smart-actions {
+    margin-left: auto;
+  }
+  .pending-accept-list-card div.dt-container .dt-search {
+    margin: 0;
+  }
+  .pending-accept-list-card div.dt-container .dt-search label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .pending-accept-list-card div.dt-container .dt-search input {
+    min-width: min(220px, 42vw);
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.38rem 0.85rem 0.38rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    box-shadow: none;
+  }
+  .pending-accept-list-card div.dt-container .dt-search input:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.1);
+  }
+  .smart-row--today td {
+    background-color: rgba(220, 252, 231, 0.28);
+  }
+  .smart-row--older td {
+    background-color: rgba(254, 243, 199, 0.18);
+  }
+  .smart-stat-card.is-active {
+    border-color: rgba(5, 150, 105, 0.35);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.1);
+  }
+  .pending-accept-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .pending-accept-actions .btn {
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 0.24rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pending-accept-actions-trigger.dropdown-toggle::after {
+    display: none;
+  }
+  .pending-accept-actions-trigger {
+    width: 1.85rem;
+    height: 1.85rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  .pending-accept-actions-menu {
+    min-width: 10rem;
+    font-size: 0.8125rem;
+  }
+  .pending-accept-actions-menu .dropdown-item {
+    font-weight: 600;
+  }
+  @media (max-width: 767.98px) {
+    .pending-accept-list-card .card-body.table-wrap { padding: 0.75rem; }
+    .pending-accept-list-card div.dt-container .dt-search input {
+      min-width: 8rem;
+      width: 100%;
+      max-width: none;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="pending-accept-page">
+  {% if not farmer_goods_accept_notifications_enabled %}
+  <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
+    <i class="bi bi-info-circle mt-1"></i>
+    <div>
+      Accept notifications are off. New collection-point issues apply immediately.
+      Remaining items below still need Accept or Reject.
+      {% if request.user.is_superuser %}
+      <a href="{% url 'farmer-goods-settings' %}">Change in Settings</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="smart-stat-grid" aria-label="Pending farmer goods summary">
+    <button type="button" class="smart-stat-card js-pending-stat-filter is-active" data-smart-filter="all" title="Show all pending issues">
+      <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Pending issues</span>
+        <span class="smart-stat-card__value">{{ pending_summary.count }}</span>
+      </span>
+    </button>
+    <div class="smart-stat-card" title="Total pending amount">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Pending amount</span>
+        <span class="smart-stat-card__value">{{ pending_summary.total_amount|money }}</span>
+      </span>
+    </div>
+    <button type="button" class="smart-stat-card js-pending-stat-filter" data-smart-filter="today" title="Show issues issued today">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-calendar-check" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Issued today</span>
+        <span class="smart-stat-card__value">{{ pending_summary.today_count }} <small class="text-muted fw-semibold">{{ pending_summary.today_amount|money }}</small></span>
+      </span>
+    </button>
+    <div class="smart-stat-card" title="Routes and branches in this list">
+      <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-signpost-split" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Routes / branches</span>
+        <span class="smart-stat-card__value">{{ pending_summary.route_count }} / {{ pending_summary.branch_count }}</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card farmer-collection-card farmer-milk-list-card pending-accept-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div class="farmer-section-title mb-1">Pending accept</div>
+      <p class="small text-muted mb-3">
+        Collection-point issues waiting for accept. Accept applies stock and the payment sheet; reject cancels with no stock change.
+      </p>
+
+      <div id="pendingAcceptDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Pending accept filters">
+        <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+          All<span class="smart-dt-chip-count">{{ pending_summary.count }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="today">
+          Issued today<span class="smart-dt-chip-count">{{ pending_summary.today_count }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="older">
+          Older<span class="smart-dt-chip-count">{{ pending_summary.older_count }}</span>
+        </button>
+        <label class="pending-accept-note-wrap mb-0">
+          <span class="visually-hidden">Bulk accept note</span>
+          <input type="text" id="bulk-accept-note" maxlength="255" placeholder="Note (optional)">
+        </label>
+        <label class="pending-accept-select-all mb-0">
+          <input class="form-check-input m-0" type="checkbox" id="select-all-pending" {% if not pending_batches %}disabled{% endif %}>
+          Select all
+        </label>
+      </div>
+
+      {% if not pending_batches %}
+      <div class="empty-state p-4 text-muted">No pending farmer goods issues.</div>
+      {% else %}
+      <table
+        id="pending-accept-table"
+        class="table table-hover pending-accept-table farmer-financial-table smart-dt-table mb-0 w-100"
+        data-page-length="25"
+      >
+        <thead>
+          <tr>
+            <th class="dt-seq">#</th>
+            <th class="no-export" style="width: 2rem"></th>
+            <th>Date</th>
+            <th>Issued</th>
+            <th>Point</th>
+            <th>Receipt</th>
+            <th>Route</th>
+            <th>From branch</th>
+            <th>Products</th>
+            <th class="text-end">Lines</th>
+            <th class="text-end">Amount</th>
+            <th class="text-end no-export">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in pending_batches %}
+          <tr
+            class="{% if row.is_today %}smart-row--today{% else %}smart-row--older{% endif %}"
+            data-branch-id="{{ row.branch_id }}"
+            data-route-id="{{ row.route_id }}"
+          >
+            <td class="fw-medium dt-seq"></td>
+            <td>
+              <input
+                class="form-check-input js-pending-batch-check"
+                type="checkbox"
+                value="{{ row.batch_ref }}"
+                aria-label="Select {{ row.point_label }}"
+              >
+            </td>
+            <td class="text-nowrap" data-order="{{ row.date_sort }}">
+              {% if row.date %}{{ row.date|date:"Y-m-d" }}{% else %}—{% endif %}
+            </td>
+            <td class="dt-muted text-nowrap" data-order="{{ row.date_sort }}">
+              {{ row.created_ago|default:"—" }}
+            </td>
+            <td>
+              <button
+                type="button"
+                class="smart-dt-name-link btn btn-link p-0 align-baseline js-pending-review"
+                data-batch-ref="{{ row.batch_ref }}"
+              >{{ row.point_label }}</button>
+            </td>
+            <td class="font-monospace text-muted">
+              {% if row.review_url %}
+              <a
+                href="{{ row.review_url }}"
+                class="receipt-ref-link js-payslip-embed-link"
+                data-embed-url="{{ row.review_url }}?embed=1"
+                data-open-url="{{ row.review_url }}"
+                data-embed-title="Receipt {{ row.batch_ref|slice:':8'|upper }}"
+              >{{ row.batch_ref|slice:":8"|upper }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ row.route_label }}</td>
+            <td>{{ row.branch_label }}</td>
+            <td>{{ row.products_summary|default:"—" }}</td>
+            <td class="dt-num text-end" data-order="{{ row.line_count }}">{{ row.line_count }}</td>
+            <td class="dt-num text-end" data-order="{{ row.amount_value }}">{{ row.total_amount|money }}</td>
+            <td class="text-end">
+              <div class="pending-accept-actions">
+                <div class="dropdown dropstart d-inline-block">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary dropdown-toggle pending-accept-actions-trigger"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="true"
+                    aria-expanded="false"
+                    aria-label="More actions for {{ row.point_label }}"
+                    title="More actions"
+                  >
+                    <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end pending-accept-actions-menu">
+                    <li>
+                      <button
+                        type="button"
+                        class="dropdown-item js-pending-review"
+                        data-batch-ref="{{ row.batch_ref }}"
+                      ><i class="bi bi-eye me-2" aria-hidden="true"></i>View</button>
+                    </li>
+                    {% if row.review_url %}
+                    <li>
+                      <a
+                        href="{{ row.review_url }}"
+                        class="dropdown-item js-payslip-embed-link"
+                        data-embed-url="{{ row.review_url }}?embed=1"
+                        data-open-url="{{ row.review_url }}"
+                        data-embed-title="Receipt {{ row.batch_ref|slice:':8'|upper }}"
+                      ><i class="bi bi-receipt me-2" aria-hidden="true"></i>Receipt</a>
+                    </li>
+                    {% endif %}
+                  </ul>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success js-row-accept"
+                  data-url="{% url 'farmer-goods-staff-accept' row.batch_ref %}"
+                >Accept</button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger js-row-reject"
+                  data-url="{% url 'farmer-goods-staff-reject' row.batch_ref %}"
+                >Reject</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th class="text-end">Totals</th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th class="text-end dt-foot-total"></th>
+            <th class="text-end dt-foot-total"></th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<form method="post" action="{% url 'farmer-goods-staff-bulk-accept' %}" id="pending-accept-form" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" name="note" id="bulk-accept-note-hidden" value="">
+</form>
+{{ pending_review_map|json_script:"pending-accept-review-map" }}
+{% include "reports/_payslip_embed_modal.html" %}
+{% endblock %}
+{% block extra_js %}
+{% include "reports/_payslip_embed_script.html" %}
+<script>
+(function () {
+  function csrfToken() {
+    var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+    var input = document.querySelector("#pending-accept-form [name=csrfmiddlewaretoken]");
+    return input ? input.value : "";
+  }
+
+  function postAction(url) {
+    var body = new URLSearchParams();
+    body.set("note", (document.getElementById("bulk-accept-note") || {}).value || "");
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": csrfToken(),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      credentials: "same-origin",
+      body: body.toString(),
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok || (data && data.ok === false)) {
+          throw new Error((data && data.error) || "Request failed");
+        }
+        return data;
+      });
+    });
+  }
+
+  function loadReviewMap() {
+    var el = document.getElementById("pending-accept-review-map");
+    if (!el) return {};
+    try {
+      return JSON.parse(el.textContent || "{}") || {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  var reviewMap = loadReviewMap();
+
+  function openPendingReview(batchRef) {
+    var item = reviewMap[batchRef];
+    if (!item) return;
+    if (typeof window.openStaffGoodsReviewModal === "function") {
+      window.openStaffGoodsReviewModal(item);
+      return;
+    }
+    var lines = (item.lines || [])
+      .map(function (line) {
+        return (
+          (line.product_name || "—") +
+          " × " +
+          (line.quantity || "0") +
+          " = " +
+          (line.amount || "0.00")
+        );
+      })
+      .join("\n");
+    var message =
+      (item.body || "") +
+      (lines ? "\n\n" + lines : "") +
+      "\n\nTotal: " +
+      (item.total_amount || "0.00");
+    if (typeof window.appAlert === "function") {
+      window.appAlert(message, { icon: "info", title: item.title || "Goods issue" });
+    }
+  }
+
+  function boot() {
+    var $ = window.jQuery;
+    if (!$ || !$.fn || !$.fn.DataTable) {
+      console.error("DataTables/jQuery not available on pending-accept page");
+      return;
+    }
+
+    var tableEl = document.getElementById("pending-accept-table");
+    var form = document.getElementById("pending-accept-form");
+    var selectAll = document.getElementById("select-all-pending");
+    var btn = document.getElementById("bulk-accept-btn");
+    var noteInput = document.getElementById("bulk-accept-note");
+    var noteHidden = document.getElementById("bulk-accept-note-hidden");
+    var countEls = document.querySelectorAll(".js-selected-count");
+    var filtersEl = document.getElementById("pendingAcceptDtFilters");
+    var api = null;
+    var activeFilter = "all";
+
+    function setActiveFilter(filter) {
+      activeFilter = filter || "all";
+      if (filtersEl) {
+        filtersEl.querySelectorAll("[data-smart-filter]").forEach(function (el) {
+          el.classList.toggle("is-active", el.getAttribute("data-smart-filter") === activeFilter);
+        });
+      }
+      document.querySelectorAll(".js-pending-stat-filter").forEach(function (el) {
+        el.classList.toggle("is-active", el.getAttribute("data-smart-filter") === activeFilter);
+      });
+      if (api) api.draw();
+    }
+
+    function refreshSeq() {
+      if (!api) return;
+      var info = api.page.info();
+      var nodes = api.column(0, { page: "current", order: "applied", search: "applied" }).nodes();
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i]) nodes[i].textContent = String(info.start + i + 1);
+      }
+    }
+
+    function updateFooter() {
+      if (!api) return;
+      var lines = 0;
+      var amount = 0;
+      api.rows({ search: "applied" }).every(function () {
+        var row = this.node();
+        if (!row) return;
+        var lineCell = row.cells[9];
+        var amountCell = row.cells[10];
+        if (lineCell) {
+          var lv = parseFloat(lineCell.getAttribute("data-order") || lineCell.textContent || "0");
+          if (!isNaN(lv)) lines += lv;
+        }
+        if (amountCell) {
+          var av = parseFloat(
+            String(amountCell.getAttribute("data-order") || amountCell.textContent || "0").replace(/,/g, "")
+          );
+          if (!isNaN(av)) amount += av;
+        }
+      });
+      var foot = api.table().footer();
+      if (!foot) return;
+      var cells = foot.querySelectorAll("th");
+      if (cells[9]) {
+        cells[9].textContent = lines.toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        });
+      }
+      if (cells[10]) {
+        cells[10].textContent = amount.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+    }
+
+    function boxes(filteredOnly) {
+      if (api && filteredOnly) {
+        return api
+          .rows({ search: "applied" })
+          .nodes()
+          .toArray()
+          .map(function (tr) {
+            return tr.querySelector(".js-pending-batch-check");
+          })
+          .filter(Boolean);
+      }
+      return Array.prototype.slice.call(
+        document.querySelectorAll("#pending-accept-table .js-pending-batch-check")
+      );
+    }
+
+    function sync() {
+      var filtered = boxes(true);
+      var selectedFiltered = filtered.filter(function (el) {
+        return el.checked;
+      });
+      var selectedAll = boxes(false).filter(function (el) {
+        return el.checked;
+      });
+      countEls.forEach(function (el) {
+        el.textContent = String(selectedAll.length);
+      });
+      if (btn) btn.disabled = selectedAll.length === 0;
+      if (selectAll) {
+        selectAll.checked = filtered.length > 0 && selectedFiltered.length === filtered.length;
+        selectAll.indeterminate =
+          selectedFiltered.length > 0 && selectedFiltered.length < filtered.length;
+      }
+    }
+
+    if (tableEl && !$.fn.DataTable.isDataTable(tableEl)) {
+      try {
+        var hasButtons = !!( $.fn.dataTable && $.fn.dataTable.Buttons);
+        api = $(tableEl).DataTable({
+          pageLength: 25,
+          lengthMenu: [10, 25, 50, 100],
+          autoWidth: false,
+          order: [[2, "desc"]],
+          pagingType: "first_last_numbers",
+          columnDefs: [
+            { targets: [0, 1, 11], orderable: false, searchable: false },
+            { targets: [9, 10], className: "text-end dt-num" },
+          ],
+          responsive: false,
+          dom:
+            "<'row g-2 align-items-center mb-2 dt-smart-toolbar'<'col-12 d-flex flex-wrap gap-2 justify-content-between align-items-center'<'dt-smart-filters-wrap'><'dt-smart-actions d-flex flex-wrap gap-2 align-items-center'fB>>>" +
+            "t" +
+            "<'row g-2 align-items-center mt-2 dt-bottom-row'<'col-md-4 dt-bottom-length'l><'col-md-4 dt-bottom-info'i><'col-md-4 dt-bottom-pagination'p>>",
+          buttons: hasButtons
+            ? [
+                {
+                  extend: "collection",
+                  text: '<i class="bi bi-download me-1"></i>Export',
+                  className: "btn btn-sm btn-outline-secondary dt-btn-modern dt-btn-legacy",
+                  autoClose: true,
+                  buttons: [
+                    { extend: "copyHtml5", text: "Copy" },
+                    { extend: "excelHtml5", text: "Excel" },
+                    { extend: "csvHtml5", text: "CSV" },
+                    { extend: "pdfHtml5", text: "PDF" },
+                  ],
+                },
+              ]
+            : [],
+          language: {
+            search: "",
+            searchPlaceholder: "Search…",
+            lengthMenu: "Show _MENU_ rows",
+            info: "Showing _START_–_END_ of _TOTAL_",
+            infoEmpty: "No rows",
+            infoFiltered: "(filtered from _MAX_)",
+            zeroRecords: "No matching records",
+            emptyTable: "No pending farmer goods issues.",
+            paginate: {
+              first: '<i class="bi bi-chevron-double-left"></i>',
+              previous: '<i class="bi bi-chevron-left"></i>',
+              next: '<i class="bi bi-chevron-right"></i>',
+              last: '<i class="bi bi-chevron-double-right"></i>',
+            },
+          },
+          drawCallback: function () {
+            refreshSeq();
+            updateFooter();
+            sync();
+          },
+          initComplete: function () {
+            var dt = this.api();
+            var container = $(dt.table().container());
+            container.addClass("dt-smart-table");
+            if (filtersEl) {
+              container.find(".dt-smart-filters-wrap").append(filtersEl);
+              filtersEl.classList.remove("d-none");
+            }
+            refreshSeq();
+            updateFooter();
+            sync();
+          },
+        });
+      } catch (err) {
+        console.error("Pending accept DataTable init failed", err);
+        api = null;
+      }
+    } else if (tableEl) {
+      api = $(tableEl).DataTable();
+    }
+
+    if (filtersEl && api) {
+      $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        if (!api || settings.nTable !== tableEl) return true;
+        if (activeFilter === "all") return true;
+        var row = api.row(dataIndex).node();
+        if (!row) return true;
+        return row.classList.contains("smart-row--" + activeFilter);
+      });
+      filtersEl.addEventListener("click", function (e) {
+        var chip = e.target.closest("[data-smart-filter]");
+        if (!chip) return;
+        setActiveFilter(chip.getAttribute("data-smart-filter") || "all");
+      });
+    }
+
+    document.querySelectorAll(".js-pending-stat-filter").forEach(function (statBtn) {
+      statBtn.addEventListener("click", function () {
+        setActiveFilter(statBtn.getAttribute("data-smart-filter") || "all");
+      });
+    });
+
+    if (selectAll) {
+      selectAll.addEventListener("change", function () {
+        boxes(true).forEach(function (el) {
+          el.checked = selectAll.checked;
+        });
+        sync();
+      });
+    }
+
+    document.addEventListener("change", function (e) {
+      if (e.target && e.target.classList.contains("js-pending-batch-check")) sync();
+    });
+
+    function notifyError(message, title) {
+      if (typeof window.appAlert === "function") {
+        return window.appAlert(message, { icon: "error", title: title || "Error" });
+      }
+      return Promise.resolve(window.alert(message));
+    }
+
+    document.addEventListener("click", function (e) {
+      var reviewBtn = e.target.closest(".js-pending-review");
+      if (reviewBtn) {
+        e.preventDefault();
+        openPendingReview(reviewBtn.getAttribute("data-batch-ref"));
+        return;
+      }
+      var acceptBtn = e.target.closest(".js-row-accept");
+      if (acceptBtn) {
+        postAction(acceptBtn.getAttribute("data-url"))
+          .then(function () {
+            window.location.reload();
+          })
+          .catch(function (err) {
+            notifyError(err.message || "Accept failed", "Accept failed");
+          });
+        return;
+      }
+      var rejectBtn = e.target.closest(".js-row-reject");
+      if (rejectBtn) {
+        var rejectUrl = rejectBtn.getAttribute("data-url");
+        var rejectConfirm =
+          typeof window.appConfirm === "function"
+            ? window.appConfirm("Stock will not be applied.", {
+                title: "Reject this goods issue?",
+                confirmText: "Reject",
+                cancelText: "Cancel",
+                icon: "warning",
+                confirmButtonClass: "btn btn-danger",
+                focusCancel: true,
+              })
+            : Promise.resolve(
+                window.confirm("Reject this goods issue? Stock will not be applied.")
+              );
+        rejectConfirm.then(function (ok) {
+          if (!ok) return;
+          postAction(rejectUrl)
+            .then(function () {
+              window.location.reload();
+            })
+            .catch(function (err) {
+              notifyError(err.message || "Reject failed", "Reject failed");
+            });
+        });
+      }
+    });
+
+    if (btn && form) {
+      btn.addEventListener("click", function () {
+        var selected = boxes(false).filter(function (el) {
+          return el.checked;
+        });
+        if (!selected.length) return;
+        var message =
+          "Accept " +
+          selected.length +
+          " selected issue(s)? Stock and payment sheets will be updated.";
+        var acceptConfirm =
+          typeof window.appConfirm === "function"
+            ? window.appConfirm(message, {
+                title: "Accept selected issues?",
+                confirmText: "Accept",
+                cancelText: "Cancel",
+                icon: "question",
+                confirmButtonClass: "btn btn-success",
+              })
+            : Promise.resolve(window.confirm(message));
+        acceptConfirm.then(function (ok) {
+          if (!ok) return;
+          form.querySelectorAll('input[name="batch_ref"]').forEach(function (el) {
+            el.remove();
+          });
+          selected.forEach(function (el) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "batch_ref";
+            input.value = el.value;
+            form.appendChild(input);
+          });
+          if (noteHidden) noteHidden.value = noteInput ? noteInput.value || "" : "";
+          form.submit();
+        });
+      });
+    }
+
+    sync();
+  }
+
+  if (window.jQuery) {
+    window.jQuery(boot);
+  } else {
+    document.addEventListener("DOMContentLoaded", boot);
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}{% if object %}Edit category{% else %}Add category{% endif %} · Assets{% endblock %}
+{% block page_heading %}{% if object %}Edit category{% else %}Add category{% endif %}{% endblock %}
+{% block extra_css %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-category-list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Categories</a>
+</div>
+{% endblock %}
+{% block content %}
+<form method="post" class="js-master-form-enter-next">
+  {% csrf_token %}
+  <article class="asset-voucher">
+    <header class="asset-voucher__head">
+      <div>
+        <span class="asset-statement__kicker">Master voucher</span>
+        <h2 class="asset-statement__title">{% if object %}Amend category{% else %}New category{% endif %}</h2>
+        <p class="asset-statement__meta">Each category belongs to a type. Changing type updates assets in this category.</p>
+      </div>
+      <span class="asset-statement__account">{% if object %}{{ object.code }}{% else %}NEW{% endif %}</span>
+    </header>
+    <div class="asset-voucher__body">
+      {% if form.non_field_errors %}<div class="alert alert-danger swal-flash mx-3 mt-3 mb-0">{{ form.non_field_errors }}</div>{% endif %}
+      <section class="asset-voucher__section">
+        <h3 class="asset-voucher__section-title"><span class="asset-voucher__no">01</span> Ledger account</h3>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.asset_type.id_for_label }}">Type</label>
+            {% render_field form.asset_type class="form-select" %}{{ form.asset_type.errors }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.parent.id_for_label }}">Parent</label>
+            {% render_field form.parent class="form-select" %}
+          </div>
+          <div class="col-md-8">
+            <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+            {% render_field form.name class="form-control" %}{{ form.name.errors }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="{{ form.code.id_for_label }}">Code</label>
+            {% render_field form.code class="form-control" %}{{ form.code.errors }}
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+            {% render_field form.description class="form-control" %}
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              {% render_field form.is_active class="form-check-input" %}
+              <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active on the register</label>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="asset-voucher__actions">
+      <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Post</button>
+      <a href="{% url 'asset-category-list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </article>
+</form>
+{{ category_parent_rows|json_script:"asset-category-parent-data" }}
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var typeSel = document.getElementById("id_asset_type");
+  var parentSel = document.getElementById("id_parent");
+  var dataEl = document.getElementById("asset-category-parent-data");
+  var rows = [];
+  try { rows = dataEl ? JSON.parse(dataEl.textContent || "[]") : []; } catch (err) { rows = []; }
+  function syncParents() {
+    if (!typeSel || !parentSel) return;
+    var typeId = typeSel.value;
+    var current = parentSel.value;
+    var html = ['<option value="">---------</option>'];
+    rows.forEach(function (r) {
+      if (typeId && String(r.type_id) !== String(typeId)) return;
+      html.push('<option value="' + r.id + '"' + (String(r.id) === String(current) ? ' selected' : '') + '>' + r.name + '</option>');
+    });
+    parentSel.innerHTML = html.join('');
+  }
+  if (typeSel) typeSel.addEventListener("change", syncParents);
+  syncParents();
+})();
+</script>
+{% endblock %}

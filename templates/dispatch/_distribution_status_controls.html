@@ -1,0 +1,54 @@
+{% if o.pk in buyer_return_received_ids %}
+Return received
+{% if o.buyer_result_liters %}
+<span class="text-muted small d-block">{{ o.buyer_result_liters }} L returned</span>
+{% endif %}
+<span class="text-muted small d-block">from {% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %} · {{ o.destination_label }}</span>
+{% elif perms.dispatch.change_milkdistribution %}
+<form method="post" action="{% url 'distribution-status' o.pk %}" class="dispatch-status-form m-0">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <select
+    name="status"
+    class="form-select form-select-sm dispatch-field-inline dispatch-status-select"
+    aria-label="Status for {{ o.dispatch_no }}"
+    data-dispatch-label="{{ o.date }} · {{ o.destination_label }} · {{ o.dispatch_no }}"
+    data-buyer-result-url="{% if o.buyer_id %}{% url 'distribution-buyer-result' o.pk %}{% endif %}"
+    data-initial-liters="{% if o.buyer_result_liters %}{{ o.buyer_result_liters }}{% endif %}"
+    data-available-liters="{{ o.liters_equivalent }}"
+    data-available-kg="{{ o.kg }}"
+    data-initial-delivered-liters="{% if o.delivered_liters %}{{ o.delivered_liters }}{% endif %}"
+    data-initial-delivered-kg="{% if o.delivered_quantity %}{{ o.delivered_quantity }}{% endif %}"
+    data-initial-return-branch="{% if o.returned_branch_id %}{{ o.returned_branch_id }}{% endif %}"
+    data-initial-delivered-ts="{% if o.delivered_ts %}{{ o.delivered_ts }}{% elif o.ts %}{{ o.ts }}{% endif %}"
+    data-paid-locked="{% if o.paid_amount > 0 %}1{% else %}0{% endif %}"
+  >
+    {% for value, label in status_choices %}
+    <option value="{{ value }}" {% if o.status == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <input type="hidden" name="delivered_qty" class="js-delivered-qty" value="">
+  <input type="hidden" name="delivered_qty_unit" class="js-delivered-qty-unit" value="liters">
+  <input type="hidden" name="delivered_ts" class="js-delivered-ts" value="">
+  <button type="button" class="btn btn-link p-0 text-muted small d-block text-start dispatch-delivered-hint{% if o.status != 'completed' %} d-none{% endif %}">{% if o.status == 'completed' %}Delivered {% if o.delivered_liters %}{{ o.delivered_liters }}{% else %}{{ o.liters_equivalent }}{% endif %} L{% endif %}</button>
+  <span class="text-muted small d-block dispatch-return-branch-hint{% if not o.returned_branch %} d-none{% endif %}">{% if o.returned_branch %}{% if o.buyer_result_liters %}{{ o.buyer_result_liters }} L returned → {{ o.returned_branch }}{% elif o.is_branch_dispatch %}Return → {{ o.returned_branch.name }}{% else %}→ {{ o.returned_branch }}{% endif %}{% endif %}</span>
+</form>
+{% else %}
+{% if branch_scope != 'incoming' and filter_tab != 'all' and o.show_outgoing_divert_status %}
+Diverted → {{ o.divert_target_label }}
+{% elif o.pk in buyer_return_received_ids %}
+Return received
+{% if o.buyer_result_liters %}
+<span class="text-muted small d-block">{{ o.buyer_result_liters }} L returned</span>
+{% endif %}
+<span class="text-muted small d-block">from {% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %} · {{ o.destination_label }}</span>
+{% else %}
+{{ o.list_status_display }}
+{% endif %}
+{% if branch_scope != 'incoming' and filter_tab != 'all' and o.show_outgoing_divert_status and o.diverted_by_branch %}
+<span class="text-muted small d-block">from {{ o.diverted_by_branch.name }}</span>
+{% endif %}
+{% if o.status == 'return' and o.returned_branch and not o.is_branch_dispatch and o.pk not in buyer_return_received_ids %}
+<span class="text-muted small d-block">→ {{ o.returned_branch }}</span>
+{% endif %}
+{% endif %}

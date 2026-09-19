@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+{% block title %}Milk collection · Canmee Dairies{% endblock %}
+{% block page_heading %}Milk collection{% endblock %}
+{% block extra_css %}
+<style>
+  .milk-collection-card {
+    margin-top: 0.75rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .milk-collection-card .card-header {
+    padding: 0.9rem 1rem 0;
+  }
+  .milk-collection-card .card-body {
+    padding: 0.85rem 1rem 1rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .milk-collection-card .card-body.table-wrap {
+    overflow-x: hidden;
+  }
+  .milk-collection-card .dataTables_wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 0.25rem 0.5rem;
+  }
+  .milk-collection-card .dataTables_filter,
+  .milk-collection-card .dt-buttons,
+  .milk-collection-card .dataTables_length,
+  .milk-collection-card .dataTables_info,
+  .milk-collection-card .dataTables_paginate {
+    margin-bottom: 0.35rem;
+  }
+  .milk-collection-card .dataTables_filter input {
+    max-width: 220px;
+  }
+  .route-period-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: end;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.25rem 0.85rem;
+  }
+  .route-period-actions .form-control,
+  .route-period-actions .form-select {
+    min-width: 130px;
+    max-width: 180px;
+  }
+  .route-period-date-group .input-group-text {
+    background: #fff;
+    border-left: 0;
+    cursor: pointer;
+  }
+  .route-period-date-group .form-control {
+    border-right: 0;
+  }
+  .route-period-date-group .flatpickr-input[readonly] {
+    background-color: #fff;
+  }
+  .route-period-range-group {
+    min-width: 250px;
+  }
+  .route-totals-table {
+    width: 100% !important;
+    table-layout: auto;
+  }
+  .route-totals-table th,
+  .route-totals-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+  }
+  .route-totals-table th:nth-child(1),
+  .route-totals-table td:nth-child(1) { width: 14%; }
+  .route-totals-table th:nth-child(2),
+  .route-totals-table td:nth-child(2) { width: 16%; }
+  .route-totals-table th:nth-child(3),
+  .route-totals-table td:nth-child(3) { width: 24%; }
+  .route-totals-table th:nth-child(4),
+  .route-totals-table td:nth-child(4) { width: 1%; white-space: nowrap; }
+  .route-totals-table th:nth-child(5),
+  .route-totals-table td:nth-child(5) { width: 1%; white-space: nowrap; }
+  .route-totals-table th:nth-child(6),
+  .route-totals-table td:nth-child(6) { width: 14%; }
+  .route-totals-table th,
+  .route-totals-table td {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+  .route-totals-table tfoot th {
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.35rem;
+    vertical-align: middle;
+    border-top: 2px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  @media (max-width: 992px) {
+    .milk-collection-card .card-body {
+      overflow-x: auto;
+    }
+    .milk-collection-card .card-body.table-wrap {
+      overflow-x: auto;
+    }
+    .route-totals-table { table-layout: auto; }
+  }
+  .custom-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid #94a3b8;
+    border-radius: 0.3rem;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .custom-check:hover { border-color: #059669; }
+  .custom-check:checked { border-color: #059669; background: #059669; }
+  .custom-check:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.28rem;
+    top: 0.08rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .delete-selected-btn[hidden] { display: none !important; }
+  .milk-collection-filter-form .form-control,
+  .milk-collection-filter-form .form-select {
+    height: 38px;
+    min-height: 38px;
+  }
+  .milk-collection-filter-form .form-select.milk-collection-branch-select[multiple] {
+    height: 38px !important;
+    min-height: 38px !important;
+    overflow-y: auto;
+  }
+  .milk-collection-filter-form .milk-collection-branch-select + .select2 .select2-selection--multiple {
+    min-height: 38px !important;
+    height: 38px !important;
+    border-color: var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    overflow: hidden;
+  }
+  .milk-collection-filter-form .milk-collection-branch-select + .select2 .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+  }
+  .milk-collection-filter-form .milk-collection-branch-select + .select2 .select2-selection--multiple .select2-selection__choice {
+    margin: 0 !important;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .milk-collection-filter-form .milk-collection-branch-select + .select2 .select2-search--inline .select2-search__field {
+    margin-top: 0 !important;
+    height: 24px;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card mb-3">
+  <div class="card-body py-3">
+    {% if perms.collections.view_milkcollection %}
+    <form method="get" action="{% url 'milk-collection-point-summary-receipt' %}" target="_blank" class="route-period-actions pt-0 pb-0">
+      <div>
+        <label class="form-label small text-muted mb-1">Route</label>
+        <select name="route" class="form-select" required>
+          <option value="">Select route</option>
+          {% for ro in point_summary_routes %}
+          <option value="{{ ro.id }}" {% if ro.id|stringformat:'d' == point_summary_route %}selected{% endif %}>{{ ro.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label small text-muted mb-1">Date range</label>
+        <div class="input-group route-period-date-group route-period-range-group">
+          <input
+            type="text"
+            class="form-control js-route-period-range"
+            value="{% if point_summary_from and point_summary_to %}{{ point_summary_from }} to {{ point_summary_to }}{% endif %}"
+            placeholder="Select date range"
+            autocomplete="off"
+            readonly
+            required
+          >
+          <input type="hidden" name="from" value="{{ point_summary_from }}">
+          <input type="hidden" name="to" value="{{ point_summary_to }}">
+          <span class="input-group-text js-open-route-range"><i class="bi bi-calendar3"></i></span>
+        </div>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-outline-success">Point Summary Print</button>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-outline-primary" formaction="{% url 'milk-collection-route-summary-receipt' %}">Route Summary Print</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-table milk-collection-card">
+  <div class="card-header bg-transparent border-bottom-0 pb-0 pt-3 px-3">
+    {% with q=request.GET.q %}
+    <form method="get" class="row g-2 mb-3 align-items-end flex-wrap milk-collection-filter-form" role="search">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <div class="col-12 col-sm-auto" style="min-width: 14rem;">
+        <label class="form-label small text-muted mb-1">Branches</label>
+        <select name="branches" class="form-select milk-collection-branch-select" multiple size="1">
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' in selected_branches %}selected{% endif %}>{{ b.code }} - {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-sm-auto flex-grow-1" style="min-width: 12rem;">
+        <label class="form-label small text-muted mb-1" for="milk-list-q">Search</label>
+        <input type="search" class="form-control" name="q" id="milk-list-q" value="{{ q|default:'' }}" placeholder="Route, point, farmer…" autocomplete="off">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary">Search</button>
+      </div>
+    </form>
+    {% endwith %}
+
+    <ul class="nav nav-tabs milk-collection-tabs border-0 gap-1 flex-wrap" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'route' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}?tab=route{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}"
+          role="tab"
+        >Route totals</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'point' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}?tab=point{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}"
+          role="tab"
+        >Collection point</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if tab == 'farmer' %}active{% endif %}"
+          href="{% url 'milk-collection-list' %}?tab=farmer{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}"
+          role="tab"
+        >Farmer</a>
+      </li>
+    </ul>
+  </div>
+  <div class="card-body table-wrap">
+
+    {% if tab == 'route' %}
+    <p class="small text-muted px-3 pt-2 mb-0">Totals include only <strong>collection point</strong> entries for each date and route (not farmer lines).</p>
+    <table class="table table-hover datatable mb-0 route-totals-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Branch</th>
+          <th>Route</th>
+          <th class="text-end">Kg</th>
+          <th class="text-end">Liters</th>
+          <th class="text-end text-nowrap">Print</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in route_rows %}
+        <tr>
+          <td>{{ row.date }}</td>
+          <td>{{ row.branch_name|default:"—" }}</td>
+          <td class="fw-medium">{{ row.route_name|default:"—" }}</td>
+          <td class="text-end">{{ row.total_kg }}</td>
+          <td class="text-end">{{ row.total_liters }}</td>
+          <td class="text-end text-nowrap small">
+            {% if perms.collections.view_milkcollection %}
+            <a
+              href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=summary"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-secondary fw-semibold me-2"
+            >Summary</a>
+            <a
+              href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=receipts"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-success fw-semibold me-2"
+            >Receipts</a>
+            <a
+              href="{% url 'milk-collection-route-receipt' %}?date={{ row.date|date:'Y-m-d' }}&route={{ row.route_id }}&kind=receipts&include_goods=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="link-success fw-semibold text-decoration-underline"
+              title="Per-point slips including farmer goods issued to each center this date"
+            >+Goods</a>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-5">No collection point totals for this search.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "includes/_kg_liters_table_footer.html" with totals=route_table_totals label_colspan=4 %}
+    </table>
+
+    {% elif tab == 'point' %}
+    <form method="post" class="js-swal-submit-guard">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+      {% if perms.collections.delete_milkcollection %}
+      <div class="px-3 pt-2 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger" name="bulk_action" value="delete_selected" hidden data-swal-title="Delete selected records?" data-swal-text="All checked milk collection rows on this page will be removed.">Delete selected</button>
+        {% if user.is_superuser %}
+        <button type="submit" class="btn btn-sm btn-danger js-swal-submit-trigger" name="bulk_action" value="delete_all" data-swal-title="Delete all filtered milk collection records?" data-swal-text="This removes every row matching your current filters (superuser only).">Delete all (superuser)</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    <table class="table table-hover datatable mb-0">
+      <thead>
+        <tr>
+          <th><input type="checkbox" class="form-check-input custom-check js-select-all-rows"></th>
+          <th>Date</th>
+          <th>Branch</th>
+          <th>Route</th>
+          <th>Point / farmer</th>
+          <th>Kg</th>
+          <th>Liters</th>
+          <th>User</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr>
+          <td><input type="checkbox" class="form-check-input custom-check js-row-select" name="selected_ids" value="{{ o.pk }}"></td>
+          <td>{{ o.date }}</td>
+          <td>{% if o.branch_id and o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td>{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if o.source == 'point' and o.collection_point_id and o.collection_point %}
+              {{ o.collection_point.number }} - {{ o.collection_point.name }}
+            {% elif o.source == 'farmer' and o.farmer_id and o.farmer %}
+              {{ o.farmer.common_name|default:o.farmer.full_name }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ o.kg }}</td>
+          <td>{{ o.liters }}</td>
+          <td>{{ o.created_by }}</td>
+          <td class="text-end text-nowrap">
+            {% if o.source == 'point' and o.collection_point_id %}
+            <a class="me-2" href="{% url 'milk-collection-point-receipt' %}?date={{ o.date|date:'Y-m-d' }}&point={{ o.collection_point_id }}" target="_blank" rel="noopener">Receipt</a>
+            {% endif %}
+            {% if perms.collections.view_milkcollectionadjustment %}
+            <a class="me-2" href="{% url 'milk-collection-adjustments' o.pk %}" title="Kg add/subtract history">History</a>
+            {% endif %}
+            {% if perms.collections.change_milkcollection %}
+            <a href="{% url 'milk-collection-edit' o.pk %}">Edit</a>
+            {% endif %}
+            {% if perms.collections.delete_milkcollection %}
+            <button type="submit" class="btn btn-link text-danger p-0 ms-2 align-baseline js-swal-submit-trigger" name="bulk_action" value="delete_one" data-one-input="milk-one-id" data-one-value="{{ o.pk }}" data-swal-title="Delete this milk collection record?" data-swal-text="This cannot be undone.">Delete</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td></td>
+          <td class="text-center text-muted py-5">No collection point entries for this search.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <input type="hidden" name="one_id" id="milk-one-id" value="">
+    </form>
+
+    {% else %}
+    <form method="post" class="js-swal-submit-guard">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+      {% if perms.collections.delete_milkcollection %}
+      <div class="px-3 pt-2 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger" name="bulk_action" value="delete_selected" hidden data-swal-title="Delete selected records?" data-swal-text="All checked milk collection rows on this page will be removed.">Delete selected</button>
+        {% if user.is_superuser %}
+        <button type="submit" class="btn btn-sm btn-danger js-swal-submit-trigger" name="bulk_action" value="delete_all" data-swal-title="Delete all filtered milk collection records?" data-swal-text="This removes every row matching your current filters (superuser only).">Delete all (superuser)</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    <table class="table table-hover datatable mb-0">
+      <thead>
+        <tr>
+          <th><input type="checkbox" class="form-check-input custom-check js-select-all-rows"></th>
+          <th>Date</th>
+          <th>Branch</th>
+          <th>Route</th>
+          <th>Point / farmer</th>
+          <th>Kg</th>
+          <th>Liters</th>
+          <th>User</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr>
+          <td><input type="checkbox" class="form-check-input custom-check js-row-select" name="selected_ids" value="{{ o.pk }}"></td>
+          <td>{{ o.date }}</td>
+          <td>{% if o.branch_id and o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td>{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if o.source == 'point' and o.collection_point_id and o.collection_point %}
+              {{ o.collection_point.number }} - {{ o.collection_point.name }}
+            {% elif o.source == 'farmer' and o.farmer_id and o.farmer %}
+              {{ o.farmer.common_name|default:o.farmer.full_name }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ o.kg }}</td>
+          <td>{{ o.liters }}</td>
+          <td>{{ o.created_by }}</td>
+          <td class="text-end text-nowrap">
+            {% if perms.collections.view_milkcollectionadjustment %}
+            <a class="me-2" href="{% url 'milk-collection-adjustments' o.pk %}" title="Kg add/subtract history">History</a>
+            {% endif %}
+            {% if perms.collections.change_milkcollection %}
+            <a href="{% url 'milk-collection-edit' o.pk %}">Edit</a>
+            {% endif %}
+            {% if perms.collections.delete_milkcollection %}
+            <button type="submit" class="btn btn-link text-danger p-0 ms-2 align-baseline js-swal-submit-trigger" name="bulk_action" value="delete_one" data-one-input="milk-one-id-farmer" data-one-value="{{ o.pk }}" data-swal-title="Delete this milk collection record?" data-swal-text="This cannot be undone.">Delete</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td></td>
+          <td class="text-center text-muted py-5">No farmer entries for this search.</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <input type="hidden" name="one_id" id="milk-one-id-farmer" value="">
+    </form>
+    {% endif %}
+
+  </div>
+  {% if tab != 'route' and is_paginated %}
+  <div class="card-footer bg-transparent border-top py-3 d-flex flex-wrap justify-content-center align-items-center gap-2">
+    <span class="text-muted small">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}</span>
+    <nav aria-label="Milk collection pages">
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?tab={{ tab }}&page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">Previous</a>
+        </li>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?tab={{ tab }}&page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}">Next</a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var wrappers = document.querySelectorAll("form");
+  wrappers.forEach(function (form) {
+    var master = form.querySelector(".js-select-all-rows");
+    var rows = form.querySelectorAll(".js-row-select");
+    var deleteBtn = form.querySelector(".delete-selected-btn");
+    if (!master) return;
+    function syncBulkDeleteVisibility() {
+      if (!deleteBtn) return;
+      var anyChecked = false;
+      rows.forEach(function (cb) { if (cb.checked) anyChecked = true; });
+      deleteBtn.hidden = !anyChecked;
+    }
+    master.addEventListener("change", function () {
+      rows.forEach(function (cb) {
+        cb.checked = master.checked;
+      });
+      syncBulkDeleteVisibility();
+    });
+    rows.forEach(function (cb) {
+      cb.addEventListener("change", syncBulkDeleteVisibility);
+    });
+    syncBulkDeleteVisibility();
+  });
+
+  document.querySelectorAll(".js-route-period-range").forEach(function (input) {
+    if (typeof flatpickr === "undefined" || input._flatpickr) return;
+    var group = input.closest(".route-period-date-group");
+    if (!group) return;
+    var fromInput = group.querySelector('input[name="from"]');
+    var toInput = group.querySelector('input[name="to"]');
+    if (!fromInput || !toInput) return;
+    var defaultDate = [];
+    if (fromInput.value) defaultDate.push(fromInput.value);
+    if (toInput.value) defaultDate.push(toInput.value);
+
+    flatpickr(input, {
+      mode: "range",
+      dateFormat: "Y-m-d",
+      allowInput: false,
+      disableMobile: true,
+      defaultDate: defaultDate.length ? defaultDate : undefined,
+      onChange: function (selectedDates, dateStr, instance) {
+        if (selectedDates.length === 2) {
+          fromInput.value = instance.formatDate(selectedDates[0], "Y-m-d");
+          toInput.value = instance.formatDate(selectedDates[1], "Y-m-d");
+          input.setCustomValidity("");
+        } else {
+          fromInput.value = "";
+          toInput.value = "";
+          input.setCustomValidity("Select a date range.");
+        }
+      },
+      onClose: function () {
+        if (!fromInput.value || !toInput.value) {
+          input.setCustomValidity("Select a date range.");
+        } else {
+          input.setCustomValidity("");
+        }
+      },
+    });
+  });
+
+  document.querySelectorAll("form.route-period-actions").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      var rangeInput = form.querySelector(".js-route-period-range");
+      var fromInput = form.querySelector('input[name="from"]');
+      var toInput = form.querySelector('input[name="to"]');
+      if (!rangeInput || !fromInput || !toInput) return;
+      if (!fromInput.value || !toInput.value) {
+        e.preventDefault();
+        rangeInput.setCustomValidity("Date range is required.");
+        rangeInput.reportValidity();
+        if (rangeInput._flatpickr) rangeInput._flatpickr.open();
+        return;
+      }
+      rangeInput.setCustomValidity("");
+    });
+  });
+
+  document.querySelectorAll(".route-period-date-group .js-open-route-range").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var group = btn.closest(".route-period-date-group");
+      if (!group) return;
+      var input = group.querySelector("input.js-route-period-range");
+      if (!input) return;
+      input.focus();
+      if (input._flatpickr) input._flatpickr.open();
+    });
+  });
+
+})();
+</script>
+{% endblock %}

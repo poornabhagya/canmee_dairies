@@ -1,0 +1,49 @@
+<script>
+(function () {
+  function parseMoney(value) {
+    var n = Number(String(value || "").replace(/,/g, ""));
+    return isFinite(n) ? n : NaN;
+  }
+
+  function formatMoney(value) {
+    var n = parseMoney(value);
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function isMoneyField(el) {
+    return el && el.classList && el.classList.contains("js-money-input");
+  }
+
+  document.querySelectorAll("form").forEach(function (form) {
+    var fields = form.querySelectorAll(".js-money-input");
+    if (!fields.length) return;
+    fields.forEach(function (el) {
+      el.setAttribute("type", "text");
+      el.setAttribute("inputmode", "decimal");
+      el.setAttribute("autocomplete", "off");
+      if (String(el.value || "").trim()) el.value = formatMoney(el.value);
+    });
+    form.addEventListener("focusin", function (ev) {
+      var t = ev.target;
+      if (!isMoneyField(t)) return;
+      t.value = String(t.value || "").replace(/,/g, "");
+      if (typeof t.select === "function") t.select();
+    });
+    form.addEventListener("focusout", function (ev) {
+      var t = ev.target;
+      if (!isMoneyField(t)) return;
+      if (!String(t.value || "").trim()) return;
+      t.value = formatMoney(t.value);
+    });
+    form.addEventListener("submit", function () {
+      form.querySelectorAll(".js-money-input").forEach(function (el) {
+        el.value = String(el.value || "").replace(/,/g, "");
+      });
+    });
+  });
+})();
+</script>

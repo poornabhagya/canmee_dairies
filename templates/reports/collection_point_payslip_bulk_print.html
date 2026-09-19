@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}Bulk PaySlips · Collection Points{% endblock %}
+{% block page_heading %}Bulk Collection Point PaySlips{% endblock %}
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  .payslip-bulk-shell {
+    --payslip-bulk-sticky-top: 0.5rem;
+  }
+  .payslip-bulk-toolbar-card {
+    position: sticky;
+    top: var(--payslip-bulk-sticky-top);
+    z-index: 1030;
+    overflow: visible;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    background: #fff;
+    margin-bottom: 1rem;
+  }
+  .payslip-bulk-toolbar-card .card-body {
+    padding: 0.9rem 1rem;
+    overflow: visible;
+  }
+  .payslip-bulk-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+  .payslip-bulk-toolbar__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+  }
+  .payslip-bulk-toolbar__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+  }
+  .payslip-bulk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+  }
+  .payslip-bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  .payslip-bulk-jump {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.15rem 0 0.65rem;
+    margin-bottom: 0.35rem;
+    scrollbar-width: thin;
+  }
+  .payslip-bulk-jump__chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    max-width: 12rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    background: #fff;
+    border: 1px solid #dbe3ee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .payslip-bulk-jump__chip:hover,
+  .payslip-bulk-jump__chip:focus {
+    color: #0f766e;
+    border-color: #99f6e4;
+    background: #f0fdfa;
+  }
+  .payslip-a5-sheet--si {
+    font-family: "Noto Sans Sinhala", Arial, Helvetica, sans-serif;
+  }
+  .payslip-a5-sheet--si .payslip-a5-company,
+  .payslip-a5-sheet--si .payslip-a5-meta__period {
+    text-transform: none;
+  }
+  .payslip-a5-footer {
+    margin: 0.35rem 0 0;
+    text-align: center;
+    font-size: 9pt;
+    font-weight: 700;
+  }
+  .payslip-a5-signature {
+    margin-top: 1.25rem;
+    text-align: right;
+    padding-right: 0.25rem;
+  }
+  .payslip-a5-signature__space {
+    height: 2.5rem;
+    width: 58%;
+    margin-left: auto;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid #000;
+  }
+  .payslip-a5-signature__label {
+    margin: 0;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+  .payslip-a5-sheet__closing {
+    margin-top: 0.15rem;
+  }
+  .payslip-a5-sheet {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #000;
+    line-height: 1.25;
+  }
+  .payslip-a5-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 0.4rem;
+  }
+  .payslip-a5-logo {
+    display: block;
+    width: 104px;
+    height: 104px;
+    margin: 0;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
+  .payslip-a5-brand__text {
+    flex: 1;
+    min-width: 0;
+  }
+  .payslip-a5-company {
+    text-align: left;
+    font-size: 11pt;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .payslip-a5-phone {
+    margin: 0.2rem 0 0;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+  .payslip-a5-address {
+    margin: 0.15rem 0 0;
+    font-size: 7.5pt;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .payslip-a5-point-meta td {
+    border: 1px solid #000;
+    padding: 0.12rem 0.25rem;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .payslip-a5-point-meta__value {
+    text-align: left;
+    font-weight: 700;
+    text-transform: none;
+  }
+  .payslip-a5-farmers th,
+  .payslip-a5-farmers td {
+    font-size: 7.5pt;
+    padding: 0.1rem 0.2rem;
+  }
+  .payslip-a5-farmers td.name-col {
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .payslip-a5-farmers th:nth-child(9),
+  .payslip-a5-farmers td.sig-col {
+    width: 12%;
+    min-height: 1.1em;
+  }
+  .payslip-a5-sheet--page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+  .payslip-a5-sheet--attachment {
+    page-break-before: auto;
+    break-before: auto;
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid #94a3b8;
+  }
+  .payslip-a5-attachment-title {
+    margin: 0 0 0.3rem;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .payslip-a5-goods-summary th,
+  .payslip-a5-goods-summary td {
+    font-size: 7.5pt;
+    padding: 0.1rem 0.2rem;
+  }
+  .payslip-a5-goods-summary td.product-col {
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .payslip-a5-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.35rem;
+    font-size: 9pt;
+  }
+  .payslip-a5-meta__farmer {
+    flex: 1;
+    min-width: 0;
+  }
+  .payslip-a5-meta__period {
+    flex-shrink: 0;
+    font-weight: 700;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .payslip-a5-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 0.35rem;
+    table-layout: fixed;
+  }
+  .payslip-a5-table th,
+  .payslip-a5-table td {
+    border: 1px solid #000;
+    padding: 0.12rem 0.25rem;
+    vertical-align: middle;
+  }
+  .payslip-a5-table thead th {
+    background: #e0e0e0 !important;
+    font-weight: 700;
+    text-align: center;
+    font-size: 8pt;
+    text-transform: uppercase;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .payslip-a5-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payslip-a5-table tr.shaded td {
+    background: #e0e0e0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .payslip-a5-table tr.bold td {
+    font-weight: 700;
+  }
+  .payslip-a5-daily thead th:first-child,
+  .payslip-a5-daily td:first-child {
+    text-align: left;
+    white-space: nowrap;
+  }
+  .payslip-a5-summary td:first-child {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 8pt;
+  }
+  .payslip-a5-page {
+    max-width: 148mm;
+    margin: 0 auto 1.25rem;
+    padding: 0;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+  .payslip-a5-page__bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.55rem 0.75rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .payslip-a5-page__name {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+  }
+  .payslip-a5-page__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.15rem;
+  }
+  .payslip-a5-page__net {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #047857;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 999px;
+    padding: 0.12rem 0.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .payslip-a5-page__body {
+    padding: 0.75rem;
+  }
+  @media (max-width: 767.98px) {
+    .payslip-bulk-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+    .payslip-bulk-actions > .btn-primary {
+      width: 100%;
+    }
+  }
+  .payslip-a5-page__body .payslip-print-lang-si {
+    display: none;
+  }
+  @media print {
+    @page {
+      size: A5 portrait;
+      margin: 6mm;
+    }
+    .payslip-a5-logo {
+      width: 76px;
+      height: 76px;
+    }
+    .payslip-no-print,
+    .sidebar,
+    .topbar,
+    .sidebar-backdrop,
+    #sidebarToggle {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    .app-main {
+      margin-left: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .content-wrap {
+      padding: 0 !important;
+      max-width: none !important;
+    }
+    .payslip-a5-page {
+      max-width: 132mm;
+      margin: 0 auto;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      page-break-after: always;
+      break-after: page;
+    }
+    .payslip-a5-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .payslip-a5-page__body {
+      padding: 0;
+    }
+    body.payslip-print-sinhala .payslip-a5-page__body .payslip-print-lang-en {
+      display: none !important;
+    }
+    body.payslip-print-sinhala .payslip-a5-page__body .payslip-print-lang-si {
+      display: block !important;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="payslip-bulk-shell payslip-no-print">
+  <div class="card payslip-bulk-toolbar-card">
+    <div class="card-body">
+      <div class="payslip-bulk-toolbar">
+        <div>
+          <h1 class="payslip-bulk-toolbar__title">Bulk collection point payslip print</h1>
+          <div class="payslip-bulk-toolbar__meta">
+            <span class="payslip-bulk-badge"><i class="bi bi-calendar3"></i> {{ start|date:"Y-m-d" }} → {{ end|date:"Y-m-d" }}</span>
+            <span class="payslip-bulk-badge"><i class="bi bi-geo-alt"></i> {{ payslips|length }} point{{ payslips|length|pluralize }}</span>
+          </div>
+        </div>
+        <div class="payslip-bulk-actions">
+          <a class="btn btn-outline-secondary btn-sm" href="{{ back_url }}">
+            <i class="bi bi-arrow-left me-1"></i>Back
+          </a>
+          {% if payslips %}
+          <div class="btn-group btn-group-sm payslip-print-menu" role="group" aria-label="Print options">
+            <button type="button" class="btn btn-primary btn-sm" onclick="payslipPrint('en')">
+              <i class="bi bi-printer me-1"></i>Print all
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="payslipPrint('si')">
+              <i class="bi bi-printer me-1"></i>සිංහල
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if payslips %}
+  <nav class="payslip-bulk-jump" aria-label="Jump to collection point">
+    {% for ps in payslips %}
+    <a class="payslip-bulk-jump__chip" href="#payslip-{{ ps.point.pk }}" title="{{ ps.point_display_name }}">
+      {{ ps.point_display_name }}
+    </a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+</div>
+
+{% if payslips %}
+  {% for ps in payslips %}
+  <div class="payslip-a5-page" id="payslip-{{ ps.point.pk }}">
+    <div class="payslip-a5-page__bar payslip-no-print">
+      <div>
+        <p class="payslip-a5-page__name mb-0">{{ ps.point_display_name }}</p>
+        <div class="payslip-a5-page__meta">
+          <span class="payslip-a5-page__net">Balance {{ ps.balance_payment|money }}</span>
+        </div>
+      </div>
+      <a
+        class="btn btn-sm btn-outline-secondary"
+        href="{% url 'collection-point-payslip' ps.point.pk %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+        target="_blank"
+        rel="noopener"
+      >
+        <i class="bi bi-box-arrow-up-right me-1"></i>Open
+      </a>
+    </div>
+    <div class="payslip-a5-page__body">
+      <div class="payslip-print-lang-en">
+        {% include "reports/_collection_point_payslip_a5_sheet.html" with ps=ps pl=payslip_labels_en sheet_period=ps.payment_sheet_period %}
+        {% if ps.has_goods_attachment %}
+        {% include "reports/_collection_point_payslip_goods_a5_sheet.html" with ps=ps pl=payslip_labels_en sheet_period=ps.payment_sheet_period %}
+        {% endif %}
+      </div>
+      <div class="payslip-print-lang-si">
+        {% include "reports/_collection_point_payslip_a5_sheet.html" with ps=ps pl=payslip_labels_si sheet_period=ps.payment_sheet_period_si %}
+        {% if ps.has_goods_attachment %}
+        {% include "reports/_collection_point_payslip_goods_a5_sheet.html" with ps=ps pl=payslip_labels_si sheet_period=ps.payment_sheet_period_si %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="alert alert-warning payslip-no-print">No collection points selected for payslip printing.</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% include "reports/_farmer_payslip_print_script.html" %}
+{% endblock %}

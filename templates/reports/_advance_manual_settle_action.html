@@ -1,0 +1,23 @@
+{% if perms.reports.record_manual_settlement %}
+<form
+  method="post"
+  action="{% url 'farmer-advance-manual-settle' advance.pk %}"
+  class="d-inline{% if not advance.is_recovered %} js-swal-settlement-form{% else %} js-swal-submit-guard{% endif %}"
+>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <input type="hidden" name="recovered" value="{% if advance.is_recovered %}0{% else %}1{% endif %}">
+  <button
+    type="submit"
+    class="btn btn-sm {% if advance.is_recovered %}btn-outline-warning js-swal-submit-trigger{% else %}btn-outline-success js-swal-settlement-trigger{% endif %}"
+    data-swal-title="{% if advance.is_recovered %}Mark advance pending?{% else %}Mark advance recovered{% endif %}"
+    data-swal-text="{% if advance.is_recovered %}This advance will count toward deductions again.{% else %}Enter when and how this advance was recovered outside the payment sheet.{% endif %}"
+  >
+    {% if advance.is_recovered %}
+    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Undo recovery
+    {% else %}
+    <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Mark recovered
+    {% endif %}
+  </button>
+</form>
+{% endif %}

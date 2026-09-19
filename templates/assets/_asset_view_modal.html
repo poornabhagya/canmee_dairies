@@ -1,0 +1,122 @@
+<div class="modal fade smart-modal smart-modal--wide asset-view-modal" id="assetViewModal" tabindex="-1" aria-labelledby="assetViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-journal-richtext"></i></span>
+          <div class="asset-view-heading">
+            <h5 class="modal-title" id="assetViewModalLabel">Asset details</h5>
+            <div class="asset-view-meta">
+              <span class="asset-view-tag" id="assetViewTag">—</span>
+              <span class="asset-view-chip" data-asset-view="asset_type_name"></span>
+              <span class="asset-view-chip" data-asset-view="category_name"></span>
+              <span class="asset-view-chip" data-asset-view="branch_label"></span>
+            </div>
+          </div>
+        </div>
+        <span class="smart-badge smart-badge--secondary" id="assetViewStatusBadge">—</span>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="asset-view-kpis" aria-label="Classified carrying amounts">
+          <div class="asset-view-kpi">
+            <span class="asset-view-kpi__label">Gross cost</span>
+            <span class="asset-view-kpi__value" data-asset-view="purchase_cost_display">—</span>
+          </div>
+          <div class="asset-view-kpi is-written">
+            <span class="asset-view-kpi__label">Written down</span>
+            <span class="asset-view-kpi__value" data-asset-view="written_down_display">—</span>
+          </div>
+          <div class="asset-view-kpi is-book">
+            <span class="asset-view-kpi__label">Net book value</span>
+            <span class="asset-view-kpi__value" data-asset-view="current_value_display">—</span>
+          </div>
+        </div>
+
+        <section class="asset-view-section">
+          <h6 class="asset-view-section__title">Identity</h6>
+          <div class="asset-view-facts">
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Serial no.</span>
+              <span class="asset-view-fact__value" data-asset-view="serial_number">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Manufacturer</span>
+              <span class="asset-view-fact__value" data-asset-view="manufacturer">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Model</span>
+              <span class="asset-view-fact__value" data-asset-view="model_number">—</span>
+            </div>
+            <div class="asset-view-fact span-all">
+              <span class="asset-view-fact__label">Description</span>
+              <span class="asset-view-fact__value" data-asset-view="description">—</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="asset-view-section">
+          <h6 class="asset-view-section__title">Custody</h6>
+          <div class="asset-view-facts">
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Location</span>
+              <span class="asset-view-fact__value" data-asset-view="location_name">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Custodian</span>
+              <span class="asset-view-fact__value" data-asset-view="custodian_name">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Condition</span>
+              <span class="asset-view-fact__value" data-asset-view="condition_label">—</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="asset-view-section">
+          <h6 class="asset-view-section__title">Acquisition</h6>
+          <div class="asset-view-facts">
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Purchase date</span>
+              <span class="asset-view-fact__value" data-asset-view="purchase_date_display">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Warranty expiry</span>
+              <span class="asset-view-fact__value" data-asset-view="warranty_expiry_display">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Supplier</span>
+              <span class="asset-view-fact__value" data-asset-view="supplier_name">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Salvage value</span>
+              <span class="asset-view-fact__value is-money" data-asset-view="salvage_value_display">—</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="asset-view-section">
+          <h6 class="asset-view-section__title">Depreciation</h6>
+          <div class="asset-view-facts">
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Policy</span>
+              <span class="asset-view-fact__value" data-asset-view="depreciation_policy_name">—</span>
+            </div>
+            <div class="asset-view-fact">
+              <span class="asset-view-fact__label">Useful life</span>
+              <span class="asset-view-fact__value" data-asset-view="useful_life_months">—</span>
+            </div>
+            <div class="asset-view-fact span-all">
+              <span class="asset-view-fact__label">Internal notes</span>
+              <span class="asset-view-fact__value" data-asset-view="notes">—</span>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-secondary" id="assetViewAccountLink">Open account</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

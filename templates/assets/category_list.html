@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Asset categories · Canmee Dairies{% endblock %}
+{% block page_heading %}Categories{% endblock %}
+{% block topbar_actions %}
+{% if perms.assets.add_assetcategory %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-category-add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add category</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block content %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Category summary">
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="all">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-tags" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Categories</span>
+        <span class="smart-stat-card__value">{{ stats.total }}</span>
+        <span class="smart-stat-card__hint">Ledger sub-accounts</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--book js-asset-stat-filter" data-smart-filter="active">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Active</span>
+        <span class="smart-stat-card__value">{{ stats.active }}</span>
+        <span class="smart-stat-card__hint">Open for posting</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="inactive">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-pause-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Inactive</span>
+        <span class="smart-stat-card__value">{{ stats.inactive }}</span>
+        <span class="smart-stat-card__hint">Closed categories</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div id="assetCategoryDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Category filters">
+        <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">All<span class="smart-dt-chip-count">{{ stats.total }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="active">Active<span class="smart-dt-chip-count">{{ stats.active }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="inactive">Inactive<span class="smart-dt-chip-count">{{ stats.inactive }}</span></button>
+        {% if asset_types %}
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Filter by type</span>
+          <select id="categoryTypeFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by type" autocomplete="off">
+            <option value="all">All types</option>
+            {% for t in asset_types %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+      </div>
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Master</span>
+            <h2 class="asset-statement__title">Category ledger</h2>
+            <p class="asset-statement__meta">Each category belongs to a classification type</p>
+          </div>
+          <span class="asset-statement__account">CAT-{% now "Y" %}</span>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No categories yet."
+          data-filters-target="assetCategoryDtFilters"
+          data-point-filter-target="categoryTypeFilter"
+          data-print-title="Asset category ledger"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Code</th>
+              <th class="all">Name</th>
+              <th class="all">Type</th>
+              <th class="min-tablet-l">Parent</th>
+              <th class="all text-end">Assets</th>
+              <th class="min-desktop">Status</th>
+              <th class="all text-end no-export">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in categories %}
+            <tr class="smart-row--{% if c.is_active %}active{% else %}inactive{% endif %}" data-point-id="{{ c.asset_type_id }}">
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all"><span class="asset-tag-code">{{ c.code }}</span></td>
+              <td class="all">
+                <div class="smart-dt-name-row">
+                  <span class="smart-dt-name-text">{{ c.name }}</span>
+                  {% if perms.assets.change_assetcategory %}
+                  <a href="{% url 'asset-category-edit' c.pk %}" class="smart-dt-edit-btn" title="Edit category" aria-label="Edit {{ c.name }}">
+                    <i class="bi bi-pen-fill" aria-hidden="true"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="all">{% if c.asset_type %}{{ c.asset_type.name }}{% else %}—{% endif %}</td>
+              <td class="min-tablet-l">{% if c.parent %}{{ c.parent.name }}{% else %}—{% endif %}</td>
+              <td class="all text-end dt-num">{{ c.asset_count }}</td>
+              <td class="min-desktop">
+                {% if c.is_active %}
+                <span class="smart-badge smart-badge--success">Active</span>
+                {% else %}
+                <span class="smart-badge smart-badge--secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="all text-end">
+                {% if perms.assets.delete_assetcategory %}
+                  {% if c.asset_count or c.child_count %}
+                  <a
+                    href="#"
+                    class="icon-action-btn icon-action-danger js-asset-category-delete-blocked"
+                    title="Cannot delete this category"
+                    aria-label="Cannot delete {{ c.name }}"
+                    data-swal-title="Cannot delete {{ c.name }}"
+                    data-swal-text="This category is used by {{ c.asset_count }} asset{{ c.asset_count|pluralize }} and {{ c.child_count }} sub-categor{{ c.child_count|pluralize:'y,ies' }}. Move them first."
+                  >
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                  </a>
+                  {% else %}
+                  <a
+                    href="{% url 'asset-category-delete' c.pk %}"
+                    class="icon-action-btn icon-action-danger js-swal-delete-post"
+                    title="Delete category"
+                    aria-label="Delete {{ c.name }}"
+                    data-reset-list-filters="1"
+                    data-swal-title="Delete {{ c.name }}?"
+                    data-swal-text="This category is not used by any assets. This cannot be undone."
+                  >
+                    <i class="bi bi-trash3" aria-hidden="true"></i>
+                  </a>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="asset-statement__disclaimer">Computer-generated category master. Categories in use cannot be deleted.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% include "assets/_asset_stat_filter_script.html" %}
+<script>
+document.addEventListener("click", function (e) {
+  var a = e.target.closest("a.js-asset-category-delete-blocked");
+  if (!a) return;
+  e.preventDefault();
+  if (typeof Swal === "undefined") return;
+  Swal.fire({
+    icon: "error",
+    title: a.getAttribute("data-swal-title") || "Cannot delete",
+    text: a.getAttribute("data-swal-text") || "",
+    confirmButtonText: "OK",
+    buttonsStyling: false,
+    customClass: {
+      popup: "app-swal-popup",
+      title: "app-swal-title",
+      confirmButton: "btn btn-primary",
+    },
+  }).then(function () {
+    if (typeof window.resetAssetListFilters === "function") {
+      window.resetAssetListFilters();
+    }
+  });
+});
+</script>
+{% endblock %}

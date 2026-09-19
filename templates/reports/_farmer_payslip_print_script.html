@@ -1,0 +1,15 @@
+<script>
+(function () {
+  window.payslipPrint = function (lang) {
+    document.body.classList.remove("payslip-print-sinhala");
+    if (lang === "si") {
+      document.body.classList.add("payslip-print-sinhala");
+    }
+    var cleanup = function () {
+      document.body.classList.remove("payslip-print-sinhala");
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.print();
+  };
+})();
+</script>

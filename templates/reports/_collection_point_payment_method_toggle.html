@@ -1,0 +1,4 @@
+<div class="payment-sheet-method-toggle" role="group" aria-label="Payment method">
+  <button type="button" class="payment-sheet-method-toggle__btn{% if method != 'bank_transfer' %} is-active{% endif %}" data-payment-method="cash" aria-pressed="{% if method != 'bank_transfer' %}true{% else %}false{% endif %}">Cash</button>
+  <button type="button" class="payment-sheet-method-toggle__btn{% if method == 'bank_transfer' %} is-active{% endif %}" data-payment-method="bank_transfer" aria-pressed="{% if method == 'bank_transfer' %}true{% else %}false{% endif %}">Bank</button>
+</div>

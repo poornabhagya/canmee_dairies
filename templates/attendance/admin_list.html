@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Attendance register · Canmee Dairies{% endblock %}
+{% block page_heading %}Attendance{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-secondary" href="{% url 'attendance:punch' %}">Employee punch</a>
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .attendance-admin-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .attendance-admin-card .card-body { padding: 1rem; }
+  .attendance-admin-filters {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+  }
+  .attendance-admin-card table thead th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #64748b;
+  }
+  @media (max-width: 767.98px) {
+    .attendance-admin-filters { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card attendance-admin-card smart-list-card">
+  <div class="card-body">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Attendance summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Records</span>
+        <span class="smart-dt-stat-value">{{ summary.total }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">Today</span>
+        <span class="smart-dt-stat-value">{{ summary.today }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Check ins</span>
+        <span class="smart-dt-stat-value">{{ summary.check_ins }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Check outs</span>
+        <span class="smart-dt-stat-value">{{ summary.check_outs }}</span>
+      </div>
+    </div>
+
+    <form method="get" class="attendance-admin-filters">
+      <div>
+        <label class="form-label small mb-1" for="att-q">Search</label>
+        <input id="att-q" type="search" name="q" value="{{ filters.q }}" class="form-control form-control-sm" placeholder="NIC, name, IP, device">
+      </div>
+      <div>
+        <label class="form-label small mb-1" for="att-employee">Employee</label>
+        <select id="att-employee" name="employee" class="form-select form-select-sm">
+          <option value="">All</option>
+          {% for e in employees %}
+          <option value="{{ e.pk }}" {% if filters.employee == e.pk|stringformat:"d" %}selected{% endif %}>{{ e.get_full_name }} ({{ e.employee_number }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label small mb-1" for="att-type">Type</label>
+        <select id="att-type" name="punch_type" class="form-select form-select-sm">
+          <option value="">All</option>
+          <option value="check_in" {% if filters.punch_type == "check_in" %}selected{% endif %}>Check in</option>
+          <option value="check_out" {% if filters.punch_type == "check_out" %}selected{% endif %}>Check out</option>
+        </select>
+      </div>
+      <div class="d-flex align-items-end gap-1">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">Filter</button>
+        <a href="{% url 'attendance:admin-list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Employee</th>
+            <th>Type</th>
+            <th>Location</th>
+            <th>Device / IP</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td>{{ r.punched_at|date:"Y-m-d H:i" }}</td>
+            <td>
+              <div class="fw-semibold">{{ r.employee.get_full_name }}</div>
+              <div class="small text-muted">{{ r.employee.employee_number }}{% if r.employee.nic %} · {{ r.employee.nic }}{% endif %}</div>
+            </td>
+            <td>{{ r.get_punch_type_display }}</td>
+            <td class="small">
+              {% if r.has_coordinates %}
+              <a href="{{ r.maps_url }}" target="_blank" rel="noopener">{{ r.latitude }}, {{ r.longitude }}</a>
+              {% if r.accuracy_m %}<div class="text-muted">±{{ r.accuracy_m }} m</div>{% endif %}
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              <div>{{ r.device_label|default:"—" }}</div>
+              <div class="text-muted">{{ r.ip_address|default:"—" }} · {{ r.app_label|default:"Web" }}</div>
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'attendance:admin-detail' r.pk %}">Details</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-muted">No attendance records.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-3">
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ filters.q }}&employee={{ filters.employee }}&punch_type={{ filters.punch_type }}">Prev</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ filters.q }}&employee={{ filters.employee }}&punch_type={{ filters.punch_type }}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

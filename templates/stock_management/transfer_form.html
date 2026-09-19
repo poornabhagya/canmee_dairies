@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if is_edit %}Edit Transfer{% else %}Transfer Stock{% endif %}{% endblock %}
+{% block page_heading %}{% if is_edit %}Edit Transfer{% else %}Transfer Stock{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+  .module-shell.transfer-full-width .form-shell {
+    max-width: 100%;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="module-shell transfer-full-width">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{% if is_edit %}Edit Transfer{% else %}Transfer Stock{% endif %}</h1>
+      <p class="page-subtitle">Move products from one branch to another on one transfer note. Add lines as needed; duplicate products are merged when saved.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-outline-primary" href="{% url 'stock-transfer-note-list' %}">Transfer notes</a>
+      <a class="btn btn-outline-secondary" href="{% url 'stock-overview' %}">Back to overview</a>
+    </div>
+  </div>
+
+  <div class="module-card form-shell">
+    <div class="module-card-header">
+      <div>
+        <h5 class="module-card-title">Transfer details</h5>
+        <p class="module-card-subtitle">Choose origin and destination branches, then enter products inline below.</p>
+      </div>
+    </div>
+    <div class="module-card-body">
+      <form method="post" class="js-transfer-form" autocomplete="off">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.from_branch.id_for_label }}">From branch</label>
+            {{ form.from_branch }}
+            {% if form.from_branch.errors %}<div class="text-danger small mt-1">{{ form.from_branch.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.to_branch.id_for_label }}">To branch</label>
+            {{ form.to_branch }}
+            {% if form.to_branch.errors %}<div class="text-danger small mt-1">{{ form.to_branch.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.date.id_for_label }}">Date</label>
+            {{ form.date }}
+            {% if form.date.errors %}<div class="text-danger small mt-1">{{ form.date.errors }}</div>{% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold" for="{{ form.remarks.id_for_label }}">Remarks <span class="text-muted fw-normal">(optional)</span></label>
+            {{ form.remarks }}
+          </div>
+        </div>
+
+        <div class="transfer-products-toolbar">
+          <h6 class="fw-bold mb-0">Products</h6>
+          <span class="transfer-products-hint"><i class="bi bi-keyboard"></i> Tab through cells · Search products in the first column</span>
+        </div>
+
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+        <div class="alert alert-danger swal-flash">{{ formset.non_form_errors }}</div>
+        {% endif %}
+
+        <div class="transfer-inline-wrap transfer-products-shell">
+          <div class="table-responsive">
+            <table class="table transfer-inline-table transfer-products-table mb-0">
+              <thead>
+                <tr>
+                  <th class="transfer-line-num" scope="col">#</th>
+                  <th class="transfer-line-product">Product</th>
+                  <th class="transfer-line-qty text-end">Qty</th>
+                  <th class="transfer-line-actions" aria-label="Remove row"></th>
+                </tr>
+              </thead>
+              <tbody id="js-transfer-lines-body">
+                {% for line_form in formset %}
+                <tr class="js-transfer-line">
+                  <td class="transfer-line-num"><span class="js-line-num">{{ forloop.counter }}</span></td>
+                  <td class="transfer-line-product">
+                    {{ line_form.product }}
+                    {% if line_form.product.errors %}<div class="text-danger small mt-1">{{ line_form.product.errors }}</div>{% endif %}
+                  </td>
+                  <td class="transfer-line-qty">
+                    {{ line_form.quantity }}
+                    {% if line_form.quantity.errors %}<div class="text-danger small mt-1">{{ line_form.quantity.errors }}</div>{% endif %}
+                  </td>
+                  <td class="transfer-line-actions">
+                    <button type="button" class="js-transfer-remove-line" title="Remove line" aria-label="Remove line">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="transfer-inline-add">
+            <button type="button" class="btn btn-link text-success p-0 d-inline-flex align-items-center gap-1" id="js-transfer-add-line">
+              <i class="bi bi-plus-circle"></i> Add line
+            </button>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <button type="submit" class="btn btn-primary">{% if is_edit %}Update transfer{% else %}Save transfer{% endif %}</button>
+          {% if is_edit and note %}
+          <a href="{% url 'stock-transfer-note-print' note.pk %}" class="btn btn-outline-primary" target="_blank" rel="noopener">Print</a>
+          {% endif %}
+          <a href="{% url 'stock-overview' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'js/stock_transfer_lines.js' %}"></script>
+{% endblock %}

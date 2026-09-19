@@ -1,0 +1,1286 @@
+{% extends "base.html" %}
+{% block title %}Stock Overview · Canmee Dairies{% endblock %}
+{% block page_heading %}Stock Overview{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-primary" href="{% url 'stock-transfer' %}"><i class="bi bi-arrow-left-right me-1"></i>Transfer Stock</a>
+{% if perms.suppliers.add_farmergoodsissue %}
+<a class="btn btn-outline-primary" href="{% url 'farmer-goods-issue' %}">Issue Farmer Goods</a>
+{% endif %}
+<div class="dropdown">
+  <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="{% url 'stock-product-add' %}">Add Product</a></li>
+    {% if perms.suppliers.view_farmergoodsissue %}
+    <li><a class="dropdown-item" href="{% url 'farmer-goods-issue-list' %}">Issue receipts</a></li>
+    {% endif %}
+    {% if perms.suppliers.add_consumptionsettlement %}
+    <li><a class="dropdown-item" href="{% url 'farmer-goods-consume' %}">Record Consumption</a></li>
+    {% endif %}
+    {% if perms.suppliers.add_inventoryusage %}
+    <li><a class="dropdown-item" href="{% url 'inventory-usage-add' %}">Corporate Usage</a></li>
+    {% endif %}
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="{% url 'stock-count-list' %}">Stock counts</a></li>
+    <li><a class="dropdown-item" href="{% url 'stock-history' %}">Stock History</a></li>
+    {% if request.user.is_superuser %}
+    <li><a class="dropdown-item" href="{% url 'stock-correct-negative' %}">Correct negative stock</a></li>
+    {% endif %}
+  </ul>
+</div>
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .stock-overview-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .stock-overview-card + .stock-overview-card {
+    margin-top: 1rem;
+  }
+  .stock-overview-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .stock-overview-card .table-wrap,
+  .stock-overview-card .dataTables_wrapper,
+  .stock-overview-card div.dt-container,
+  .stock-overview-card div.dt-scroll,
+  .stock-overview-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .stock-overview-card .stock-table {
+    width: 100% !important;
+  }
+  .stock-overview-card .stock-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .stock-overview-card .stock-table tbody td {
+    white-space: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .stock-overview-card .stock-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .stock-overview-card .stock-table tbody td.dt-seq,
+  .stock-overview-card .stock-table thead th.dt-seq {
+    width: 2.5rem;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .stock-overview-card .stock-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .stock-overview-card .stock-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 0.55rem 0.4rem;
+    white-space: nowrap;
+  }
+  .stock-overview-card .stock-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .stock-overview-card .smart-dt-name-link,
+  .stock-overview-card .smart-dt-name-text {
+    color: #0f766e;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .stock-overview-card .smart-dt-name-link {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+  }
+  .stock-overview-card .smart-dt-name-link:hover {
+    color: #115e59;
+    text-decoration: underline;
+  }
+  .stock-overview-card .smart-dt-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+  }
+  .stock-overview-card .smart-dt-actions .btn {
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 0.24rem 0.55rem;
+    border-radius: 999px;
+  }
+  .stock-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+  .stock-section-head h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .stock-section-head p {
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+  .stock-section-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .stock-section-pill.is-info { background: #eff6ff; color: #1d4ed8; }
+  .stock-section-pill.is-warn { background: #fff7ed; color: #c2410c; }
+  .stock-hint {
+    border: 1px solid #bfdbfe;
+    background: linear-gradient(180deg, #eff6ff 0%, #f8fbff 100%);
+    border-radius: 12px;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.82rem;
+    color: #1e3a5f;
+    margin: 0.5rem 0 0;
+  }
+  .stock-branch-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+  }
+  .stock-branch-tabs.nav {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .stock-branch-tabs .nav-item {
+    flex: 0 0 auto;
+  }
+  .stock-branch-tabs .nav-link {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.28rem 0.75rem;
+    white-space: nowrap;
+  }
+  .stock-branch-tabs .nav-link.active {
+    background: #059669;
+    border-color: #059669;
+    color: #fff;
+  }
+  .stock-branch-product-filter.stock-advanced-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin: 0 0 0 auto;
+    flex: 0 0 auto;
+    gap: 0.4rem;
+  }
+  .stock-branch-product-filter .form-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .stock-branch-product-filter .select2-container {
+    min-width: 10rem;
+    width: 12.5rem !important;
+  }
+  @media (max-width: 768px) {
+    .stock-branch-toolbar {
+      flex-wrap: wrap;
+    }
+    .stock-branch-product-filter.stock-advanced-filters {
+      margin-left: 0;
+      width: 100%;
+    }
+    .stock-branch-product-filter .select2-container {
+      flex: 1 1 auto;
+      width: 100% !important;
+      min-width: 0;
+    }
+  }
+  .stock-advanced-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: end;
+    margin: 0 0 0.85rem;
+  }
+  .stock-advanced-filters .form-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+  }
+  .stock-advanced-filters .form-control,
+  .stock-advanced-filters .form-select,
+  .stock-advanced-filters .input-group-text,
+  .stock-advanced-filters .btn {
+    min-height: 34px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .stock-advanced-filters .flatpickr-range-wrap {
+    min-width: 12.5rem;
+  }
+  .stock-advanced-filters .flatpickr-range-wrap .form-control,
+  .stock-advanced-filters .flatpickr-range-wrap .fp-range-alt-input {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .stock-advanced-filters .flatpickr-range-wrap .input-group-text {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .stock-advanced-filters .select2-container {
+    min-width: 14rem;
+  }
+  .stock-advanced-filters .select2-container .select2-selection--single {
+    min-height: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border-color: #dee2e6;
+    display: flex;
+    align-items: center;
+  }
+  .stock-advanced-filters .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 32px;
+    padding-left: 0.85rem;
+    font-size: 0.8rem;
+    color: #334155;
+  }
+  .stock-advanced-filters .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px;
+    right: 0.4rem;
+  }
+  @media (max-width: 768px) {
+    .smart-dt-stats {
+      grid-template-columns: 1fr;
+    }
+  }
+  .history-status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .history-status-pill.is-posted,
+  .history-status-pill.is-accepted,
+  .history-status-pill.is-not_required {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .history-status-pill.is-pending {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+  .history-status-pill.is-rejected {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+  .history-status-pill.is-draft {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .history-status-pill.is-confirmed {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .stock-product-history-table tr.is-pending { background: #fffbeb; }
+  .stock-product-history-table tr.is-rejected { background: #fef2f2; }
+  .stock-product-grn-table tr.is-draft { background: #f8fafc; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="stock-hint" role="status">
+  <strong>Where GRN stock appears:</strong>
+  Corporate GRNs add to <strong>Main stock</strong>.
+  Farmer goods GRNs add to <strong>Farmer goods stock</strong> until issued to branches.
+</div>
+
+<div class="card card-table stock-overview-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats" aria-label="Stock summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Main stock lines</span>
+        <span class="smart-dt-stat-value">{{ main_stocks|length }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">Branch stock lines</span>
+        <span class="smart-dt-stat-value">{{ branch_stocks|length }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Farmer goods lines</span>
+        <span class="smart-dt-stat-value">{{ farmer_goods_stocks|length }}</span>
+      </div>
+    </div>
+
+    <div class="stock-section-head">
+      <div>
+        <h2>Main Stock</h2>
+        <p>Central warehouse from CORPORATE GRNs and transfers.</p>
+      </div>
+      <span class="stock-section-pill">{{ main_stocks|length }} rows</span>
+    </div>
+
+    <table
+      class="table table-hover datatable datatable-smart stock-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No main stock records yet."
+      data-footer-sum-cols="4"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Product</th>
+          <th class="min-tablet-l">Category</th>
+          <th class="min-tablet-l">Unit</th>
+          <th class="all text-end">Quantity</th>
+          <th class="all text-end">View</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in main_stocks %}
+        <tr>
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">
+            <button
+              type="button"
+              class="smart-dt-name-link js-stock-product-summary"
+              data-product-id="{{ row.product_id }}"
+              data-product-name="{{ row.product.name }}"
+              title="Product summary"
+            >{{ row.product.name }}</button>
+          </td>
+          <td class="min-tablet-l">{{ row.product.get_category_display }}</td>
+          <td class="min-tablet-l">{{ row.product.unit }}</td>
+          <td class="all dt-num text-end" data-order="{{ row.quantity|default:'0' }}">{{ row.quantity }}</td>
+          <td class="all text-end">
+            <div class="smart-dt-actions">
+              <button type="button" class="btn btn-outline-primary js-stock-product-summary" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product.name }}">Summary</button>
+              {% if perms.stock_management.view_stocklog %}
+              <button type="button" class="btn btn-outline-secondary js-stock-product-history" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product.name }}">History</button>
+              {% endif %}
+              {% if perms.suppliers.view_grn %}
+              <button type="button" class="btn btn-outline-primary js-stock-product-grns" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product.name }}" data-grn-type="corporate">GRNs</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-tablet-l text-end">Totals</th>
+          <th class="all text-end dt-foot-total"></th>
+          <th class="all"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="card card-table stock-overview-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="stock-section-head">
+      <div>
+        <h2>Branch Stock</h2>
+        <p>Received, transferred out, point/farmer issued, and available by branch.</p>
+      </div>
+      <span class="stock-section-pill is-info">{{ branch_tabs|length }} branches</span>
+    </div>
+
+    {% if not branch_tabs %}
+    <div class="empty-state p-3 text-muted">No branches available.</div>
+    {% else %}
+    <div class="stock-branch-toolbar">
+      <ul class="nav stock-branch-tabs" role="tablist">
+        {% for bt in branch_tabs %}
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link {% if bt.is_active %}active{% endif %}"
+            id="branch-tab-{{ bt.id }}"
+            data-bs-toggle="tab"
+            data-bs-target="#branch-panel-{{ bt.id }}"
+            data-branch-id="{{ bt.id }}"
+            type="button"
+            role="tab"
+            aria-controls="branch-panel-{{ bt.id }}"
+            aria-selected="{% if bt.is_active %}true{% else %}false{% endif %}"
+          >{{ bt.name }}</button>
+        </li>
+        {% endfor %}
+      </ul>
+      <form method="get" class="stock-advanced-filters stock-branch-product-filter" role="search" id="branchStockFilters">
+        <div>
+          <label class="form-label" for="bs_product">Product</label>
+          <select id="bs_product" name="bs_product" class="form-select js-bs-product-select" data-placeholder="Search products…">
+            <option value="">All products</option>
+            {% for p in branch_products %}
+            <option value="{{ p.id }}" {% if branch_filters.product == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <input type="hidden" name="bs_branch" id="bs_branch" value="{{ branch_filters.branch }}">
+        {% if fg_filters.product %}<input type="hidden" name="fg_product" value="{{ fg_filters.product }}">{% endif %}
+        {% if fg_filters.from_date %}<input type="hidden" name="fg_from_date" value="{{ fg_filters.from_date }}">{% endif %}
+        {% if fg_filters.to_date %}<input type="hidden" name="fg_to_date" value="{{ fg_filters.to_date }}">{% endif %}
+        <div class="d-flex gap-1">
+          <button type="submit" class="btn btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i></button>
+          <a
+            href="{% url 'stock-overview' %}{% if fg_filters.product or fg_filters.from_date or fg_filters.to_date %}?{% if fg_filters.product %}fg_product={{ fg_filters.product }}{% endif %}{% if fg_filters.from_date %}{% if fg_filters.product %}&{% endif %}fg_from_date={{ fg_filters.from_date }}{% endif %}{% if fg_filters.to_date %}{% if fg_filters.product or fg_filters.from_date %}&{% endif %}fg_to_date={{ fg_filters.to_date }}{% endif %}{% endif %}"
+            class="btn btn-outline-secondary"
+            title="Clear product filter"
+          ><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+      </form>
+    </div>
+    <div class="tab-content">
+      {% for bt in branch_tabs %}
+      <div
+        class="tab-pane fade {% if bt.is_active %}show active{% endif %}"
+        id="branch-panel-{{ bt.id }}"
+        role="tabpanel"
+        aria-labelledby="branch-tab-{{ bt.id }}"
+      >
+        {% if not bt.rows %}
+        <div class="empty-state p-3 text-muted">No stock/issue records for {{ bt.name }}.</div>
+        {% else %}
+        <table
+          class="table table-hover datatable datatable-smart stock-table smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No stock/issue records."
+          data-footer-sum-cols="3,4,5,6"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Product</th>
+              <th class="min-tablet-l">Unit</th>
+              <th class="min-tablet-l text-end">Received</th>
+              <th class="min-desktop text-end">Transfer</th>
+              <th class="min-tablet-l text-end">Point/Farmer</th>
+              <th class="all text-end">Available</th>
+              <th class="all text-end">View</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in bt.rows %}
+            <tr>
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all">
+                <button
+                  type="button"
+                  class="smart-dt-name-link js-stock-product-summary"
+                  data-product-id="{{ row.product_id }}"
+                  data-product-name="{{ row.product_name }}"
+                  data-branch-id="{{ bt.id }}"
+                  data-branch-name="{{ bt.name }}"
+                  title="Product summary · {{ bt.name }}"
+                >{{ row.product_name }}</button>
+              </td>
+              <td class="min-tablet-l">{{ row.unit }}</td>
+              <td class="min-tablet-l dt-num text-end" data-order="{{ row.received|default:'0' }}">{{ row.received }}</td>
+              <td class="min-desktop dt-num text-end" data-order="{{ row.transfer_qty|default:'0' }}">{{ row.transfer_qty }}</td>
+              <td class="min-tablet-l dt-num text-end" data-order="{{ row.point_farmer|default:'0' }}">{{ row.point_farmer }}</td>
+              <td class="all dt-num text-end" data-order="{{ row.available|default:'0' }}">{{ row.available }}</td>
+              <td class="all text-end">
+                <div class="smart-dt-actions">
+                  <button type="button" class="btn btn-outline-primary js-stock-product-summary" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product_name }}" data-branch-id="{{ bt.id }}" data-branch-name="{{ bt.name }}">Summary</button>
+                  {% if perms.stock_management.view_stocklog %}
+                  <button type="button" class="btn btn-outline-secondary js-stock-product-history" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product_name }}" data-branch-id="{{ bt.id }}" data-branch-name="{{ bt.name }}">History</button>
+                  {% endif %}
+                  {% if perms.suppliers.view_grn %}
+                  <button type="button" class="btn btn-outline-primary js-stock-product-grns" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product_name }}" data-branch-id="{{ bt.id }}" data-branch-name="{{ bt.name }}">GRNs</button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th class="min-tablet-l"></th>
+              <th class="all"></th>
+              <th class="min-tablet-l text-end">Totals</th>
+              <th class="min-tablet-l text-end dt-foot-total"></th>
+              <th class="min-desktop text-end dt-foot-total"></th>
+              <th class="min-tablet-l text-end dt-foot-total"></th>
+              <th class="all text-end dt-foot-total"></th>
+              <th class="all"></th>
+            </tr>
+          </tfoot>
+        </table>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-table stock-overview-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="stock-section-head">
+      <div>
+        <h2>Farmer goods stock</h2>
+        <p>Received (farmer-goods GRNs + stock corrections) minus point/farmer issues. In-branch stock is still on hand, so it is not subtracted from balance.</p>
+      </div>
+      <span class="stock-section-pill is-warn">{{ fg_report_rows|length }} rows</span>
+    </div>
+    {% if user.is_superuser and fg_pool_sync_count %}
+    <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <div>
+        <strong>{{ fg_pool_sync_count }}</strong> product{{ fg_pool_sync_count|pluralize }}
+        {{ fg_pool_sync_count|pluralize:"has,have" }} a farmer-goods pool that does not match
+        GRNs + stock corrections − issues (same as Calup Gel).
+      </div>
+      <a class="btn btn-sm btn-warning" href="{% url 'stock-correct-negative' %}">Fix pool</a>
+    </div>
+    {% endif %}
+
+    <form method="get" class="stock-advanced-filters" role="search">
+      <div>
+        <label class="form-label" for="fg_product">Product</label>
+        <select id="fg_product" name="fg_product" class="form-select js-fg-product-select" data-placeholder="Search products…">
+          <option value="">All products</option>
+          {% for p in fg_products %}
+          <option value="{{ p.id }}" {% if fg_filters.product == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="fg_period">Period</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted"><i class="bi bi-calendar3"></i></span>
+          <input
+            type="text"
+            id="fg_period"
+            class="form-control border-start-0 js-datepicker-range"
+            data-range-start="fg_from_date"
+            data-range-end="fg_to_date"
+            placeholder="All dates"
+            autocomplete="off"
+            readonly
+            aria-label="Period"
+          >
+        </div>
+        <input type="hidden" name="fg_from_date" value="{{ fg_filters.from_date }}">
+        <input type="hidden" name="fg_to_date" value="{{ fg_filters.to_date }}">
+      </div>
+      {% if branch_filters.product %}<input type="hidden" name="bs_product" value="{{ branch_filters.product }}">{% endif %}
+      {% if branch_filters.branch %}<input type="hidden" name="bs_branch" value="{{ branch_filters.branch }}">{% endif %}
+      <div class="d-flex gap-1">
+        <button type="submit" class="btn btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i></button>
+        <a
+          href="{% url 'stock-overview' %}{% if branch_filters.product or branch_filters.branch %}?{% if branch_filters.product %}bs_product={{ branch_filters.product }}{% endif %}{% if branch_filters.branch %}{% if branch_filters.product %}&{% endif %}bs_branch={{ branch_filters.branch }}{% endif %}{% endif %}"
+          class="btn btn-outline-secondary"
+          title="Clear filters"
+        ><i class="bi bi-arrow-counterclockwise"></i></a>
+      </div>
+    </form>
+
+    <table
+      class="table table-hover datatable datatable-smart stock-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No farmer goods movements found for this period."
+      data-footer-sum-cols="3,4,5,6"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Product</th>
+          <th class="min-tablet-l">Unit</th>
+          <th class="min-tablet-l text-end">Received</th>
+          <th class="min-desktop text-end">In branches</th>
+          <th class="min-tablet-l text-end">Point/Farmer</th>
+          <th class="all text-end">Balance</th>
+          {% for b in fg_report_branches %}
+          <th class="min-desktop text-end">{{ b.name }}</th>
+          {% endfor %}
+          <th class="all text-end">View</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in fg_report_rows %}
+        <tr>
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">
+            <button
+              type="button"
+              class="smart-dt-name-link js-stock-product-summary"
+              data-product-id="{{ row.product_id }}"
+              data-product-name="{{ row.product_name }}"
+              data-grn-type="farmer_goods"
+              title="Product summary"
+            >{{ row.product_name }}</button>
+          </td>
+          <td class="min-tablet-l">{{ row.unit }}</td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ row.received_total|default:'0' }}">{{ row.received_total }}</td>
+          <td class="min-desktop dt-num text-end" data-order="{{ row.total_in_branches|default:'0' }}">{{ row.total_in_branches }}</td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ row.point_farmer_issued|default:'0' }}">{{ row.point_farmer_issued }}</td>
+          <td class="all dt-num text-end" data-order="{{ row.balance|default:'0' }}">{{ row.balance }}</td>
+          {% for bv in row.branch_values %}
+          <td class="min-desktop dt-num text-end" data-order="{{ bv.qty|default:'0' }}">{{ bv.qty }}</td>
+          {% endfor %}
+          <td class="all text-end">
+            <div class="smart-dt-actions">
+              <button type="button" class="btn btn-outline-primary js-stock-product-summary" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product_name }}" data-grn-type="farmer_goods">Summary</button>
+              {% if perms.stock_management.view_stocklog %}
+              <button type="button" class="btn btn-outline-secondary js-stock-product-history" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product_name }}">History</button>
+              {% endif %}
+              {% if perms.suppliers.view_grn %}
+              <button type="button" class="btn btn-outline-primary js-stock-product-grns" data-product-id="{{ row.product_id }}" data-product-name="{{ row.product_name }}" data-grn-type="farmer_goods">GRNs</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all"></th>
+          <th class="min-tablet-l text-end">Totals</th>
+          <th class="min-tablet-l text-end dt-foot-total"></th>
+          <th class="min-desktop text-end dt-foot-total"></th>
+          <th class="min-tablet-l text-end dt-foot-total"></th>
+          <th class="all text-end dt-foot-total"></th>
+          {% for b in fg_report_branches %}
+          <th class="min-desktop"></th>
+          {% endfor %}
+          <th class="all"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="stockProductSummaryModal" tabindex="-1" aria-labelledby="stockProductSummaryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="stockProductSummaryModalLabel">Product summary</h5>
+          <p class="text-muted small mb-0" id="stockProductSummarySubtitle">Current stock across main, farmer goods, and branches</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="stockProductSummaryLoading" class="text-muted py-4 text-center">Loading…</div>
+        <div id="stockProductSummaryBody" class="d-none">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-4">
+              <div class="border rounded-3 p-3 h-100">
+                <div class="text-muted small text-uppercase fw-semibold">Main stock</div>
+                <div class="fs-4 fw-bold" id="stockProductSummaryMain">0.00</div>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="border rounded-3 p-3 h-100">
+                <div class="text-muted small text-uppercase fw-semibold">Farmer goods</div>
+                <div class="fs-4 fw-bold" id="stockProductSummaryFg">0.00</div>
+                <div class="small mt-1" id="stockProductSummaryFgFormula" style="color:#047857;font-weight:600;"></div>
+                <div class="text-muted small mt-1" id="stockProductSummaryFgPendingHint"></div>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="border rounded-3 p-3 h-100">
+                <div class="text-muted small text-uppercase fw-semibold">Category / Unit</div>
+                <div class="fw-semibold" id="stockProductSummaryMeta">—</div>
+              </div>
+            </div>
+          </div>
+          <div id="stockProductSummaryFgMove" class="border rounded-3 p-3 mb-3 d-none">
+            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-2">
+              <div class="fw-semibold mb-0">Farmer goods movement</div>
+              <div class="small" id="stockProductSummaryFgGrnNote"></div>
+            </div>
+            <div class="row g-2 text-center">
+              <div class="col-6 col-md">
+                <div class="text-muted small">Received</div>
+                <div class="fw-bold" id="stockProductSummaryFgReceived">0.00</div>
+                <div class="text-muted small" id="stockProductSummaryFgReceivedHint"></div>
+              </div>
+              <div class="col-6 col-md">
+                <div class="text-muted small">Issued to branches</div>
+                <div class="fw-bold" id="stockProductSummaryFgIssuedBranches">0.00</div>
+              </div>
+              <div class="col-6 col-md">
+                <div class="text-muted small">In branches</div>
+                <div class="fw-bold" id="stockProductSummaryFgInBranches">0.00</div>
+              </div>
+              <div class="col-6 col-md">
+                <div class="text-muted small">Point/Farmer</div>
+                <div class="fw-bold" id="stockProductSummaryFgPf">0.00</div>
+                <div class="text-muted small" id="stockProductSummaryFgPfBreakdown"></div>
+              </div>
+              <div class="col-6 col-md">
+                <div class="text-muted small">Pending</div>
+                <div class="fw-bold text-warning-emphasis" id="stockProductSummaryFgPending">0.00</div>
+              </div>
+              <div class="col-6 col-md">
+                <div class="text-muted small">Balance</div>
+                <div class="fw-bold" id="stockProductSummaryFgBalance">0.00</div>
+              </div>
+            </div>
+          </div>
+          <div id="stockProductSummaryFocus" class="border rounded-3 p-3 mb-3 d-none">
+            <div class="fw-semibold mb-2" id="stockProductSummaryFocusTitle">Branch movement</div>
+            <div class="row g-2 text-center">
+              <div class="col-3">
+                <div class="text-muted small">Received</div>
+                <div class="fw-bold" id="stockProductSummaryFocusReceived">0.00</div>
+              </div>
+              <div class="col-3">
+                <div class="text-muted small">Transfer</div>
+                <div class="fw-bold" id="stockProductSummaryFocusTransfer">0.00</div>
+              </div>
+              <div class="col-3">
+                <div class="text-muted small">Point/Farmer</div>
+                <div class="fw-bold" id="stockProductSummaryFocusPf">0.00</div>
+              </div>
+              <div class="col-3">
+                <div class="text-muted small">Available</div>
+                <div class="fw-bold" id="stockProductSummaryFocusAvailable">0.00</div>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Branch</th>
+                  <th class="text-end">Available</th>
+                </tr>
+              </thead>
+              <tbody id="stockProductSummaryBranches"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" id="stockProductSummaryHistoryBtn">History</button>
+        <button type="button" class="btn btn-outline-primary" id="stockProductSummaryGrnBtn">GRNs</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="stockProductHistoryModal" tabindex="-1" aria-labelledby="stockProductHistoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="stockProductHistoryModalLabel">Product history</h5>
+          <p class="text-muted small mb-0" id="stockProductHistorySubtitle">Receiving, transfers, and issues</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="stockProductHistoryLoading" class="text-muted py-4 text-center">Loading…</div>
+        <div id="stockProductHistoryEmpty" class="empty-state d-none">No movement logs for this product.</div>
+        <div id="stockProductHistoryTableWrap" class="table-wrap d-none">
+          <table class="table table-hover mb-0 stock-product-history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Action</th>
+                <th>Status</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Balance</th>
+                <th>Source</th>
+                <th>Destination</th>
+              </tr>
+            </thead>
+            <tbody id="stockProductHistoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="stockProductHistoryFullLink" class="btn btn-outline-secondary" href="#">Open full history</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="stockProductGrnModal" tabindex="-1" aria-labelledby="stockProductGrnModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="stockProductGrnModalLabel">Product GRNs</h5>
+          <p class="text-muted small mb-0" id="stockProductGrnSubtitle">Compare rate and issue price by receiving layer</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="stockProductGrnLoading" class="text-muted py-4 text-center">Loading…</div>
+        <div id="stockProductGrnEmpty" class="empty-state d-none">No GRNs for this product.</div>
+        <div id="stockProductGrnTableWrap" class="table-wrap d-none">
+          <table class="table table-hover mb-0 stock-product-grn-table">
+            <thead>
+              <tr>
+                <th>GRN #</th>
+                <th>Supplier</th>
+                <th>Branch</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Rate</th>
+                <th class="text-end">Issue price</th>
+                <th class="text-end">Line total</th>
+                <th>Status</th>
+                <th class="text-end">Print</th>
+              </tr>
+            </thead>
+            <tbody id="stockProductGrnBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="stockProductGrnFullLink" class="btn btn-outline-secondary" href="#">Open full GRN list</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+    var $fgProduct = window.jQuery("#fg_product");
+    if ($fgProduct.length && !$fgProduct.hasClass("select2-hidden-accessible")) {
+      $fgProduct.select2({
+        width: "100%",
+        allowClear: true,
+        placeholder: $fgProduct.data("placeholder") || "Search products…",
+      });
+    }
+    var $bsProduct = window.jQuery("#bs_product");
+    if ($bsProduct.length && !$bsProduct.hasClass("select2-hidden-accessible")) {
+      $bsProduct.select2({
+        width: "100%",
+        allowClear: true,
+        placeholder: $bsProduct.data("placeholder") || "Search products…",
+      });
+    }
+  }
+
+  var bsBranchInput = document.getElementById("bs_branch");
+  if (bsBranchInput && !bsBranchInput.value) {
+    var activeBranchTab = document.querySelector(".stock-branch-tabs .nav-link.active");
+    if (activeBranchTab) {
+      bsBranchInput.value = activeBranchTab.getAttribute("data-branch-id") || "";
+    }
+  }
+  document.querySelectorAll(".stock-branch-tabs [data-bs-toggle='tab']").forEach(function (tabBtn) {
+    tabBtn.addEventListener("shown.bs.tab", function () {
+      if (bsBranchInput) bsBranchInput.value = tabBtn.getAttribute("data-branch-id") || "";
+    });
+  });
+
+  var summaryContext = { productId: "", productName: "", branchId: "", grnType: "" };
+
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function showModal(id) {
+    var el = document.getElementById(id);
+    if (!el || !window.bootstrap || !bootstrap.Modal) return null;
+    return bootstrap.Modal.getOrCreateInstance(el);
+  }
+
+  function withQuery(url, params) {
+    var parts = [];
+    Object.keys(params || {}).forEach(function (key) {
+      var value = params[key];
+      if (value) parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
+    });
+    if (!parts.length) return url;
+    return url + (url.indexOf("?") >= 0 ? "&" : "?") + parts.join("&");
+  }
+
+  function openSummaryModal(productId, productName, branchId, branchName, grnType) {
+    var modal = showModal("stockProductSummaryModal");
+    if (!modal) return;
+    summaryContext = {
+      productId: productId,
+      productName: productName || "Product",
+      branchId: branchId || "",
+      grnType: grnType || "",
+    };
+    document.getElementById("stockProductSummaryModalLabel").textContent = "Summary · " + summaryContext.productName;
+    document.getElementById("stockProductSummarySubtitle").textContent = branchName
+      ? "Focus: " + branchName
+      : "Current stock across main, farmer goods, and branches";
+    document.getElementById("stockProductSummaryLoading").classList.remove("d-none");
+    document.getElementById("stockProductSummaryBody").classList.add("d-none");
+    document.getElementById("stockProductSummaryFgMove").classList.add("d-none");
+    document.getElementById("stockProductSummaryFocus").classList.add("d-none");
+    modal.show();
+
+    var url = withQuery(
+      "{% url 'stock-product-summary-modal' 0 %}".replace("/0/", "/" + productId + "/"),
+      { branch: branchId || "" }
+    );
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed to load summary");
+        return r.json();
+      })
+      .then(function (data) {
+        document.getElementById("stockProductSummaryLoading").classList.add("d-none");
+        document.getElementById("stockProductSummaryBody").classList.remove("d-none");
+        document.getElementById("stockProductSummaryMain").textContent = data.main_qty || "0.00";
+        document.getElementById("stockProductSummaryFg").textContent = data.farmer_goods_qty || "0.00";
+        var unit = (data.product && data.product.unit) || "";
+        var category = (data.product && data.product.category) || "—";
+        document.getElementById("stockProductSummaryMeta").textContent =
+          category + (unit ? " · " + unit : "");
+        var fgFormulaEl = document.getElementById("stockProductSummaryFgFormula");
+        var fgPendingHint = document.getElementById("stockProductSummaryFgPendingHint");
+        if (fgFormulaEl) fgFormulaEl.textContent = "";
+        if (fgPendingHint) fgPendingHint.textContent = "";
+        if (data.fg_movement) {
+          document.getElementById("stockProductSummaryFgMove").classList.remove("d-none");
+          var fgRecv = data.fg_movement.received || "0.00";
+          var appliedAll = data.fg_movement.applied_all_issues;
+          var pendingAll = data.fg_movement.pending_all_issues;
+          var appliedPf = data.fg_movement.applied_point_farmer;
+          var pendingPf = data.fg_movement.pending_point_farmer;
+          if (appliedAll == null) appliedAll = appliedPf;
+          if (pendingAll == null) pendingAll = pendingPf;
+          if (appliedAll == null) appliedAll = "0.00";
+          if (pendingAll == null) pendingAll = "0.00";
+          if (appliedPf == null) appliedPf = "0.00";
+          if (pendingPf == null) pendingPf = "0.00";
+          document.getElementById("stockProductSummaryFgReceived").textContent = fgRecv;
+          var draftRecv = data.fg_movement.draft_received || "0.00";
+          var recvHint = document.getElementById("stockProductSummaryFgReceivedHint");
+          var grnNote = document.getElementById("stockProductSummaryFgGrnNote");
+          if (recvHint) {
+            recvHint.textContent = "FG GRNs + stock corrections";
+          }
+          if (grnNote) {
+            if (parseFloat(draftRecv) > 0) {
+              grnNote.innerHTML =
+                '<span class="history-status-pill is-confirmed me-1">Confirmed</span>' +
+                esc(fgRecv) +
+                ' <span class="text-muted">in stock</span>' +
+                ' · <span class="history-status-pill is-draft me-1">Draft</span>' +
+                esc(draftRecv) +
+                ' <span class="text-muted">not counted yet</span>';
+            } else {
+              grnNote.innerHTML =
+                '<span class="history-status-pill is-confirmed me-1">Confirmed</span>' +
+                '<span class="text-muted">Received uses confirmed FG GRNs + stock corrections</span>';
+            }
+          }
+          document.getElementById("stockProductSummaryFgIssuedBranches").textContent =
+            data.fg_movement.issued_to_branches || "0.00";
+          document.getElementById("stockProductSummaryFgInBranches").textContent =
+            data.fg_movement.in_branches || "0.00";
+          document.getElementById("stockProductSummaryFgPf").textContent =
+            data.fg_movement.point_farmer || "0.00";
+          document.getElementById("stockProductSummaryFgPending").textContent = pendingPf;
+          document.getElementById("stockProductSummaryFgPfBreakdown").textContent =
+            "Applied " + appliedPf + " + pending " + pendingPf;
+          document.getElementById("stockProductSummaryFgBalance").textContent =
+            data.fg_movement.balance || "0.00";
+          var poolQty = data.farmer_goods_qty || "0.00";
+          if (fgFormulaEl) {
+            fgFormulaEl.textContent =
+              fgRecv + " confirmed − " + appliedAll + " applied = " + poolQty;
+          }
+          if (fgPendingHint) {
+            if (parseFloat(pendingAll) > 0) {
+              fgPendingHint.textContent =
+                "Pending " + pendingAll + " soft-reserved (not deducted from pool)";
+            } else {
+              fgPendingHint.textContent = "";
+            }
+          }
+        }
+        if (data.focus) {
+          document.getElementById("stockProductSummaryFocus").classList.remove("d-none");
+          document.getElementById("stockProductSummaryFocusTitle").textContent =
+            "Branch movement · " + data.focus.branch_name;
+          document.getElementById("stockProductSummaryFocusReceived").textContent = data.focus.received;
+          document.getElementById("stockProductSummaryFocusTransfer").textContent = data.focus.transfer_qty;
+          document.getElementById("stockProductSummaryFocusPf").textContent = data.focus.point_farmer;
+          document.getElementById("stockProductSummaryFocusAvailable").textContent = data.focus.available;
+        }
+        document.getElementById("stockProductSummaryBranches").innerHTML = (data.branches || [])
+          .map(function (row) {
+            return (
+              "<tr" + (row.is_focus ? ' class="table-success"' : "") + ">" +
+              "<td>" + esc(row.name) + (row.is_focus ? ' <span class="text-muted small">(selected)</span>' : "") + "</td>" +
+              '<td class="text-end">' + esc(row.quantity) + "</td>" +
+              "</tr>"
+            );
+          })
+          .join("") || '<tr><td colspan="2" class="text-muted">No branch stock rows.</td></tr>';
+      })
+      .catch(function () {
+        document.getElementById("stockProductSummaryLoading").textContent = "Could not load summary.";
+      });
+  }
+
+  function openHistoryModal(productId, productName, branchId, branchName) {
+    var modal = showModal("stockProductHistoryModal");
+    if (!modal) return;
+    document.getElementById("stockProductHistoryModalLabel").textContent = "History · " + productName;
+    document.getElementById("stockProductHistorySubtitle").textContent = branchName
+      ? "Movements for " + branchName
+      : "Receiving, transfers, and issues";
+    document.getElementById("stockProductHistoryLoading").classList.remove("d-none");
+    document.getElementById("stockProductHistoryEmpty").classList.add("d-none");
+    document.getElementById("stockProductHistoryTableWrap").classList.add("d-none");
+    document.getElementById("stockProductHistoryBody").innerHTML = "";
+    modal.show();
+
+    var url = withQuery(
+      "{% url 'stock-product-history-modal' 0 %}".replace("/0/", "/" + productId + "/"),
+      { branch: branchId || "" }
+    );
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed to load history");
+        return r.json();
+      })
+      .then(function (data) {
+        document.getElementById("stockProductHistoryLoading").classList.add("d-none");
+        document.getElementById("stockProductHistoryFullLink").href = data.full_url || "#";
+        if (data.subtitle) {
+          document.getElementById("stockProductHistorySubtitle").textContent = data.subtitle;
+        }
+        var rows = data.rows || [];
+        if (!rows.length) {
+          document.getElementById("stockProductHistoryEmpty").classList.remove("d-none");
+          return;
+        }
+        document.getElementById("stockProductHistoryBody").innerHTML = rows
+          .map(function (row) {
+            var statusCss = row.status_css || "posted";
+            var statusLabel = row.status || "Posted";
+            var trClass = (statusCss === "pending" || statusCss === "rejected") ? (' class="is-' + statusCss + '"') : "";
+            return (
+              "<tr" + trClass + ">" +
+              "<td>" + esc(row.date) + "</td>" +
+              "<td>" + esc(row.action) + "</td>" +
+              '<td><span class="history-status-pill is-' + esc(statusCss) + '">' + esc(statusLabel) + "</span></td>" +
+              '<td class="text-end">' + esc(row.quantity) + "</td>" +
+              '<td class="text-end">' + esc(row.balance) + "</td>" +
+              "<td>" + esc(row.source) + "</td>" +
+              "<td>" + esc(row.destination) + "</td>" +
+              "</tr>"
+            );
+          })
+          .join("");
+        document.getElementById("stockProductHistoryTableWrap").classList.remove("d-none");
+      })
+      .catch(function () {
+        document.getElementById("stockProductHistoryLoading").textContent = "Could not load history.";
+      });
+  }
+
+  function openGrnModal(productId, productName, grnType, branchId, branchName) {
+    var modal = showModal("stockProductGrnModal");
+    if (!modal) return;
+    document.getElementById("stockProductGrnModalLabel").textContent = "GRNs · " + productName;
+    document.getElementById("stockProductGrnSubtitle").textContent = branchName
+      ? "GRNs for " + branchName
+      : "Compare rate and issue price by receiving layer";
+    document.getElementById("stockProductGrnLoading").classList.remove("d-none");
+    document.getElementById("stockProductGrnEmpty").classList.add("d-none");
+    document.getElementById("stockProductGrnTableWrap").classList.add("d-none");
+    document.getElementById("stockProductGrnBody").innerHTML = "";
+    modal.show();
+
+    var url = withQuery(
+      "{% url 'stock-product-grn-modal' 0 %}".replace("/0/", "/" + productId + "/"),
+      { grn_type: grnType || "", branch: branchId || "" }
+    );
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed to load GRNs");
+        return r.json();
+      })
+      .then(function (data) {
+        document.getElementById("stockProductGrnLoading").classList.add("d-none");
+        document.getElementById("stockProductGrnFullLink").href = data.full_url || "#";
+        if (data.subtitle) {
+          document.getElementById("stockProductGrnSubtitle").textContent = data.subtitle;
+        }
+        var rows = data.rows || [];
+        if (!rows.length) {
+          document.getElementById("stockProductGrnEmpty").classList.remove("d-none");
+          return;
+        }
+        document.getElementById("stockProductGrnBody").innerHTML = rows
+          .map(function (row) {
+            var statusCss = row.status_css || "confirmed";
+            var statusLabel = row.status || "Confirmed";
+            var trClass = statusCss === "draft" ? ' class="is-draft"' : "";
+            return (
+              "<tr" + trClass + ">" +
+              "<td>" + esc(row.grn_number) + "</td>" +
+              "<td>" + esc(row.supplier) + "</td>" +
+              "<td>" + esc(row.branch) + "</td>" +
+              "<td>" + esc(row.type) + "</td>" +
+              "<td>" + esc(row.date) + "</td>" +
+              '<td class="text-end">' + esc(row.quantity) + "</td>" +
+              '<td class="text-end">' + esc(row.rate) + "</td>" +
+              '<td class="text-end">' + esc(row.issue_price) + "</td>" +
+              '<td class="text-end">' + esc(row.line_total) + "</td>" +
+              '<td><span class="history-status-pill is-' + esc(statusCss) + '">' +
+              esc(statusLabel) +
+              "</span></td>" +
+              '<td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="' +
+              esc(row.print_url) +
+              '" target="_blank" rel="noopener">Print</a></td>' +
+              "</tr>"
+            );
+          })
+          .join("");
+        document.getElementById("stockProductGrnTableWrap").classList.remove("d-none");
+      })
+      .catch(function () {
+        document.getElementById("stockProductGrnLoading").textContent = "Could not load GRNs.";
+      });
+  }
+
+  document.addEventListener("click", function (event) {
+    var summaryBtn = event.target.closest(".js-stock-product-summary");
+    if (summaryBtn) {
+      event.preventDefault();
+      openSummaryModal(
+        summaryBtn.getAttribute("data-product-id"),
+        summaryBtn.getAttribute("data-product-name") || "Product",
+        summaryBtn.getAttribute("data-branch-id") || "",
+        summaryBtn.getAttribute("data-branch-name") || "",
+        summaryBtn.getAttribute("data-grn-type") || ""
+      );
+      return;
+    }
+    var historyBtn = event.target.closest(".js-stock-product-history");
+    if (historyBtn) {
+      event.preventDefault();
+      openHistoryModal(
+        historyBtn.getAttribute("data-product-id"),
+        historyBtn.getAttribute("data-product-name") || "Product",
+        historyBtn.getAttribute("data-branch-id") || "",
+        historyBtn.getAttribute("data-branch-name") || ""
+      );
+      return;
+    }
+    var grnBtn = event.target.closest(".js-stock-product-grns");
+    if (grnBtn) {
+      event.preventDefault();
+      openGrnModal(
+        grnBtn.getAttribute("data-product-id"),
+        grnBtn.getAttribute("data-product-name") || "Product",
+        grnBtn.getAttribute("data-grn-type") || "",
+        grnBtn.getAttribute("data-branch-id") || "",
+        grnBtn.getAttribute("data-branch-name") || ""
+      );
+    }
+  });
+
+  var summaryHistoryBtn = document.getElementById("stockProductSummaryHistoryBtn");
+  if (summaryHistoryBtn) {
+    summaryHistoryBtn.addEventListener("click", function () {
+      var summaryModal = bootstrap.Modal.getInstance(document.getElementById("stockProductSummaryModal"));
+      if (summaryModal) summaryModal.hide();
+      openHistoryModal(
+        summaryContext.productId,
+        summaryContext.productName,
+        summaryContext.branchId,
+        ""
+      );
+    });
+  }
+  var summaryGrnBtn = document.getElementById("stockProductSummaryGrnBtn");
+  if (summaryGrnBtn) {
+    summaryGrnBtn.addEventListener("click", function () {
+      var summaryModal = bootstrap.Modal.getInstance(document.getElementById("stockProductSummaryModal"));
+      if (summaryModal) summaryModal.hide();
+      openGrnModal(
+        summaryContext.productId,
+        summaryContext.productName,
+        summaryContext.grnType,
+        summaryContext.branchId,
+        ""
+      );
+    });
+  }
+})();
+</script>
+{% endblock %}

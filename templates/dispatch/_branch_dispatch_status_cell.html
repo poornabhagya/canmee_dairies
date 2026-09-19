@@ -1,0 +1,20 @@
+{% if o.is_branch_dispatch %}
+  {% if filter_tab != 'all' and branch_scope != 'incoming' and o.show_outgoing_divert_status %}
+  <span class="dispatch-branch-status dispatch-branch-status--divert">Diverted → {{ o.divert_target_label }}</span>
+  {% if o.diverted_by_branch %}
+  <br><span class="dispatch-branch-status dispatch-branch-status--divert-sub text-muted small">from {{ o.diverted_by_branch.name }}</span>
+  {% endif %}
+  {% if o.branch_destination_response == 'collected' %}
+  <br><span class="dispatch-branch-status dispatch-branch-status--collected">Collected</span>
+  {% elif o.branch_destination_response == 'pending' %}
+  <br><span class="text-muted small">Pending at destination</span>
+  {% endif %}
+  {% else %}
+  <span class="dispatch-branch-status dispatch-branch-status--{{ o.branch_destination_status_kind }}">
+    {{ o.branch_destination_status_label }}
+  </span>
+  {% if o.branch_source_return_response %}
+  <br><span class="dispatch-branch-status dispatch-branch-status--return-sub text-muted small">Return: {{ o.branch_source_return_status_label }}</span>
+  {% endif %}
+  {% endif %}
+{% else %}—{% endif %}

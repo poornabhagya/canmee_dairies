@@ -1,0 +1,1236 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Collection point tally sheet · Canmee Dairies{% endblock %}
+{% block page_heading %}Collection point tally sheet{% endblock %}
+{% block extra_css %}
+<style>
+  .tally-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-bottom: 1rem;
+  }
+  .tally-toolbar .field-wrap label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+  }
+  .tally-toolbar .field-wrap {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .tally-toolbar .form-control,
+  .tally-toolbar .form-select {
+    min-width: 150px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .tally-toolbar .tally-period-range-group {
+    min-width: 220px;
+  }
+  .tally-toolbar .tally-period-range-group .input-group-text {
+    background: #fff;
+    border-left: 0;
+    cursor: pointer;
+    height: 38px;
+    min-height: 38px;
+  }
+  .tally-toolbar .tally-period-range-group .form-control {
+    border-right: 0;
+  }
+  .tally-toolbar .tally-period-range-group .flatpickr-input[readonly] {
+    background-color: #fff;
+  }
+  .qty-segment {
+    display: inline-flex;
+    border: 1px solid #dbe3ef;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8fafc;
+  }
+  .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #64748b;
+  }
+  .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: inset 0 0 0 1px #a7f3d0;
+  }
+  .tally-sheet-card {
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+  }
+  .tally-sheet-head {
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+  }
+  .tally-sheet-head__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  .tally-sheet-head__meta {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+  }
+  .tally-scroll {
+    overflow: auto;
+    max-height: calc(100vh - 280px);
+    padding: 0 0 0.75rem;
+  }
+  .tally-table {
+    --tally-head-row1-h: 2.35rem;
+    margin: 0;
+    font-size: 0.75rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: max-content;
+  }
+  .tally-table th,
+  .tally-table td {
+    border: 1px solid #cbd5e1;
+    vertical-align: middle;
+    background: #fff;
+  }
+  .tally-table thead th {
+    background: #f8fafc;
+    font-weight: 700;
+    text-align: center;
+    padding: 0.35rem 0.25rem;
+    position: sticky;
+    z-index: 3;
+    box-shadow: 0 1px 0 #e2e8f0;
+  }
+  .tally-table thead .tally-head-row-1 th {
+    top: 0;
+  }
+  .tally-table thead .tally-head-row-2 th {
+    top: var(--tally-head-row1-h);
+  }
+  .tally-table .sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+  }
+  .tally-table thead .sticky-col {
+    z-index: 4;
+    background: #f8fafc;
+  }
+  .tally-table tbody .sticky-col {
+    background: #fff;
+  }
+  .tally-table tbody .tally-col-row-label {
+    background: #f8fafc;
+  }
+  .tally-table tfoot td {
+    background: #f1f5f9;
+    font-weight: 700;
+    text-align: center;
+    border-top: 2px solid #94a3b8;
+  }
+  .tally-table tfoot .sticky-col {
+    background: #f1f5f9;
+    z-index: 2;
+  }
+  .tally-table tfoot .tally-foot-label {
+    text-align: center;
+    font-size: 0.8125rem;
+  }
+  .tally-table tfoot .tally-foot-qty {
+    padding: 0.35rem 0.25rem;
+  }
+  .tally-table tfoot .tally-col-total {
+    text-align: right;
+    background: #e2e8f0;
+  }
+  .tally-table .sticky-col-2 {
+    left: 2.5rem;
+  }
+  .tally-col-no {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    text-align: center;
+    font-weight: 600;
+  }
+  .tally-col-name {
+    min-width: 9rem;
+    max-width: 12rem;
+    padding: 0.35rem 0.5rem;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .tally-col-row-label {
+    min-width: 3.25rem;
+    width: 3.25rem;
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f8fafc;
+    padding: 0.2rem;
+    vertical-align: middle;
+  }
+  .tally-table .sticky-col-3 {
+    left: calc(2.5rem + 9rem);
+  }
+  .tally-day-head {
+    min-width: 4.5rem;
+    line-height: 1.2;
+  }
+  .tally-day-head small {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: #94a3b8;
+  }
+  .tally-col-total {
+    min-width: 4.5rem;
+    text-align: right;
+    font-weight: 700;
+    padding: 0.35rem 0.5rem;
+    background: #f8fafc;
+    vertical-align: middle;
+  }
+  .tally-qty-cell {
+    padding: 0;
+    width: 4.5rem;
+    min-width: 4.5rem;
+    height: 2rem;
+  }
+  .tally-cell__qty-only {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.25rem;
+    text-align: center;
+    outline: none;
+  }
+  .tally-cell__qty-only:focus {
+    background: rgba(5, 150, 105, 0.08);
+  }
+  .js-tally-cell-input.tally-cell-input--saving,
+  .js-tally-cell-input.tally-cell-input--saving:focus {
+    background: #fef9c3 !important;
+  }
+  .js-tally-cell-input.tally-cell-input--saved,
+  .js-tally-cell-input.tally-cell-input--saved:focus {
+    background: #f0fdf4 !important;
+  }
+  .js-tally-cell-input.tally-cell-input--error,
+  .js-tally-cell-input.tally-cell-input--error:focus {
+    background: #fef2f2 !important;
+  }
+  .tally-save-status {
+    font-size: 0.8125rem;
+    color: #64748b;
+    min-height: 1.25rem;
+  }
+  .tally-save-status.is-error {
+    color: #b91c1c;
+  }
+  .tally-save-status.is-ok {
+    color: #059669;
+  }
+  .tally-cell {
+    padding: 0;
+    width: 4.5rem;
+    min-width: 4.5rem;
+    height: 2.35rem;
+  }
+  .tally-cell__split {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background:
+      linear-gradient(
+        to bottom right,
+        transparent calc(50% - 0.5px),
+        #cbd5e1 calc(50% - 0.5px),
+        #cbd5e1 calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+      );
+  }
+  .tally-cell__qty,
+  .tally-cell__fat,
+  .tally-cell__lr {
+    position: absolute;
+    border: none;
+    background: transparent;
+    font-size: 0.68rem;
+    padding: 0 0.15rem;
+    width: calc(100% - 0.3rem);
+    height: 46%;
+    outline: none;
+  }
+  .tally-cell__fat {
+    top: 0.08rem;
+    left: 0.12rem;
+    text-align: left;
+  }
+  .tally-cell__lr {
+    bottom: 0.08rem;
+    right: 0.12rem;
+    text-align: right;
+  }
+  .tally-cell__fat:focus,
+  .tally-cell__lr:focus {
+    background: rgba(5, 150, 105, 0.08);
+    border-radius: 3px;
+  }
+  .tally-cell--paid,
+  .tally-qty-cell.tally-cell--paid {
+    background: #f0fdf4;
+  }
+  .tally-cell--paid .tally-cell__qty-only,
+  .tally-cell--paid .tally-cell__fat,
+  .tally-cell--paid .tally-cell__lr {
+    color: #64748b;
+  }
+  .tally-farmer-row--factor td {
+    background: #fafbfc;
+  }
+  .tally-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+  }
+  .tally-legend__mark {
+    display: inline-block;
+    width: 2.5rem;
+    height: 1.5rem;
+    border: 1px solid #cbd5e1;
+    vertical-align: middle;
+    margin-right: 0.35rem;
+    background:
+      linear-gradient(
+        to bottom right,
+        transparent calc(50% - 0.5px),
+        #cbd5e1 calc(50% - 0.5px),
+        #cbd5e1 calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+      );
+  }
+  .tally-reconcile-section {
+    border-top: 1px solid #e2e8f0;
+    padding: 1rem 1.25rem 1.25rem;
+    background: #f8fafc;
+  }
+  .tally-reconcile-section__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+  }
+  .tally-reconcile-table {
+    font-size: 0.8125rem;
+    margin: 0;
+    background: #fff;
+  }
+  .reconcile-row--matched td {
+    background: #f0fdf4;
+  }
+  .reconcile-row--mismatch td,
+  .reconcile-row--missing_point td,
+  .reconcile-row--missing_farmers td {
+    background: #fffbeb;
+  }
+  .reconcile-diff--nonzero {
+    color: #b45309;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card tally-sheet-card">
+  <div class="card-body p-0">
+    <form method="get" class="tally-toolbar px-3 pt-3">
+      {% if show_branch_filter %}
+      <div class="field-wrap">
+        <label for="tally-branch">Branch</label>
+        <select id="tally-branch" name="branch" class="form-select no-global-select2">
+          <option value="">All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.pk }}"{% if selected_branch_id == b.pk %} selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="field-wrap">
+        <label for="tally-point">Collection point</label>
+        <select id="tally-point" name="point" class="form-select no-global-select2">
+          {% for p in all_points %}
+          <option
+            value="{{ p.pk }}"
+            data-branch-id="{{ p.route.branch_id }}"
+            {% if point and p.pk == point.pk %}selected{% endif %}
+          >{{ p.tally_label }}</option>
+          {% empty %}
+          <option value="">No collection points</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-wrap">
+        <label for="tally-period-range">Period</label>
+        <div class="input-group tally-period-range-group">
+          <input
+            type="text"
+            id="tally-period-range"
+            class="form-control js-tally-period-range"
+            value="{% if start and end %}{{ start|date:'Y-m-d' }} to {{ end|date:'Y-m-d' }}{% endif %}"
+            placeholder="Select date range"
+            autocomplete="off"
+            readonly
+          >
+          <input type="hidden" name="from" id="tally-from" value="{{ start|date:'Y-m-d' }}">
+          <input type="hidden" name="to" id="tally-to" value="{{ end|date:'Y-m-d' }}">
+          <span class="input-group-text js-open-tally-period-range" role="button" tabindex="0" aria-label="Open calendar"><i class="bi bi-calendar3"></i></span>
+        </div>
+      </div>
+      <div class="field-wrap">
+        <label>Unit</label>
+        <div class="qty-segment" role="group" aria-label="Quantity unit">
+          <button type="button" class="qty-segment__btn{% if qty_unit != 'liters' %} is-active{% endif %}" data-qty-unit="kg" aria-pressed="{% if qty_unit != 'liters' %}true{% else %}false{% endif %}">Kg</button>
+          <button type="button" class="qty-segment__btn{% if qty_unit == 'liters' %} is-active{% endif %}" data-qty-unit="liters" aria-pressed="{% if qty_unit == 'liters' %}true{% else %}false{% endif %}">Liters</button>
+        </div>
+        <input type="hidden" name="unit" id="tally-unit" value="{{ qty_unit }}">
+      </div>
+      <button type="submit" class="btn btn-outline-primary btn-sm">Load sheet</button>
+      <a href="{% url 'milk-collection-list' %}" class="btn btn-outline-secondary btn-sm">Back to list</a>
+    </form>
+
+    {% if point and rows %}
+    <form method="post" id="tally-save-form" action="#" onsubmit="return false;">
+      {% csrf_token %}
+      <input type="hidden" name="point" value="{{ point.pk }}">
+      {% if show_branch_filter and selected_branch_id %}
+      <input type="hidden" name="branch" value="{{ selected_branch_id }}">
+      {% endif %}
+      <input type="hidden" name="from" value="{{ start|date:'Y-m-d' }}">
+      <input type="hidden" name="to" value="{{ end|date:'Y-m-d' }}">
+      <input type="hidden" name="unit" id="tally-save-unit" value="{{ qty_unit }}">
+
+      <div class="tally-sheet-head">
+        <h2 class="tally-sheet-head__title">Canmee Dairies Pvt Ltd — Milk supply tally</h2>
+        <div class="tally-sheet-head__meta">
+          {{ point_display_name }}
+          · Period {{ period_label }}
+          · Route {{ point.route.code }}
+        </div>
+        <div class="tally-legend">
+          <span>Row 1 = quantity (<span class="js-qty-unit-label">{{ qty_unit }}</span>). Row 2 = fat % (top-left) and LR (bottom-right).</span>
+          <span>Press <strong>Enter</strong> or <strong>Tab</strong> to save and move to the next cell. Paid quantity cells are read-only.</span>
+          {% if not can_edit_qty and not can_save_fat %}
+          <span>You have view-only access to this tally sheet.</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="tally-scroll">
+        <table class="tally-table">
+          <thead>
+            <tr class="tally-head-row-1">
+              <th class="sticky-col tally-col-no" rowspan="2">No.</th>
+              <th class="sticky-col sticky-col-2 tally-col-name" rowspan="2">Name</th>
+              <th class="sticky-col sticky-col-3 tally-col-row-label" rowspan="2"></th>
+              {% for day in days %}
+              <th class="tally-day-head" colspan="1">{{ day|date:"d" }}<small>{{ day|date:"M" }}</small></th>
+              {% endfor %}
+              <th class="tally-col-total" rowspan="2">Total<br><small class="text-muted js-qty-unit-label">{{ qty_unit }}</small></th>
+            </tr>
+            <tr class="tally-head-row-2">
+              {% for day in days %}
+              <th class="tally-day-head"><small>Qty / Fat·LR</small></th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr class="tally-farmer-row tally-farmer-row--qty" data-farmer="{{ row.farmer.pk }}">
+              <td class="sticky-col tally-col-no" rowspan="2">{{ row.index }}</td>
+              <td class="sticky-col sticky-col-2 tally-col-name" rowspan="2">{{ row.name }}</td>
+              <td class="sticky-col sticky-col-3 tally-col-row-label">Qty</td>
+              {% for cell in row.cells %}
+              <td class="tally-qty-cell{% if cell.is_paid %} tally-cell--paid{% endif %}">
+                <input
+                  type="text"
+                  class="tally-cell__qty-only js-tally-qty js-tally-cell-input"
+                  name="qty_{{ row.farmer.pk }}_{{ cell.date|date:'Y-m-d' }}"
+                  value="{{ cell.qty }}"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="—"
+                  data-field="qty"
+                  data-farmer-id="{{ row.farmer.pk }}"
+                  data-date="{{ cell.date|date:'Y-m-d' }}"
+                  {% if cell.is_paid or not can_edit_qty %}readonly tabindex="-1"{% endif %}
+                  data-paid="{% if cell.is_paid %}1{% else %}0{% endif %}"
+                >
+              </td>
+              {% endfor %}
+              <td class="tally-col-total js-row-total" rowspan="2" data-farmer="{{ row.farmer.pk }}">{{ row.total_qty|default:"—" }}</td>
+            </tr>
+            <tr class="tally-farmer-row tally-farmer-row--factor" data-farmer="{{ row.farmer.pk }}">
+              <td class="sticky-col sticky-col-3 tally-col-row-label">Fat / LR</td>
+              {% for cell in row.cells %}
+              <td class="tally-cell">
+                <div class="tally-cell__split">
+                  <input
+                    type="text"
+                    class="tally-cell__fat js-tally-cell-input"
+                    name="fat_{{ row.farmer.pk }}_{{ cell.date|date:'Y-m-d' }}"
+                    value="{{ cell.fat }}"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="—"
+                    title="Fat %"
+                    data-field="fat"
+                    data-farmer-id="{{ row.farmer.pk }}"
+                    data-date="{{ cell.date|date:'Y-m-d' }}"
+                    {% if not can_save_fat %}readonly tabindex="-1"{% endif %}
+                  >
+                  <input
+                    type="text"
+                    class="tally-cell__lr js-tally-cell-input"
+                    name="lr_{{ row.farmer.pk }}_{{ cell.date|date:'Y-m-d' }}"
+                    value="{{ cell.lr }}"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="—"
+                    title="LR (Lacto Reading)"
+                    data-field="lr"
+                    data-farmer-id="{{ row.farmer.pk }}"
+                    data-date="{{ cell.date|date:'Y-m-d' }}"
+                    {% if not can_save_fat %}readonly tabindex="-1"{% endif %}
+                  >
+                </div>
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if rows %}
+          <tfoot class="tally-foot">
+            <tr class="tally-foot-row">
+              <td class="sticky-col tally-col-no tally-foot-label" colspan="3">Total (<span class="js-qty-unit-label">{{ qty_unit }}</span>)</td>
+              {% for day in day_totals %}
+              <td class="tally-foot-qty js-day-total" data-date="{{ day.date|date:'Y-m-d' }}">{{ day.qty|default:"—" }}</td>
+              {% endfor %}
+              <td class="tally-col-total js-grand-total">{{ grand_total_qty|default:"—" }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+
+      <div class="px-3 pb-3">
+        <div id="tally-save-status" class="tally-save-status" role="status" aria-live="polite"></div>
+      </div>
+    </form>
+
+    {% elif point %}
+    <div class="px-3 pb-3">
+      <div class="alert alert-info mb-0">No farmers are assigned to this collection point.</div>
+    </div>
+    {% else %}
+    <div class="px-3 pb-3">
+      <div class="alert alert-warning mb-0">Select a collection point to load the tally sheet.</div>
+    </div>
+    {% endif %}
+
+    {% if point and can_view_reconcile %}
+    <div class="tally-reconcile-section">
+      {% csrf_token %}
+      <h3 class="tally-reconcile-section__title">Point reconcile</h3>
+      <p class="small text-muted mb-2">
+        Compare collection point totals vs farmer tally for this period. Admins can choose which value is used for payment and sync the point row from farmers when needed.
+        Quantities use the same unit as the tally sheet above (<span class="js-qty-unit-label">{{ qty_unit }}</span>).
+      </p>
+      {% if reconcile_rows %}
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered tally-reconcile-table align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th>
+              <th class="text-end">Point <span class="js-reconcile-qty-header">{{ qty_unit }}</span></th>
+              <th class="text-end">Farmer <span class="js-reconcile-qty-header">{{ qty_unit }}</span></th>
+              <th class="text-end">Diff</th>
+              <th>Reconcile</th>
+              <th class="text-end">Rec. <span class="js-reconcile-qty-header">{{ qty_unit }}</span></th>
+              <th>Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in reconcile_rows %}
+            <tr class="reconcile-row--{{ row.status }}">
+              <td class="text-nowrap">{{ row.date|date:"Y-m-d" }}</td>
+              <td class="text-end js-reconcile-qty" data-kg="{{ row.point_kg }}">{{ row.point_qty }}</td>
+              <td class="text-end js-reconcile-qty" data-kg="{{ row.farmer_kg }}">{{ row.farmer_qty }}</td>
+              <td class="text-end js-reconcile-qty{% if row.diff_kg != 0 %} reconcile-diff--nonzero{% endif %}" data-kg="{{ row.diff_kg }}">{{ row.diff_qty }}</td>
+              <td>
+                {% if can_set_reconcile_choice %}
+                <div class="btn-group btn-group-sm reconcile-choice-group" role="group" aria-label="Reconcile source">
+                  <input
+                    type="radio"
+                    class="btn-check js-reconcile-choice"
+                    name="reconcile_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                    id="tally_reconcile_point_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                    value="point"
+                    data-date="{{ row.date|date:'Y-m-d' }}"
+                    data-route="{{ row.route_id }}"
+                    data-collection-point="{{ row.collection_point_id }}"
+                    {% if row.reconcile_source == 'point' %}checked{% endif %}
+                  >
+                  <label class="btn btn-outline-secondary" for="tally_reconcile_point_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}">Point</label>
+                  <input
+                    type="radio"
+                    class="btn-check js-reconcile-choice"
+                    name="reconcile_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                    id="tally_reconcile_farmer_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}"
+                    value="farmer"
+                    data-date="{{ row.date|date:'Y-m-d' }}"
+                    data-route="{{ row.route_id }}"
+                    data-collection-point="{{ row.collection_point_id }}"
+                    {% if row.reconcile_source == 'farmer' %}checked{% endif %}
+                  >
+                  <label class="btn btn-outline-secondary" for="tally_reconcile_farmer_{{ row.collection_point_id }}_{{ row.date|date:'Ymd' }}">Farmer</label>
+                </div>
+                {% else %}
+                {{ row.reconcile_source|capfirst }}
+                {% endif %}
+              </td>
+              <td class="text-end reconcile-kg-cell js-reconcile-qty" data-kg="{{ row.reconcile_kg }}">{{ row.reconcile_qty }}</td>
+              <td>
+                {% if row.status == 'matched' %}
+                <span class="badge text-bg-success-subtle text-success">Matched</span>
+                {% elif row.status == 'missing_point' %}
+                <span class="badge text-bg-danger-subtle text-danger">Missing point</span>
+                {% elif row.status == 'missing_farmers' %}
+                <span class="badge text-bg-warning-subtle text-warning-emphasis">Missing farmers</span>
+                {% else %}
+                <span class="badge text-bg-warning-subtle text-warning-emphasis">Mismatch</span>
+                {% endif %}
+              </td>
+              <td class="text-end text-nowrap">
+                {% if can_sync_point_totals and row.status != 'matched' %}
+                <form method="post" action="{% url 'milk-collection-reconcile-sync' %}" class="d-inline js-swal-submit-guard">
+                  {% csrf_token %}
+                  <input type="hidden" name="date" value="{{ row.date|date:'Y-m-d' }}">
+                  <input type="hidden" name="route" value="{{ row.route_id }}">
+                  <input type="hidden" name="collection_point" value="{{ row.collection_point_id }}">
+                  <input type="hidden" name="return_to" value="tally">
+                  <input type="hidden" name="point" value="{{ point.pk }}">
+                  {% if show_branch_filter and selected_branch_id %}
+                  <input type="hidden" name="branch" value="{{ selected_branch_id }}">
+                  {% endif %}
+                  <input type="hidden" name="from" value="{{ start|date:'Y-m-d' }}">
+                  <input type="hidden" name="to" value="{{ end|date:'Y-m-d' }}">
+                  <input type="hidden" name="unit" class="js-tally-unit-field" value="{{ qty_unit }}">
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-outline-primary js-swal-submit-trigger js-reconcile-sync"
+                    title="Overwrite the collection point total with the farmer total for this date. The previous point kg is saved so a superuser can reverse."
+                    data-bs-toggle="tooltip"
+                    data-bs-title="Overwrite the collection point total with the farmer total for this date. The previous point kg is saved so a superuser can reverse."
+                    data-swal-title="Sync point from farmers?"
+                    data-sync-date="{{ row.date|date:'Y-m-d' }}"
+                    data-farmer-kg="{{ row.farmer_kg }}"
+                  >Sync</button>
+                </form>
+                {% endif %}
+                {% if user.is_superuser and row.can_reverse_sync %}
+                <form method="post" action="{% url 'milk-collection-reconcile-reverse-sync' %}" class="d-inline js-swal-submit-guard">
+                  {% csrf_token %}
+                  <input type="hidden" name="date" value="{{ row.date|date:'Y-m-d' }}">
+                  <input type="hidden" name="route" value="{{ row.route_id }}">
+                  <input type="hidden" name="collection_point" value="{{ row.collection_point_id }}">
+                  <input type="hidden" name="return_to" value="tally">
+                  <input type="hidden" name="point" value="{{ point.pk }}">
+                  {% if show_branch_filter and selected_branch_id %}
+                  <input type="hidden" name="branch" value="{{ selected_branch_id }}">
+                  {% endif %}
+                  <input type="hidden" name="from" value="{{ start|date:'Y-m-d' }}">
+                  <input type="hidden" name="to" value="{{ end|date:'Y-m-d' }}">
+                  <input type="hidden" name="unit" class="js-tally-unit-field" value="{{ qty_unit }}">
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-outline-secondary js-swal-submit-trigger js-reconcile-reverse"
+                    title="Restore the point total from before the last Sync ({{ row.sync_previous_kg }} kg)."
+                    data-bs-toggle="tooltip"
+                    data-bs-title="Restore the point total from before the last Sync ({{ row.sync_previous_kg }} kg)."
+                    data-swal-title="Reverse sync?"
+                    data-sync-date="{{ row.date|date:'Y-m-d' }}"
+                    data-previous-kg="{{ row.sync_previous_kg }}"
+                  >Reverse</button>
+                </form>
+                {% endif %}
+                {% if not can_sync_point_totals or row.status == 'matched' %}
+                  {% if not user.is_superuser or not row.can_reverse_sync %}—{% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if reconcile_totals %}
+          <tfoot class="table-light">
+            <tr>
+              <th>Total ({{ reconcile_totals.count }} days)</th>
+              <th class="text-end js-reconcile-qty" data-kg="{{ reconcile_totals.point_kg }}">{{ reconcile_totals.point_qty }}</th>
+              <th class="text-end js-reconcile-qty" data-kg="{{ reconcile_totals.farmer_kg }}">{{ reconcile_totals.farmer_qty }}</th>
+              <th class="text-end js-reconcile-qty{% if reconcile_totals.diff_kg != 0 %} reconcile-diff--nonzero{% endif %}" data-kg="{{ reconcile_totals.diff_kg }}">{{ reconcile_totals.diff_qty }}</th>
+              <th colspan="2" class="text-end js-reconcile-qty" data-kg="{{ reconcile_totals.reconcile_kg }}">{{ reconcile_totals.reconcile_qty }}</th>
+              <th colspan="2"></th>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+      {% else %}
+      <p class="small text-muted mb-0">No collection data for this point in the selected period.</p>
+      {% endif %}
+      <a href="{% url 'milk-collection-list' %}?tab=reconcile" class="btn btn-sm btn-outline-secondary mt-2">Open full reconcile list</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  var KG_TO_L = Number("{{ MILK_LITER_FACTOR_JS }}");
+  var qtyUnit = "{{ qty_unit|default:'kg' }}";
+  var filterForm = document.querySelector('.tally-toolbar');
+  var saveForm = document.getElementById('tally-save-form');
+  var unitHidden = document.getElementById('tally-unit');
+  var saveUnitHidden = document.getElementById('tally-save-unit');
+  var qtyBtns = document.querySelectorAll('.qty-segment__btn[data-qty-unit]');
+  var tallyCellUrl = "{% url 'milk-collection-tally-cell' %}";
+  var tallyPointId = "{{ point.pk|default:'' }}";
+  var tallyFrom = "{{ start|date:'Y-m-d' }}";
+  var tallyTo = "{{ end|date:'Y-m-d' }}";
+  var tallyStatusEl = document.getElementById('tally-save-status');
+  var csrfInput = document.querySelector('#tally-save-form input[name="csrfmiddlewaretoken"]')
+    || document.querySelector('input[name="csrfmiddlewaretoken"]');
+  var csrfToken = csrfInput ? csrfInput.value : "";
+  var canEditQty = {{ can_edit_qty|yesno:"true,false" }};
+  var canSaveFat = {{ can_save_fat|yesno:"true,false" }};
+  var skipBlurSave = false;
+  var pendingSaves = 0;
+  var branchSel = document.getElementById('tally-branch');
+  var pointSel = document.getElementById('tally-point');
+
+  function filterTallyPointsByBranch() {
+    if (!pointSel) return;
+    var branchId = branchSel ? (branchSel.value || '') : '';
+    var visible = [];
+    Array.prototype.forEach.call(pointSel.options, function (opt) {
+      var optBranch = opt.getAttribute('data-branch-id') || '';
+      var show = !branchId || optBranch === branchId;
+      opt.hidden = !show;
+      opt.disabled = !show;
+      if (show) visible.push(opt);
+    });
+    var selected = pointSel.selectedOptions[0];
+    if (!selected || selected.disabled) {
+      pointSel.value = visible.length ? visible[0].value : '';
+    }
+  }
+
+  if (branchSel && pointSel) {
+    branchSel.addEventListener('change', filterTallyPointsByBranch);
+    filterTallyPointsByBranch();
+  }
+
+  document.querySelectorAll('.js-tally-period-range').forEach(function (input) {
+    if (typeof flatpickr === 'undefined' || input._flatpickr) return;
+    var group = input.closest('.tally-period-range-group');
+    if (!group) return;
+    var fromInput = group.querySelector('input[name="from"]');
+    var toInput = group.querySelector('input[name="to"]');
+    if (!fromInput || !toInput) return;
+    var defaultDate = [];
+    if (fromInput.value) defaultDate.push(fromInput.value);
+    if (toInput.value) defaultDate.push(toInput.value);
+    var picker = flatpickr(input, {
+      mode: 'range',
+      dateFormat: 'Y-m-d',
+      allowInput: false,
+      disableMobile: true,
+      defaultDate: defaultDate.length ? defaultDate : undefined,
+      onChange: function (selectedDates, dateStr, instance) {
+        if (selectedDates.length === 2) {
+          fromInput.value = instance.formatDate(selectedDates[0], 'Y-m-d');
+          toInput.value = instance.formatDate(selectedDates[1], 'Y-m-d');
+          tallyFrom = fromInput.value;
+          tallyTo = toInput.value;
+          input.setCustomValidity('');
+        } else {
+          fromInput.value = '';
+          toInput.value = '';
+          input.setCustomValidity('Select a date range.');
+        }
+      },
+      onClose: function () {
+        if (!fromInput.value || !toInput.value) {
+          input.setCustomValidity('Select a date range.');
+        } else {
+          input.setCustomValidity('');
+        }
+      },
+    });
+    group.querySelectorAll('.js-open-tally-period-range').forEach(function (btn) {
+      btn.addEventListener('click', function () { picker.open(); });
+      btn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          picker.open();
+        }
+      });
+    });
+  });
+
+  function normalizeCellValue(raw) {
+    return String(raw || '').trim();
+  }
+
+  function parseNum(raw) {
+    var s = String(raw || '').trim().replace(/,/g, '.');
+    if (!s || s === '—' || s === '-') return 0;
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function hasQtyValue(raw) {
+    var s = String(raw || '').trim();
+    return s && s !== '—' && s !== '-';
+  }
+
+  function formatQty(n) {
+    if (n === 0) return '0';
+    if (!n) return '';
+    var sign = n < 0 ? -1 : 1;
+    n = Math.abs(n);
+    var s = (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    return sign < 0 ? '-' + s : s;
+  }
+
+  function unitDisplayLabel(unit) {
+    return unit === 'liters' ? 'liters' : 'kg';
+  }
+
+  function qtyToKg(val, unit) {
+    unit = unit || qtyUnit;
+    return unit === 'liters' ? val / KG_TO_L : val;
+  }
+
+  function kgToDisplay(kg, unit) {
+    if (!kg) return 0;
+    unit = unit || qtyUnit;
+    return unit === 'liters' ? kg * KG_TO_L : kg;
+  }
+
+  function updateUnitLabels() {
+    var label = unitDisplayLabel(qtyUnit);
+    document.querySelectorAll('.js-qty-unit-label, .js-reconcile-qty-header').forEach(function (el) {
+      el.textContent = label;
+    });
+  }
+
+  function refreshReconcileQty() {
+    document.querySelectorAll('.js-reconcile-qty').forEach(function (cell) {
+      var kg = parseFloat(cell.getAttribute('data-kg'));
+      if (isNaN(kg)) kg = 0;
+      cell.textContent = formatQty(kgToDisplay(kg));
+    });
+    updateSyncSwalTexts();
+  }
+
+  function updateSyncSwalTexts() {
+    document.querySelectorAll('.js-reconcile-sync').forEach(function (btn) {
+      var farmerKg = parseFloat(btn.getAttribute('data-farmer-kg'));
+      if (isNaN(farmerKg)) farmerKg = 0;
+      var date = btn.getAttribute('data-sync-date') || '';
+      var qty = formatQty(kgToDisplay(farmerKg));
+      btn.setAttribute(
+        'data-swal-text',
+        'Set the collection point total to the farmer total (' + qty + ' ' + unitDisplayLabel(qtyUnit) + ') for ' + date + '. The current point total will be saved so a superuser can reverse.'
+      );
+    });
+    document.querySelectorAll('.js-reconcile-reverse').forEach(function (btn) {
+      var prevKg = parseFloat(btn.getAttribute('data-previous-kg'));
+      if (isNaN(prevKg)) prevKg = 0;
+      var date = btn.getAttribute('data-sync-date') || '';
+      var qty = formatQty(kgToDisplay(prevKg));
+      btn.setAttribute(
+        'data-swal-text',
+        'Restore the collection point total to ' + qty + ' ' + unitDisplayLabel(qtyUnit) + ' (value before the last Sync) for ' + date + '.'
+      );
+    });
+  }
+
+  function setUnit(next) {
+    if (next !== 'kg' && next !== 'liters') return;
+    if (next === qtyUnit) return;
+    var prevUnit = qtyUnit;
+    document.querySelectorAll('.js-tally-qty').forEach(function (input) {
+      if (!hasQtyValue(input.value)) return;
+      var kg = qtyToKg(parseNum(input.value), prevUnit);
+      input.value = formatQty(kgToDisplay(kg, next));
+    });
+    qtyUnit = next;
+    if (unitHidden) unitHidden.value = next;
+    if (saveUnitHidden) saveUnitHidden.value = next;
+    document.querySelectorAll('.js-tally-unit-field').forEach(function (input) {
+      input.value = next;
+    });
+    qtyBtns.forEach(function (btn) {
+      var on = btn.getAttribute('data-qty-unit') === next;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    updateUnitLabels();
+    refreshReconcileQty();
+    recalcTotals();
+    document.querySelectorAll('.js-tally-cell-input').forEach(function (input) {
+      input.dataset.savedValue = normalizeCellValue(input.value);
+    });
+  }
+
+  function recalcRowTotal(qtyRow) {
+    if (!qtyRow) return;
+    var totalKg = 0;
+    qtyRow.querySelectorAll('.js-tally-qty').forEach(function (input) {
+      totalKg += qtyToKg(parseNum(input.value));
+    });
+    var farmerId = qtyRow.getAttribute('data-farmer');
+    var totalCell = document.querySelector('.js-row-total[data-farmer="' + farmerId + '"]');
+    if (totalCell) {
+      totalCell.textContent = totalKg ? formatQty(kgToDisplay(totalKg)) : '—';
+    }
+  }
+
+  function recalcColumnTotals() {
+    var byDate = {};
+    document.querySelectorAll('.js-tally-qty').forEach(function (input) {
+      var match = input.name.match(/^qty_\d+_(.+)$/);
+      if (!match) return;
+      var dayKey = match[1];
+      if (!byDate[dayKey]) byDate[dayKey] = 0;
+      byDate[dayKey] += qtyToKg(parseNum(input.value));
+    });
+    var grandKg = 0;
+    document.querySelectorAll('.js-day-total').forEach(function (cell) {
+      var dayKey = cell.getAttribute('data-date');
+      var dayKg = byDate[dayKey] || 0;
+      grandKg += dayKg;
+      cell.textContent = dayKg ? formatQty(kgToDisplay(dayKg)) : '—';
+    });
+    var grandEl = document.querySelector('.js-grand-total');
+    if (grandEl) {
+      grandEl.textContent = grandKg ? formatQty(kgToDisplay(grandKg)) : '—';
+    }
+  }
+
+  function recalcTotals() {
+    document.querySelectorAll('#tally-save-form tbody tr.tally-farmer-row--qty').forEach(recalcRowTotal);
+    recalcColumnTotals();
+  }
+
+  qtyBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setUnit(btn.getAttribute('data-qty-unit'));
+    });
+  });
+
+  if (saveForm) {
+    function setTallyStatus(message, kind) {
+      if (!tallyStatusEl) return;
+      tallyStatusEl.textContent = message || '';
+      tallyStatusEl.classList.remove('is-error', 'is-ok');
+      if (kind) tallyStatusEl.classList.add('is-' + kind);
+    }
+
+    function setCellState(input, state) {
+      input.classList.remove('tally-cell-input--saving', 'tally-cell-input--saved', 'tally-cell-input--error');
+      if (state) input.classList.add('tally-cell-input--' + state);
+    }
+
+    function initCellSavedValues() {
+      saveForm.querySelectorAll('.js-tally-cell-input').forEach(function (input) {
+        input.dataset.savedValue = normalizeCellValue(input.value);
+      });
+    }
+
+    function getTallyFocusOrder() {
+      var list = [];
+      saveForm.querySelectorAll('tbody tr.tally-farmer-row--qty').forEach(function (row) {
+        row.querySelectorAll('.js-tally-cell-input:not([readonly])').forEach(function (el) {
+          list.push(el);
+        });
+      });
+      saveForm.querySelectorAll('tbody tr.tally-farmer-row--factor').forEach(function (row) {
+        row.querySelectorAll('.js-tally-cell-input:not([readonly])').forEach(function (el) {
+          list.push(el);
+        });
+      });
+      return list;
+    }
+
+    function scrollTallyCellIntoView(input) {
+      if (!input) return;
+      var scrollEl = input.closest('.tally-scroll');
+      if (!scrollEl) {
+        input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        return;
+      }
+
+      var cell = input.closest('td') || input;
+      var containerRect = scrollEl.getBoundingClientRect();
+      var cellRect = cell.getBoundingClientRect();
+      var padding = 6;
+      var stickyRight = containerRect.left;
+      var stickyCol = scrollEl.querySelector('.sticky-col-3');
+      if (stickyCol) {
+        stickyRight = stickyCol.getBoundingClientRect().right;
+      }
+
+      if (cellRect.left < stickyRight + padding) {
+        scrollEl.scrollLeft += cellRect.left - stickyRight - padding;
+      } else if (cellRect.right > containerRect.right - padding) {
+        scrollEl.scrollLeft += cellRect.right - containerRect.right + padding;
+      }
+
+      if (cellRect.top < containerRect.top + padding) {
+        scrollEl.scrollTop += cellRect.top - containerRect.top - padding;
+      } else if (cellRect.bottom > containerRect.bottom - padding) {
+        scrollEl.scrollTop += cellRect.bottom - containerRect.bottom + padding;
+      }
+    }
+
+    function focusNextCell(fromInput) {
+      var list = getTallyFocusOrder();
+      var idx = list.indexOf(fromInput);
+      if (idx >= 0 && idx < list.length - 1) {
+        var next = list[idx + 1];
+        next.focus();
+        next.select();
+        window.requestAnimationFrame(function () {
+          scrollTallyCellIntoView(next);
+        });
+      }
+    }
+
+    function saveTallyCell(input) {
+      if (!input || input.readOnly || input.dataset.paid === '1') {
+        return Promise.resolve();
+      }
+      if (input.dataset.field === 'qty' && !canEditQty) {
+        return Promise.resolve();
+      }
+      if ((input.dataset.field === 'fat' || input.dataset.field === 'lr') && !canSaveFat) {
+        return Promise.resolve();
+      }
+      var current = normalizeCellValue(input.value);
+      if (current === (input.dataset.savedValue || '')) {
+        return Promise.resolve();
+      }
+
+      setCellState(input, 'saving');
+      pendingSaves += 1;
+      setTallyStatus('Saving…', '');
+
+      var body = new FormData();
+      body.append('csrfmiddlewaretoken', csrfToken);
+      body.append('point', tallyPointId);
+      body.append('farmer_id', input.dataset.farmerId || '');
+      body.append('date', input.dataset.date || '');
+      body.append('field', input.dataset.field || '');
+      body.append('value', input.value);
+      body.append('unit', qtyUnit);
+      body.append('from', tallyFrom);
+      body.append('to', tallyTo);
+
+      return fetch(tallyCellUrl, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: body,
+        credentials: 'same-origin',
+      })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            throw new Error(data.error || 'Could not save cell.');
+          }
+          if (data.skipped_paid) {
+            input.value = data.display || input.dataset.savedValue || '';
+            throw new Error('This quantity is paid and cannot be changed.');
+          }
+          if (data.display !== undefined) {
+            input.value = data.display || '';
+          }
+          input.dataset.savedValue = normalizeCellValue(input.value);
+          setCellState(input, 'saved');
+          if (data.field === 'qty') {
+            recalcTotals();
+          }
+          setTallyStatus('Saved', 'ok');
+          window.setTimeout(function () {
+            setCellState(input, '');
+          }, 700);
+        })
+        .catch(function (err) {
+          setCellState(input, 'error');
+          setTallyStatus(err.message || 'Could not save cell.', 'error');
+        })
+        .finally(function () {
+          pendingSaves = Math.max(0, pendingSaves - 1);
+          if (pendingSaves === 0 && tallyStatusEl && tallyStatusEl.classList.contains('is-error') === false) {
+            window.setTimeout(function () {
+              if (pendingSaves === 0 && !tallyStatusEl.classList.contains('is-error')) {
+                setTallyStatus('', '');
+              }
+            }, 1200);
+          }
+        });
+    }
+
+    if (canEditQty || canSaveFat) {
+      saveForm.querySelectorAll('.js-tally-cell-input').forEach(function (input) {
+        input.addEventListener('focus', function () {
+          input.select();
+          window.requestAnimationFrame(function () {
+            scrollTallyCellIntoView(input);
+          });
+        });
+
+        input.addEventListener('keydown', function (event) {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          skipBlurSave = true;
+          saveTallyCell(input).finally(function () {
+            focusNextCell(input);
+            window.setTimeout(function () {
+              skipBlurSave = false;
+            }, 0);
+          });
+        });
+
+        input.addEventListener('blur', function () {
+          if (skipBlurSave) return;
+          saveTallyCell(input);
+        });
+      });
+    }
+
+    initCellSavedValues();
+
+    saveForm.addEventListener('input', function (event) {
+      if (event.target.classList.contains('js-tally-qty')) {
+        recalcTotals();
+      }
+    });
+
+  }
+
+  if (filterForm) {
+    filterForm.addEventListener('submit', function (e) {
+      if (unitHidden) unitHidden.value = qtyUnit;
+      if (saveUnitHidden) saveUnitHidden.value = qtyUnit;
+      var fromInput = filterForm.querySelector('input[name="from"]');
+      var toInput = filterForm.querySelector('input[name="to"]');
+      var rangeInput = filterForm.querySelector('.js-tally-period-range');
+      if (fromInput && toInput && (!fromInput.value || !toInput.value)) {
+        e.preventDefault();
+        if (rangeInput) {
+          rangeInput.setCustomValidity('Select a date range.');
+          rangeInput.reportValidity();
+          if (rangeInput._flatpickr) rangeInput._flatpickr.open();
+        }
+      } else if (rangeInput) {
+        rangeInput.setCustomValidity('');
+      }
+    });
+  }
+
+  updateSyncSwalTexts();
+
+  if (window.bootstrap && bootstrap.Tooltip) {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+      bootstrap.Tooltip.getOrCreateInstance(el);
+    });
+  }
+
+  var reconcileChoiceUrl = "{% url 'milk-collection-reconcile-choice' %}";
+
+  document.querySelectorAll(".js-reconcile-choice").forEach(function (input) {
+    input.addEventListener("change", function () {
+      if (!input.checked) return;
+      var tr = input.closest("tr");
+      var kgCell = tr ? tr.querySelector(".reconcile-kg-cell") : null;
+      var body = new FormData();
+      body.append("csrfmiddlewaretoken", csrfToken);
+      body.append("date", input.dataset.date || "");
+      body.append("route", input.dataset.route || "");
+      body.append("collection_point", input.dataset.collectionPoint || "");
+      body.append("source", input.value);
+      fetch(reconcileChoiceUrl, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        body: body,
+        credentials: "same-origin",
+      })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            if (typeof window.appAlert === "function") {
+              window.appAlert(data.error || "Could not save reconcile choice.", {
+                icon: "error",
+                title: "Could not save",
+              });
+            } else {
+              window.alert(data.error || "Could not save reconcile choice.");
+            }
+            return;
+          }
+          if (kgCell && data.row && data.row.reconcile_kg != null) {
+            kgCell.setAttribute('data-kg', data.row.reconcile_kg);
+            kgCell.textContent = formatQty(kgToDisplay(parseFloat(data.row.reconcile_kg)));
+          }
+        })
+        .catch(function () {
+          if (typeof window.appAlert === "function") {
+            window.appAlert("Could not save reconcile choice.", {
+              icon: "error",
+              title: "Could not save",
+            });
+          } else {
+            window.alert("Could not save reconcile choice.");
+          }
+        });
+    });
+  });
+})();
+</script>
+{% endblock %}

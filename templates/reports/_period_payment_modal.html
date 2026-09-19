@@ -1,0 +1,61 @@
+<div class="modal fade smart-modal" id="periodPaymentModal" tabindex="-1" aria-labelledby="periodPaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="periodPaymentForm">
+        {% csrf_token %}
+        <input type="hidden" name="farmer_id" id="ppFarmerId" value="">
+        <input type="hidden" name="collection_point_id" id="ppCollectionPointId" value="">
+        <input type="hidden" name="start" id="ppStart" value="{{ start|date:'Y-m-d' }}">
+        <input type="hidden" name="end" id="ppEnd" value="{{ end|date:'Y-m-d' }}">
+        <input type="hidden" name="return_url" id="ppReturnUrl" value="">
+        <input type="hidden" name="payment_basis" id="ppPaymentBasis" value="collector_fee">
+        <input type="hidden" name="payment_method" id="ppPaymentMethod" value="cash">
+        {% for branch_id in selected_branches %}
+        <input type="hidden" name="branches" value="{{ branch_id }}">
+        {% endfor %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-cash-stack"></i></span>
+            <div>
+              <h5 class="modal-title" id="periodPaymentModalLabel">Make payment</h5>
+              <p class="modal-subtitle" id="ppEntityLabel"></p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="smart-form-section">
+          <div class="mb-3">
+            <label class="form-label" for="ppAmount">Payment amount</label>
+            <input type="text" class="form-control js-money-input" name="amount" id="ppAmount" inputmode="decimal" autocomplete="off" required>
+            <div class="form-text" id="ppExpectedHint"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="ppPaidDate">Payment date</label>
+            <input type="text" class="form-control js-datepicker js-datepicker-in-modal" name="payment_date" id="ppPaidDate" placeholder="YYYY-MM-DD" required autocomplete="off" inputmode="none">
+            <div class="form-text">Date this payment was made. Used on the paid record, payslips, and loan settlements.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="ppNote">Note</label>
+            <input type="text" class="form-control" name="note" id="ppNote" placeholder="Optional note">
+          </div>
+          <div class="mb-3" id="ppBankAccountWrap" hidden>
+            <label class="form-label" for="ppBankAccount">Bank account</label>
+            <select class="form-select" name="bank_account_id" id="ppBankAccount">
+              <option value="">No bank account on this point</option>
+            </select>
+            <div class="form-text" id="ppBankAccountHint">Add bank accounts on the collection point to pay by transfer.</div>
+          </div>
+          <p class="small text-muted mb-0" id="ppSettlementHint">
+            Advances, goods deductions, and loan instalments included in this payment will be marked recovered or paid.
+          </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="bi bi-cash-stack me-1"></i>Record payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

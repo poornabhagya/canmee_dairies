@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Roles · Canmee Dairies{% endblock %}
+{% block page_heading %}Roles{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Roles (groups)</h1>
+    <p class="page-subtitle">Define roles and which permissions each role grants.</p>
+  </div>
+  {% if perms.auth.add_group %}
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'user_management:role-permission-matrix' %}">
+      <i class="bi bi-grid-3x3-gap me-1"></i>Permission matrix
+    </a>
+    <a class="btn btn-primary" href="{% url 'user_management:group-create' %}"><i class="bi bi-plus-lg me-1"></i>Add role</a>
+  </div>
+  {% endif %}
+</div>
+<div class="card card-table">
+  <div class="card-body p-0 table-wrap">
+    <table class="table table-hover datatable mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Users</th>
+          <th>Permissions</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in groups %}
+        <tr>
+          <td class="fw-medium">{{ g.name }}</td>
+          <td>{{ g.user_set.count }}</td>
+          <td><span class="small text-muted">{{ g.permissions.count }} selected</span></td>
+          <td class="text-end text-nowrap">
+            {% if perms.auth.change_group %}
+            <a href="{% url 'user_management:group-permissions' g.pk %}">Permissions</a>
+            <span class="text-muted">·</span>
+            <a href="{% url 'user_management:group-update' g.pk %}">Edit</a>
+            {% endif %}
+            {% if perms.auth.delete_group %}
+            <span class="text-muted">·</span>
+            <a
+              href="{% url 'user_management:group-delete' g.pk %}"
+              class="js-swal-delete-post text-danger"
+              data-swal-title="Delete role “{{ g.name }}”?"
+              data-swal-text="Users will lose this role. This cannot be undone."
+            >Delete</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

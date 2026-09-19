@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Kg adjustments · {{ milk_collection }} · Canmee Dairies{% endblock %}
+{% block page_heading %}Kg adjustment log{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Kg adjustment log</h1>
+    <p class="page-subtitle">
+      <span class="badge text-bg-light text-dark border me-1">{{ milk_collection.get_source_display }}</span>
+      <strong>{{ milk_collection.date }}</strong> · {{ milk_collection.route }}
+      {% if milk_collection.collection_point %}· {{ milk_collection.collection_point }}{% elif milk_collection.farmer %}· <span class="fw-medium">{{ milk_collection.farmer }}</span>{% endif %}
+      · Current total: <strong>{{ milk_collection.kg }} kg</strong> ({{ milk_collection.liters }} L)
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'milk-collection-list' %}"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+    <a class="btn btn-outline-primary" href="{% url 'milk-collection-edit' milk_collection.pk %}"><i class="bi bi-pencil me-1"></i>Edit entry</a>
+  </div>
+</div>
+<div class="card card-table">
+  <div class="card-body p-0 table-wrap">
+    {% if adjustments %}
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>User</th>
+          <th class="text-end">Change (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in adjustments %}
+        <tr>
+          <td>{{ a.created_at }}</td>
+          <td>{{ a.created_by }}</td>
+          <td class="text-end fw-semibold {% if a.delta_kg < 0 %}text-danger{% else %}text-success{% endif %}">
+            {% if a.delta_kg > 0 %}+{% endif %}{{ a.delta_kg }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state py-5">
+      <p class="mb-0">No add/subtract adjustments have been recorded for this entry yet.</p>
+      <p class="small text-muted mt-2 mb-0">The total shown is from the original save or edit; further kg changes from the duplicate-day flow (add/subtract) will appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

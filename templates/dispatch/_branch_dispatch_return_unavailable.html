@@ -1,0 +1,20 @@
+<div class="modal-header">
+  <h5 class="modal-title" id="branchDispatchRespondModalLabel">Return already handled</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+  <p class="mb-2">
+    The return request for dispatch <strong>#{{ dispatch.dispatch_no }}</strong> was already handled.
+  </p>
+  <p class="text-muted small mb-0">
+  {% if dispatch.branch_source_return_response %}
+    Current status: <strong>{{ dispatch.get_branch_source_return_response_display }}</strong>.
+  {% else %}
+    This return request is no longer pending.
+  {% endif %}
+  </p>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+  <a href="{{ list_url }}" class="btn btn-primary">Go to dispatch list</a>
+</div>

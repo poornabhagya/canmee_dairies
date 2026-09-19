@@ -1,0 +1,1168 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Buyer {{ buyer.name }} · Canmee Dairies{% endblock %}
+{% block body_class %}buyer-page{% endblock %}
+{% block page_heading %}{{ buyer.name }}{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "includes/_detail_page_list_styles.html" %}
+{% include "collection_point_loans/_cp_loan_page_styles.html" %}
+{% include "dispatch/_distribution_table_styles.html" %}
+{% include "masters/_buyer_page_compact_styles.html" %}
+<style>
+  .buyer-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    max-width: 100%;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+  .cp-loan-screen > .buyer-detail-card {
+    margin-bottom: 0.85rem;
+  }
+  .buyer-detail-card .cp-loan-statement__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .buyer-detail-card .cp-loan-statement__grid dl:first-child {
+    border-right: 1px solid #eef2f7;
+    border-bottom: 0;
+  }
+  .buyer-detail-card .cp-loan-statement__footer {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (min-width: 1100px) {
+    .buyer-detail-card .cp-loan-statement__footer {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-short .cp-loan-statement__figure-value {
+    color: #b91c1c;
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-over .cp-loan-statement__figure-value {
+    color: #047857;
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-dspd .cp-loan-statement__figure-value {
+    color: #1d4ed8;
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-del .cp-loan-statement__figure-value {
+    color: #b45309;
+  }
+  .buyer-detail-card .cp-loan-statement__figure {
+    min-width: 0;
+    overflow: hidden;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+  .buyer-detail-card .cp-loan-statement__figure-value {
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-size: clamp(0.7rem, 1.05vw, 1.12rem);
+  }
+  .buyer-figure-sub {
+    display: block;
+    margin-top: 0.12rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.02em;
+  }
+  .buyer-receivable {
+    color: #047857;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+  #buyerRateUpdateModal .buyer-rate-history-section.has-form {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #eef2f7;
+  }
+  #buyerRateUpdateModal .buyer-rate-history-table {
+    width: 100%;
+    margin: 0;
+  }
+  #buyerRateUpdateModal .buyer-rate-history-table th,
+  #buyerRateUpdateModal .buyer-rate-history-table td {
+    font-size: 0.82rem;
+    vertical-align: middle;
+  }
+  #buyerRateUpdateModal .buyer-rate-history-empty {
+    margin: 0;
+    padding: 0.35rem 0 0.1rem;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  .buyer-dispatch-list-card {
+    margin-top: 0.15rem;
+    overflow: visible !important;
+  }
+  .buyer-dispatch-list-card.farmer-milk-list-card {
+    overflow: visible !important;
+  }
+  .buyer-dispatch-list-card .card-body.table-wrap,
+  .buyer-dispatch-list-card .dataTables_wrapper,
+  .buyer-dispatch-list-card div.dt-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  .buyer-dispatch-list-card .card-body.table-wrap {
+    padding: 0.85rem;
+  }
+  #buyer-dispatches,
+  #buyer-dispatches .card-body.table-wrap,
+  #buyer-dispatches .dataTables_wrapper,
+  #buyer-dispatches div.dt-container,
+  #buyer-dispatches .dt-smart-toolbar,
+  #buyer-dispatches .dt-buttons {
+    overflow: visible !important;
+  }
+  #buyer-dispatches div.dt-scroll,
+  #buyer-dispatches div.dt-scroll-body {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  .buyer-dispatch-table {
+    width: 100% !important;
+    max-width: 100%;
+  }
+  .buyer-dispatch-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+  }
+  .buyer-dispatch-table tbody td {
+    font-size: 0.8125rem;
+    padding: 0.45rem 0.4rem;
+    vertical-align: middle;
+  }
+  .buyer-dispatch-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .buyer-dispatch-table .dispatch-actions-cell {
+    width: 1%;
+    white-space: nowrap;
+    overflow: visible !important;
+    text-overflow: clip;
+    position: relative;
+  }
+  .buyer-dispatch-table tbody tr.is-actions-open {
+    position: relative;
+    z-index: 40;
+  }
+  .buyer-dispatch-table tbody tr.is-actions-open .dispatch-actions-cell {
+    z-index: 41;
+    overflow: visible !important;
+  }
+  .buyer-dispatch-table .dispatch-actions-trigger {
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .buyer-dispatch-table .dispatch-actions-trigger::after {
+    display: none;
+  }
+  .buyer-dispatch-table .dispatch-actions-cell .dropdown-menu.dispatch-actions-menu {
+    z-index: 1090 !important;
+    min-width: 11rem;
+    white-space: nowrap;
+  }
+  .buyer-dispatch-table .dispatch-actions-cell .dropdown-menu.dispatch-actions-menu.show {
+    z-index: 1090 !important;
+  }
+  .buyer-dispatch-table .dispatch-payment-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.35rem;
+    line-height: 1.2;
+  }
+  .buyer-dispatch-table .dispatch-payment-badge--pending {
+    color: #92400e;
+    background: #fef3c7;
+  }
+  .buyer-dispatch-table .dispatch-payment-badge--partial {
+    color: #1e40af;
+    background: #dbeafe;
+  }
+  .buyer-dispatch-table .dispatch-payment-badge--paid {
+    color: #166534;
+    background: #dcfce7;
+  }
+  .buyer-dispatch-table .dispatch-amount-cell {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .buyer-dispatch-table .dispatch-amount-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+  }
+  .buyer-dispatch-table .dispatch-amount-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .buyer-dispatch-table .dispatch-status-select,
+  .buyer-dispatch-table .dispatch-field-inline {
+    width: 7.75rem;
+    max-width: 8.5rem;
+    min-width: 0;
+    font-size: 0.78rem;
+    padding: 0.2rem 1.5rem 0.2rem 0.45rem;
+  }
+  .buyer-dispatch-table .dropdown-menu.dispatch-actions-menu {
+    min-width: 11rem;
+  }
+  .buyer-dispatch-qty-toggle {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  .buyer-dispatch-qty-toggle .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border-radius: 999px;
+    color: #64748b;
+    line-height: 1.2;
+  }
+  .buyer-dispatch-qty-toggle .qty-segment__btn.is-active {
+    background: #fff;
+    color: #047857;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .buyer-dispatch-table.is-qty-kg .js-qty-col-liters,
+  .buyer-dispatch-table.is-qty-liters .js-qty-col-kg {
+    display: none;
+  }
+  .buyer-dispatch-table tfoot .dispatch-qty-stack {
+    font-weight: 700;
+  }
+  .buyer-qty-legend {
+    display: block;
+    margin-top: 0.12rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+  .buyer-qty-legend .is-dspd { color: #1d4ed8; }
+  .buyer-qty-legend .is-del { color: #b45309; }
+  .buyer-qty-legend .is-var { color: #0f766e; }
+  .dispatch-qty-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+    gap: 0.08rem;
+  }
+  .dispatch-qty-dspd {
+    color: #1d4ed8;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+  .dispatch-qty-del {
+    color: #b45309;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .dispatch-qty-del.is-empty,
+  .dispatch-qty-var.is-empty {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .dispatch-qty-var {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #0f766e;
+  }
+  .dispatch-qty-var.is-short { color: #b91c1c; }
+  .dispatch-qty-var.is-over { color: #047857; }
+  .dispatch-qty-var.is-even { color: #64748b; }
+  .buyer-dispatch-period-filter {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .buyer-dispatch-period-filter .form-control,
+  .buyer-dispatch-period-filter .form-select {
+    width: auto;
+    min-width: 8.5rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .buyer-dispatch-period-filter .form-select {
+    min-width: 7.5rem;
+    padding-right: 1.75rem;
+  }
+  .buyer-dispatch-period-filter .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    line-height: 1.2;
+  }
+  .buyer-dispatch-period-filter .input-group {
+    width: auto;
+    flex-wrap: nowrap;
+  }
+  .buyer-dispatch-period-filter .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .buyer-dispatch-period-filter .input-group .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 11.5rem;
+  }
+  .buyer-form-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    margin-bottom: 0.8rem;
+  }
+  .buyer-form-row .form-label {
+    margin: 0;
+    font-weight: 600;
+    color: #334155;
+    padding-top: 0.35rem;
+  }
+  @media (max-width: 767.98px) {
+    .buyer-detail-card .cp-loan-statement__grid {
+      grid-template-columns: 1fr;
+    }
+    .buyer-detail-card .cp-loan-statement__grid dl:first-child {
+      border-right: 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+    .buyer-form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions cp-loan-page-actions">
+  <a class="btn btn-outline-secondary" href="{% url 'buyer-list' %}"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+  <a class="btn btn-outline-secondary" href="{% url 'buyer-account' buyer.pk %}"><i class="bi bi-journal-text me-1"></i>Buyer account</a>
+  {% if perms.masters.change_buyer %}
+  <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#buyerQuickEditModal">Edit</button>
+  {% endif %}
+  {% if perms.masters.delete_buyer %}
+  <a
+    class="btn btn-outline-danger js-swal-delete-post"
+    href="{% url 'buyer-quick-delete' buyer.pk %}"
+    data-swal-title="Delete buyer {{ buyer.name }}?"
+    data-swal-text="This cannot be undone."
+  >Delete</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="cp-loan-screen">
+<div class="smart-stat-grid cp-loan-kpi-grid">
+  <a class="smart-stat-card cp-loan-kpi--count" href="#buyer-dispatches" title="View milk dispatches">
+    <span class="smart-stat-card__icon smart-stat-card__icon--sky"><i class="bi bi-truck" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Dispatches</span>
+      <span class="smart-stat-card__value">{{ buyer_dispatch.total_entries }}</span>
+      <span class="smart-stat-card__hint">{% if dispatch_filters.period_active %}Filtered entries{% else %}All entries{% endif %}</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--amount" href="#buyer-dispatches" title="View milk dispatches">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Total kg</span>
+      <span class="smart-stat-card__value">{{ buyer_dispatch_totals.total_kg|default:0|floatformat:2 }}</span>
+      <span class="smart-stat-card__hint">Milk dispatched</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--paid" href="#buyer-dispatches" title="View milk dispatches">
+    <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-droplet" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Total L</span>
+      <span class="smart-stat-card__value">{{ buyer_dispatch_totals.total_liters|default:0|floatformat:2 }}</span>
+      <span class="smart-stat-card__hint">Liters equivalent</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--instalments" href="#buyer-dispatches" title="Latest dispatch">
+    <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Latest</span>
+      <span class="smart-stat-card__value">{% if buyer_dispatch.latest_date %}{{ buyer_dispatch.latest_date|date:"Y-m-d" }}{% else %}—{% endif %}</span>
+      <span class="smart-stat-card__hint">Last dispatch date</span>
+    </span>
+  </a>
+  {% if buyer_account_summary %}
+  <a class="smart-stat-card cp-loan-kpi--paid" href="{% url 'buyer-account' buyer.pk %}" title="Open buyer account">
+    <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Billed / collected</span>
+      <span class="smart-stat-card__value">{{ buyer_account_summary.billed|money }}</span>
+      <span class="smart-stat-card__hint">Collected {{ buyer_account_summary.paid|money }}</span>
+    </span>
+  </a>
+  <a class="smart-stat-card{% if buyer_account_summary.balance %} smart-stat-card--warn cp-loan-kpi--balance{% else %} cp-loan-kpi--paid{% endif %}" href="{% url 'buyer-account' buyer.pk %}" title="Open buyer account">
+    <span class="smart-stat-card__icon {% if buyer_account_summary.balance %}smart-stat-card__icon--amber{% else %}smart-stat-card__icon--teal{% endif %}"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Receivable</span>
+      <span class="smart-stat-card__value">{{ buyer_account_summary.balance|money }}</span>
+      <span class="smart-stat-card__hint">{% if buyer_account_summary.balance %}Open account balance{% else %}Settled{% endif %}</span>
+    </span>
+  </a>
+  {% endif %}
+  <a class="smart-stat-card cp-loan-kpi--amount" href="#buyer-details" title="Rate management">
+    <span class="smart-stat-card__icon smart-stat-card__icon--orange"><i class="bi bi-currency-exchange" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Current rate</span>
+      <span class="smart-stat-card__value">{% if buyer.rate %}{{ buyer.rate|money }}{% else %}—{% endif %}</span>
+      <span class="smart-stat-card__hint">{{ buyer.get_rate_unit_display }}</span>
+    </span>
+  </a>
+</div>
+
+<div class="card farmer-detail-card buyer-detail-card cp-loan-page-card smart-list-card">
+  <div class="card-body">
+    <article class="cp-loan-statement" id="buyer-details">
+      <header class="cp-loan-statement__head">
+        <div>
+          <span class="cp-loan-statement__kicker">Accounts receivable</span>
+          <h2 class="cp-loan-statement__title">Buyer ledger</h2>
+          <p class="cp-loan-statement__meta">{% for b in buyer.branches.all %}{{ b.name }}{% if not forloop.last %} · {% endif %}{% empty %}Buyer profile{% endfor %}</p>
+        </div>
+        <div class="cp-loan-statement__head-actions">
+          <span class="cp-loan-statement__account">{{ buyer.name }}</span>
+          {% if buyer.rate %}
+          <span class="cp-loan-statement__account">{{ buyer.rate|money }} {{ buyer.get_rate_unit_display|lower }}</span>
+          {% endif %}
+          <div class="cp-loan-statement__exports">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="buyer-rate-add-btn">
+              {% if perms.masters.change_buyerrate or perms.masters.change_buyer %}
+              <i class="bi bi-plus-lg me-1"></i>Update rate
+              {% else %}
+              <i class="bi bi-clock-history me-1"></i>Rate history
+              {% endif %}
+            </button>
+          </div>
+        </div>
+      </header>
+      <div class="cp-loan-statement__grid">
+        <dl>
+          <div class="cp-loan-statement__row">
+            <dt>Name</dt>
+            <dd>{{ buyer.name }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Contact person</dt>
+            <dd>{{ buyer.contact_person|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Phone</dt>
+            <dd>{{ buyer.phone|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Email</dt>
+            <dd>{{ buyer.email|default:"—" }}</dd>
+          </div>
+        </dl>
+        <dl>
+          <div class="cp-loan-statement__row">
+            <dt>Address</dt>
+            <dd>{{ buyer.address|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Branches</dt>
+            <dd>{% for b in buyer.branches.all %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Current rate</dt>
+            <dd>{% if buyer.rate %}{{ buyer.rate|money }} <span class="text-muted">{{ buyer.get_rate_unit_display }}</span>{% else %}—{% endif %}</dd>
+          </div>
+          {% if buyer_account_summary %}
+          <div class="cp-loan-statement__row">
+            <dt>Account balance</dt>
+            <dd>
+              <a class="buyer-receivable" href="{% url 'buyer-account' buyer.pk %}">{{ buyer_account_summary.balance|money }}</a>
+              <span class="text-muted">receivable</span>
+            </dd>
+          </div>
+          {% endif %}
+        </dl>
+      </div>
+      <div class="cp-loan-statement__footer" aria-label="Buyer ledger totals">
+        <div class="cp-loan-statement__figure is-dspd">
+          <span class="cp-loan-statement__figure-label">Dispatched</span>
+          {% if buyer.rate_unit == 'kg' %}
+          <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.total_kg|money }}</span>
+          <span class="buyer-figure-sub">{{ buyer_dispatch_totals.total_liters|money }} L</span>
+          {% else %}
+          <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.total_liters|money }}</span>
+          <span class="buyer-figure-sub">{{ buyer_dispatch_totals.total_kg|money }} kg</span>
+          {% endif %}
+        </div>
+        <div class="cp-loan-statement__figure is-del">
+          <span class="cp-loan-statement__figure-label">Delivered</span>
+          {% if buyer_dispatch_totals.has_delivered %}
+            {% if buyer.rate_unit == 'kg' %}
+            <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.delivered_kg|money }}</span>
+            <span class="buyer-figure-sub">{{ buyer_dispatch_totals.delivered_liters|money }} L</span>
+            {% else %}
+            <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.delivered_liters|money }}</span>
+            <span class="buyer-figure-sub">{{ buyer_dispatch_totals.delivered_kg|money }} kg</span>
+            {% endif %}
+          {% else %}
+          <span class="cp-loan-statement__figure-value">—</span>
+          <span class="buyer-figure-sub">Buyer results</span>
+          {% endif %}
+        </div>
+        <div class="cp-loan-statement__figure{% if not buyer_dispatch_totals.has_delivered %}{% elif buyer.rate_unit == 'kg' and buyer_dispatch_totals.variation_kg < 0 %} is-short{% elif buyer.rate_unit != 'kg' and buyer_dispatch_totals.variation_liters < 0 %} is-short{% elif buyer.rate_unit == 'kg' and buyer_dispatch_totals.variation_kg > 0 %} is-over{% elif buyer.rate_unit != 'kg' and buyer_dispatch_totals.variation_liters > 0 %} is-over{% endif %}">
+          <span class="cp-loan-statement__figure-label">Variation</span>
+          {% if buyer_dispatch_totals.has_delivered %}
+            {% if buyer.rate_unit == 'kg' %}
+            <span class="cp-loan-statement__figure-value">{% if buyer_dispatch_totals.variation_kg > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_kg|money }}</span>
+            <span class="buyer-figure-sub">{% if buyer_dispatch_totals.variation_liters > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_liters|money }} L</span>
+            {% else %}
+            <span class="cp-loan-statement__figure-value">{% if buyer_dispatch_totals.variation_liters > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_liters|money }}</span>
+            <span class="buyer-figure-sub">{% if buyer_dispatch_totals.variation_kg > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_kg|money }} kg</span>
+            {% endif %}
+          {% else %}
+          <span class="cp-loan-statement__figure-value">—</span>
+          <span class="buyer-figure-sub">Delivered − dispatched</span>
+          {% endif %}
+        </div>
+        {% if buyer_account_summary %}
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Billed</span>
+          <span class="cp-loan-statement__figure-value">{{ buyer_account_summary.billed|money }}</span>
+          <span class="buyer-figure-sub">Invoiced dispatches</span>
+        </div>
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Collected</span>
+          <span class="cp-loan-statement__figure-value">{{ buyer_account_summary.paid|money }}</span>
+          <span class="buyer-figure-sub">Payments received</span>
+        </div>
+        <div class="cp-loan-statement__figure{% if buyer_account_summary.balance %} is-balance{% endif %}">
+          <span class="cp-loan-statement__figure-label">Receivable</span>
+          <span class="cp-loan-statement__figure-value">{{ buyer_account_summary.balance|money }}</span>
+          <span class="buyer-figure-sub">Open ledger balance</span>
+        </div>
+        {% else %}
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Amount</span>
+          <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.total_amount|money }}</span>
+          <span class="buyer-figure-sub">Dispatch amount</span>
+        </div>
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Paid</span>
+          <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.total_paid|money }}</span>
+          <span class="buyer-figure-sub">Payments received</span>
+        </div>
+        {% endif %}
+      </div>
+    </article>
+  </div>
+</div>
+
+<div class="modal fade smart-modal smart-modal--wide" id="buyerRateUpdateModal" tabindex="-1" aria-labelledby="buyerRateUpdateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-header-brand">
+          <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-currency-exchange"></i></span>
+          <div>
+            <h5 class="modal-title" id="buyerRateUpdateModalLabel">{% if perms.masters.change_buyerrate or perms.masters.change_buyer %}Update rate{% else %}Rate history{% endif %}</h5>
+            <p class="modal-subtitle">{% if perms.masters.change_buyerrate or perms.masters.change_buyer %}Switch per liter or per kg. The new rate applies from the date you set.{% else %}Rate history for this buyer.{% endif %}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        {% if perms.masters.change_buyerrate or perms.masters.change_buyer %}
+        <form method="post" action="{% url 'buyer-rate-update' buyer.pk %}" id="buyerRateForm">
+          {% csrf_token %}
+          {% if rate_form.errors %}
+          <div class="text-danger small mb-2">
+            {% for field in rate_form %}
+              {% for error in field.errors %}<div>{{ error }}</div>{% endfor %}
+            {% endfor %}
+            {% for error in rate_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+          </div>
+          {% endif %}
+          <div class="smart-form-sections">
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-receipt" aria-hidden="true"></i>Rate amount</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field">
+                  <label class="form-label" for="{{ rate_form.rate.id_for_label }}">Rate</label>
+                  {{ rate_form.rate }}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ rate_form.rate_unit.id_for_label }}">Unit</label>
+                  {{ rate_form.rate_unit }}
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="{{ rate_form.effective_from.id_for_label }}">Effective from</label>
+                  {{ rate_form.effective_from }}
+                </div>
+              </div>
+            </section>
+          </div>
+        </form>
+        {% endif %}
+        <section class="smart-form-section mb-0 buyer-rate-history-section{% if perms.masters.change_buyerrate or perms.masters.change_buyer %} has-form{% endif %}">
+          <h6 class="smart-form-section-title"><i class="bi bi-clock-history" aria-hidden="true"></i>Rate history</h6>
+          {% if buyer_rate_history %}
+          <table class="table table-hover align-middle mb-0 buyer-rate-history-table">
+            <thead>
+              <tr>
+                <th>Effective from</th>
+                <th>Effective to</th>
+                <th class="text-end">Rate</th>
+                <th>Unit</th>
+                {% if user.is_superuser %}<th class="text-end"><span class="visually-hidden">Actions</span></th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in buyer_rate_history %}
+              <tr>
+                <td class="text-nowrap">{{ item.effective_from|date:"Y-m-d" }}</td>
+                <td>{% if item.effective_until %}{{ item.effective_until|date:"Y-m-d" }}{% else %}<span class="text-success">Current</span>{% endif %}</td>
+                <td class="text-end">{{ item.rate|money }}</td>
+                <td>{{ item.get_rate_unit_display }}</td>
+                {% if user.is_superuser %}
+                <td class="text-end">
+                  <a
+                    class="icon-action-btn icon-action-danger js-swal-delete-post"
+                    href="{% url 'buyer-rate-history-delete' buyer.pk item.pk %}"
+                    data-swal-title="Delete this rate record?"
+                    data-swal-text="Current rate will be recalculated from remaining history."
+                    title="Delete rate record"
+                    aria-label="Delete rate record"
+                  ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="buyer-rate-history-empty">No rate history yet.</p>
+          {% endif %}
+        </section>
+      </div>
+      <div class="modal-footer">
+        {% if perms.masters.change_buyerrate or perms.masters.change_buyer %}
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" form="buyerRateForm" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save rate</button>
+        {% else %}
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-table buyer-dispatch-list-card farmer-milk-list-card smart-list-card" id="buyer-dispatches">
+  <div class="card-body table-wrap">
+    <div class="farmer-milk-actions-bar" aria-label="Milk dispatch">
+      <p class="farmer-milk-actions-bar__label">Milk dispatch</p>
+      <div class="farmer-milk-actions-bar__groups">
+        <div class="farmer-milk-actions-group">
+          <div class="buyer-dispatch-qty-toggle qty-segment" id="buyerDispatchQtyToggle" role="group" aria-label="Quantity unit">
+            <button type="button" class="qty-segment__btn{% if buyer.rate_unit == 'kg' %} is-active{% endif %}" data-qty-unit="kg" aria-pressed="{% if buyer.rate_unit == 'kg' %}true{% else %}false{% endif %}">Kg</button>
+            <button type="button" class="qty-segment__btn{% if buyer.rate_unit != 'kg' %} is-active{% endif %}" data-qty-unit="liters" aria-pressed="{% if buyer.rate_unit != 'kg' %}true{% else %}false{% endif %}">Liters</button>
+          </div>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'buyer-account' buyer.pk %}">
+            <i class="bi bi-journal-text me-1" aria-hidden="true"></i>Open ledger
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div id="buyerDispatchDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter dispatches">
+      <a
+        class="smart-dt-chip {% if not dispatch_filters.payment_status %}is-active{% endif %}"
+        href="?{% if dispatch_filters.date_from %}date_from={{ dispatch_filters.date_from }}&amp;{% endif %}{% if dispatch_filters.date_to %}date_to={{ dispatch_filters.date_to }}&amp;{% endif %}{% if dispatch_filters.branch %}branch={{ dispatch_filters.branch }}&amp;{% endif %}{% if dispatch_filters.status %}status={{ dispatch_filters.status }}{% endif %}"
+      >All<span class="smart-dt-chip-count">{{ dispatch_filters.payment_counts.all }}</span></a>
+      <a
+        class="smart-dt-chip {% if dispatch_filters.payment_status == 'pending' %}is-active{% endif %}"
+        href="?payment_status=pending{% if dispatch_filters.date_from %}&amp;date_from={{ dispatch_filters.date_from }}{% endif %}{% if dispatch_filters.date_to %}&amp;date_to={{ dispatch_filters.date_to }}{% endif %}{% if dispatch_filters.branch %}&amp;branch={{ dispatch_filters.branch }}{% endif %}{% if dispatch_filters.status %}&amp;status={{ dispatch_filters.status }}{% endif %}"
+      >Pending<span class="smart-dt-chip-count">{{ dispatch_filters.payment_counts.pending }}</span></a>
+      <a
+        class="smart-dt-chip {% if dispatch_filters.payment_status == 'partial' %}is-active{% endif %}"
+        href="?payment_status=partial{% if dispatch_filters.date_from %}&amp;date_from={{ dispatch_filters.date_from }}{% endif %}{% if dispatch_filters.date_to %}&amp;date_to={{ dispatch_filters.date_to }}{% endif %}{% if dispatch_filters.branch %}&amp;branch={{ dispatch_filters.branch }}{% endif %}{% if dispatch_filters.status %}&amp;status={{ dispatch_filters.status }}{% endif %}"
+      >Partial<span class="smart-dt-chip-count">{{ dispatch_filters.payment_counts.partial }}</span></a>
+      <a
+        class="smart-dt-chip {% if dispatch_filters.payment_status == 'paid' %}is-active{% endif %}"
+        href="?payment_status=paid{% if dispatch_filters.date_from %}&amp;date_from={{ dispatch_filters.date_from }}{% endif %}{% if dispatch_filters.date_to %}&amp;date_to={{ dispatch_filters.date_to }}{% endif %}{% if dispatch_filters.branch %}&amp;branch={{ dispatch_filters.branch }}{% endif %}{% if dispatch_filters.status %}&amp;status={{ dispatch_filters.status }}{% endif %}"
+      >Paid<span class="smart-dt-chip-count">{{ dispatch_filters.payment_counts.paid }}</span></a>
+
+      <form method="get" class="buyer-dispatch-period-filter" id="buyerDispatchFilterForm">
+        {% if dispatch_filters.payment_status %}
+        <input type="hidden" name="payment_status" value="{{ dispatch_filters.payment_status }}">
+        {% endif %}
+        {% if buyer_dispatch_branches|length > 1 %}
+        <label class="visually-hidden" for="buyer-dispatch-branch">Branch</label>
+        <select id="buyer-dispatch-branch" name="branch" class="form-select form-select-sm no-global-select2" aria-label="Branch">
+          <option value="">All branches</option>
+          {% for b in buyer_dispatch_branches %}
+          <option value="{{ b.pk }}" {% if dispatch_filters.branch == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+        <label class="visually-hidden" for="buyer-dispatch-status">Status</label>
+        <select id="buyer-dispatch-status" name="status" class="form-select form-select-sm no-global-select2" aria-label="Status">
+          <option value="">All statuses</option>
+          {% for code, label in status_choices %}
+          <option value="{{ code }}" {% if dispatch_filters.status == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+          <input
+            type="text"
+            id="buyer-dispatch-period"
+            class="form-control js-datepicker-range"
+            data-range-start="date_from"
+            data-range-end="date_to"
+            placeholder="Period"
+            autocomplete="off"
+            aria-label="Date period"
+            value="{% if dispatch_filters.date_from and dispatch_filters.date_to %}{{ dispatch_filters.date_from }} to {{ dispatch_filters.date_to }}{% elif dispatch_filters.date_from %}{{ dispatch_filters.date_from }}{% elif dispatch_filters.date_to %}{{ dispatch_filters.date_to }}{% endif %}"
+          >
+        </div>
+        <input type="hidden" name="date_from" value="{{ dispatch_filters.date_from }}">
+        <input type="hidden" name="date_to" value="{{ dispatch_filters.date_to }}">
+        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+        {% if dispatch_filters.period_active %}
+        <a href="{% url 'buyer-detail' buyer.pk %}" class="btn btn-sm btn-outline-secondary" title="Clear filters">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <table
+      class="table table-hover datatable datatable-smart buyer-dispatch-table smart-dt-table mb-0 w-100{% if buyer.rate_unit == 'kg' %} is-qty-kg{% else %} is-qty-liters{% endif %}"
+      data-page-length="25"
+      data-empty-table="No dispatches for this buyer{% if dispatch_filters.period_active %} matching these filters{% endif %}."
+      data-smart-order="0,desc"
+      data-footer-sum-cols="5,6"
+      data-filters-target="buyerDispatchDtFilters"
+      data-qty-kg-col="8"
+      data-qty-liters-col="9"
+    >
+      <thead>
+        <tr>
+          <th class="all text-start dt-date">Date</th>
+          <th class="all">Branch</th>
+          <th class="all">Dispatch</th>
+          <th class="min-tablet-l">Browser #</th>
+          <th class="min-tablet-l">Status</th>
+          <th class="min-desktop text-end">Amount</th>
+          <th class="min-desktop text-end">Paid</th>
+          <th class="min-desktop text-end">TS</th>
+          <th class="all text-end js-qty-col-kg">Kg<span class="buyer-qty-legend"><span class="is-dspd">Dspd</span> · <span class="is-var">Var</span></span></th>
+          <th class="all text-end js-qty-col-liters">Liters<span class="buyer-qty-legend"><span class="is-dspd">Dspd</span> · <span class="is-var">Var</span></span></th>
+          <th class="all text-end dispatch-actions-cell">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in buyer_dispatch_rows %}
+        <tr>
+          <td class="text-start dt-date" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"d-m-Y" }}</td>
+          <td>{% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td>{{ o.dispatch_no }}</td>
+          <td>{{ o.browser_number|default:"—" }}</td>
+          <td>{% include "dispatch/_distribution_status_controls.html" %}</td>
+          <td class="dispatch-amount-cell dt-num" data-order="{{ o.total_amount|default:'0' }}">
+            <div class="dispatch-amount-stack">
+              <span class="dispatch-amount-value">{{ o.total_amount|money }}</span>
+              {% if o.buyer_id %}
+              {% with status=o.payment_status_from_amounts %}
+              <span class="dispatch-payment-badge dispatch-payment-badge--{{ status }}">{% if status == "paid" %}Paid{% elif status == "partial" %}Partial{% else %}Pending{% endif %}</span>
+              {% endwith %}
+              {% endif %}
+            </div>
+          </td>
+          <td class="text-end dt-num" data-order="{{ o.paid_amount|default:'0' }}">{{ o.paid_amount|money }}</td>
+          <td class="text-end dt-num dispatch-ts-cell" data-order="{{ o.ts|default:'0' }}" data-ours-ts="{{ o.ts|default:'' }}">
+            <div class="dispatch-ts-stack">
+              <span class="dispatch-ts-ours">{{ o.ts|money }}</span>
+              <span class="dispatch-ts-buyer{% if not o.delivered_ts %} is-empty{% endif %}">{% if o.delivered_ts %}{{ o.delivered_ts|money }}{% else %}—{% endif %}</span>
+            </div>
+          </td>
+          <td class="text-end dt-num js-qty-col-kg" data-order="{{ o.kg|default:'0' }}">
+            <div class="dispatch-qty-stack">
+              <span class="dispatch-qty-dspd" title="Dispatched">{{ o.kg|money }}</span>
+              <span class="dispatch-qty-var {% if o.qty_variation_kg is None %}is-empty{% elif o.qty_variation_kg < 0 %}is-short{% elif o.qty_variation_kg > 0 %}is-over{% else %}is-even{% endif %}" title="Variation (delivered − dispatched)">{% if o.qty_variation_kg is None %}—{% else %}{% if o.qty_variation_kg > 0 %}+{% endif %}{{ o.qty_variation_kg|money }}{% endif %}</span>
+            </div>
+          </td>
+          <td class="text-end dt-num js-qty-col-liters" data-order="{{ o.liters_equivalent }}">
+            <div class="dispatch-qty-stack">
+              <span class="dispatch-qty-dspd" title="Dispatched">{{ o.liters_equivalent|money }}</span>
+              <span class="dispatch-qty-var {% if o.qty_variation_liters is None %}is-empty{% elif o.qty_variation_liters < 0 %}is-short{% elif o.qty_variation_liters > 0 %}is-over{% else %}is-even{% endif %}" title="Variation (delivered − dispatched)">{% if o.qty_variation_liters is None %}—{% else %}{% if o.qty_variation_liters > 0 %}+{% endif %}{{ o.qty_variation_liters|money }}{% endif %}</span>
+            </div>
+          </td>
+          <td class="text-end dispatch-actions-cell dispatch-actions">
+            {% if perms.dispatch.change_milkdistribution %}
+            <div class="dropdown d-inline-block">
+              <button
+                class="btn btn-sm btn-outline-secondary dropdown-toggle dispatch-actions-trigger"
+                type="button"
+                data-bs-toggle="dropdown"
+                data-bs-boundary="viewport"
+                data-bs-popper-config='{"strategy":"fixed","placement":"bottom-end"}'
+                aria-expanded="false"
+                aria-label="Actions"
+              >
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end dispatch-actions-menu">
+                <li><a class="dropdown-item" href="{% url 'distribution-edit' o.pk %}"><i class="bi bi-pencil-square me-2"></i>Edit</a></li>
+                {% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+                <li>
+                  <a
+                    class="dropdown-item js-dispatch-rate-modal"
+                    href="#"
+                    data-rate-url="{% url 'distribution-rate' o.pk %}"
+                    data-dispatch-no="{{ o.dispatch_no }}"
+                    data-buyer-name="{{ o.buyer }}"
+                    data-buyer-id="{{ o.buyer_id }}"
+                    data-date="{{ o.date|date:'Y-m-d' }}"
+                    data-rate="{{ o.unit_rate|default:'0' }}"
+                    data-rate-unit="{{ o.rate_unit|default:'liter' }}"
+                    data-manual="{% if o.is_rate_manual %}1{% else %}0{% endif %}"
+                    data-paid-locked="{% if o.paid_amount > 0 %}1{% else %}0{% endif %}"
+                  ><i class="bi bi-currency-exchange me-2"></i>{% if o.unit_rate %}Change rate{% else %}Add rate{% endif %}</a>
+                </li>
+                {% endif %}
+                <li><a class="dropdown-item js-dispatch-return-modal" href="{% url 'distribution-buyer-result' o.pk %}"><i class="bi bi-clipboard-check me-2"></i>Result</a></li>
+                <li><a class="dropdown-item" href="{% url 'buyer-account' buyer.pk %}"><i class="bi bi-cash-coin me-2"></i>Pay</a></li>
+              </ul>
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="all"></th>
+          <th class="all"></th>
+          <th class="all text-end">Totals</th>
+          <th class="min-tablet-l"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-desktop text-end dt-foot-total"></th>
+          <th class="min-desktop text-end dt-foot-total"></th>
+          <th class="min-desktop"></th>
+          <th class="all text-end dt-foot-total js-qty-col-kg">
+            <div class="dispatch-qty-stack">
+              <span class="dispatch-qty-dspd" title="Dispatched">{{ buyer_dispatch_totals.total_kg|money }}</span>
+              <span class="dispatch-qty-var {% if not buyer_dispatch_totals.has_delivered %}is-empty{% elif buyer_dispatch_totals.variation_kg < 0 %}is-short{% elif buyer_dispatch_totals.variation_kg > 0 %}is-over{% else %}is-even{% endif %}" title="Variation (delivered − dispatched)">{% if not buyer_dispatch_totals.has_delivered %}—{% else %}{% if buyer_dispatch_totals.variation_kg > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_kg|money }}{% endif %}</span>
+            </div>
+          </th>
+          <th class="all text-end dt-foot-total js-qty-col-liters">
+            <div class="dispatch-qty-stack">
+              <span class="dispatch-qty-dspd" title="Dispatched">{{ buyer_dispatch_totals.total_liters|money }}</span>
+              <span class="dispatch-qty-var {% if not buyer_dispatch_totals.has_delivered %}is-empty{% elif buyer_dispatch_totals.variation_liters < 0 %}is-short{% elif buyer_dispatch_totals.variation_liters > 0 %}is-over{% else %}is-even{% endif %}" title="Variation (delivered − dispatched)">{% if not buyer_dispatch_totals.has_delivered %}—{% else %}{% if buyer_dispatch_totals.variation_liters > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_liters|money }}{% endif %}</span>
+            </div>
+          </th>
+          <th class="all"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+</div>
+
+{% if perms.dispatch.change_milkdistribution %}
+{% include "dispatch/_distribution_return_modal.html" %}
+{% endif %}
+{% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+{% include "dispatch/_distribution_rate_modal.html" %}
+{% endif %}
+
+{% if perms.masters.change_buyer %}
+<div class="modal fade smart-modal" id="buyerQuickEditModal" tabindex="-1" aria-labelledby="buyerQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <form id="buyer-quick-edit-form" method="post" action="{% url 'buyer-quick-edit' buyer.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-person-badge"></i></span>
+            <div>
+              <h5 class="modal-title" id="buyerQuickEditModalLabel">Edit buyer</h5>
+              <p class="modal-subtitle">Update buyer contact details on this ledger.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.name.id_for_label }}">Name</label>
+            {{ buyer_edit_form.name }}
+            <div class="invalid-feedback" data-edit-error-for="name"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.contact_person.id_for_label }}">Contact</label>
+            {{ buyer_edit_form.contact_person }}
+            <div class="invalid-feedback" data-edit-error-for="contact_person"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.phone.id_for_label }}">Phone</label>
+            {{ buyer_edit_form.phone }}
+            <div class="invalid-feedback" data-edit-error-for="phone"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.email.id_for_label }}">Email</label>
+            {{ buyer_edit_form.email }}
+            <div class="invalid-feedback" data-edit-error-for="email"></div>
+          </div>
+          <div class="buyer-form-row mb-0">
+            <label class="form-label" for="{{ buyer_edit_form.address.id_for_label }}">Address</label>
+            {{ buyer_edit_form.address }}
+            <div class="invalid-feedback" data-edit-error-for="address"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Update buyer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% include "masters/_buyer_statement_amount_fit.html" %}
+{% if perms.dispatch.change_milkdistribution %}
+{% include "dispatch/_distribution_inline_script.html" %}
+{% endif %}
+{% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+{% include "dispatch/_distribution_rate_script.html" %}
+{% endif %}
+<script>
+(function () {
+  var tableRoot = document.getElementById("buyer-dispatches");
+  if (!tableRoot) return;
+
+  function clearOpenActionRows() {
+    tableRoot.querySelectorAll("tbody tr.is-actions-open").forEach(function (row) {
+      row.classList.remove("is-actions-open");
+    });
+  }
+
+  tableRoot.addEventListener("show.bs.dropdown", function (event) {
+    var dropdownEl = event.target.closest(".dispatch-actions-cell .dropdown");
+    if (!dropdownEl || !tableRoot.contains(dropdownEl)) return;
+    clearOpenActionRows();
+    var row = dropdownEl.closest("tr");
+    if (row) row.classList.add("is-actions-open");
+  });
+
+  tableRoot.addEventListener("hidden.bs.dropdown", function (event) {
+    var dropdownEl = event.target.closest(".dispatch-actions-cell .dropdown");
+    if (!dropdownEl || !tableRoot.contains(dropdownEl)) return;
+    var row = dropdownEl.closest("tr");
+    if (row) row.classList.remove("is-actions-open");
+  });
+})();
+</script>
+<script>
+(function () {
+  var modalEl = document.getElementById("buyerRateUpdateModal");
+  var openBtn = document.getElementById("buyer-rate-add-btn");
+  if (modalEl && openBtn && window.bootstrap) {
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    openBtn.addEventListener("click", function () {
+      modal.show();
+    });
+    {% if rate_form.errors %}
+    modal.show();
+    {% endif %}
+  }
+
+  var root = document.getElementById("buyerRateForm");
+  if (!root) return;
+
+  function focusNextField(current) {
+    var fields = Array.prototype.slice.call(root.querySelectorAll(".js-focus-next")).filter(function (el) {
+      return el.offsetParent !== null && !el.disabled && el.type !== "hidden";
+    });
+    var idx = fields.indexOf(current);
+    if (idx < 0) return;
+    var next = fields[idx + 1];
+    if (!next) return;
+    next.focus();
+    if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+  }
+
+  root.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter") return;
+    var t = ev.target;
+    if (!t || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
+    if (t.tagName === "SELECT" || t.classList.contains("js-focus-next")) {
+      ev.preventDefault();
+      focusNextField(t);
+    }
+  });
+
+  if (root.dataset.submitGuardBound === "1") return;
+  root.dataset.submitGuardBound = "1";
+  root.addEventListener("submit", function () {
+    if (root.dataset.submitting === "1") return false;
+    root.dataset.submitting = "1";
+    var btn = document.querySelector('button[type="submit"][form="buyerRateForm"]') || root.querySelector('button[type="submit"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+    }
+  });
+})();
+</script>
+<script>
+(function () {
+  var table = document.querySelector(".buyer-dispatch-table");
+  var toggle = document.getElementById("buyerDispatchQtyToggle");
+  if (!table || !toggle) return;
+
+  var storageKey = "buyer-dispatch-qty-unit";
+  var defaultUnit = "{{ buyer.rate_unit|default:'liter' }}" === "kg" ? "kg" : "liters";
+  var kgCol = parseInt(table.getAttribute("data-qty-kg-col") || "8", 10);
+  var litersCol = parseInt(table.getAttribute("data-qty-liters-col") || "9", 10);
+
+  function currentUnit() {
+    try {
+      var saved = window.localStorage.getItem(storageKey);
+      if (saved === "kg" || saved === "liters") return saved;
+    } catch (err) {}
+    return defaultUnit;
+  }
+
+  function dataTableApi() {
+    if (!window.jQuery || !jQuery.fn || !jQuery.fn.DataTable) return null;
+    if (!jQuery.fn.DataTable.isDataTable(table)) return null;
+    return jQuery(table).DataTable();
+  }
+
+  function applyUnit(unit) {
+    if (unit !== "kg" && unit !== "liters") unit = defaultUnit;
+    table.classList.toggle("is-qty-kg", unit === "kg");
+    table.classList.toggle("is-qty-liters", unit === "liters");
+    toggle.querySelectorAll("[data-qty-unit]").forEach(function (btn) {
+      var on = btn.getAttribute("data-qty-unit") === unit;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    var api = dataTableApi();
+    if (api) {
+      api.column(kgCol).visible(unit === "kg", false);
+      api.column(litersCol).visible(unit === "liters", false);
+      api.columns.adjust();
+      if (api.responsive && typeof api.responsive.recalc === "function") {
+        api.responsive.recalc();
+      }
+    }
+    try { window.localStorage.setItem(storageKey, unit); } catch (err) {}
+  }
+
+  toggle.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("[data-qty-unit]");
+    if (!btn || !toggle.contains(btn)) return;
+    applyUnit(btn.getAttribute("data-qty-unit"));
+  });
+
+  applyUnit(currentUnit());
+  if (window.jQuery) {
+    jQuery(table).on("init.dt", function () {
+      applyUnit(currentUnit());
+    });
+  }
+})();
+</script>
+{% if perms.masters.change_buyer %}
+<script>
+(function () {
+  var editForm = document.getElementById("buyer-quick-edit-form");
+  var editModalEl = document.getElementById("buyerQuickEditModal");
+  var editModal = editModalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  if (!editForm || !editModalEl) return;
+
+  function clearErrors(form, attrName) {
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[" + attrName + "]").forEach(function (el) { el.textContent = ""; });
+  }
+  function setErrors(form, attrName, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector("[" + attrName + '="' + field + '"]');
+      if (input) input.classList.add("is-invalid");
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  editForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    clearErrors(editForm, "data-edit-error-for");
+    fetch(editForm.action, {
+      method: "POST",
+      body: new FormData(editForm),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErrors(editForm, "data-edit-error-for", (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: "Could not save buyer." });
+          }
+          return;
+        }
+        if (editModal) editModal.hide();
+        window.location.reload();
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save buyer." });
+      });
+  });
+
+  editModalEl.addEventListener("shown.bs.modal", function () {
+    var first = editForm.querySelector('[name="name"]');
+    if (first) first.focus();
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

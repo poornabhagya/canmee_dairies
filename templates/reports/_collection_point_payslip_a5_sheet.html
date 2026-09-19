@@ -1,0 +1,134 @@
+{% load loan_extras static %}
+<div class="payslip-a5-sheet payslip-a5-point-sheet{% if pl.lang == 'si' %} payslip-a5-sheet--si{% endif %}">
+  <div class="payslip-a5-brand">
+    <img src="{% static 'img/logo.png' %}" alt="Canmee Dairies" class="payslip-a5-logo">
+    <div class="payslip-a5-brand__text">
+      <h1 class="payslip-a5-company">{{ pl.company }}</h1>
+      <p class="payslip-a5-address">{{ pl.address }}{% if ps.branch %}{% if pl.lang == 'si' %}{{ ps.branch|branch_payslip_name_si }}{% else %}{{ ps.branch.name }}{% endif %}{% endif %}</p>
+      <p class="payslip-a5-phone">{{ pl.phone }}</p>
+    </div>
+  </div>
+
+  <table class="payslip-a5-table payslip-a5-point-meta" aria-label="Collection point details">
+    <tbody>
+      <tr>
+        <td class="payslip-a5-point-meta__label">{{ pl.collecting_point_name }}</td>
+        <td class="payslip-a5-point-meta__value">{{ ps.point_display_name }}</td>
+        <td class="payslip-a5-point-meta__period">{{ sheet_period }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="payslip-a5-table payslip-a5-farmers">
+    <thead>
+      <tr>
+        <th>{{ pl.no }}</th>
+        <th>{{ pl.name }}</th>
+        <th>{{ pl.kg }}</th>
+        <th>{{ pl.ltr }}</th>
+        <th>{{ pl.fat }}</th>
+        <th>{{ pl.snf }}</th>
+        <th>{{ pl.rate }}</th>
+        <th>{{ pl.amount }}</th>
+        <th>{{ pl.signature }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in ps.farmer_rows %}
+      <tr>
+        <td class="num">{{ row.number }}</td>
+        <td class="name-col">{{ row.name }}</td>
+        <td class="num">{% if row.kg > 0 %}{{ row.kg|money }}{% endif %}</td>
+        <td class="num">{% if row.liters > 0 %}{{ row.liters|money }}{% endif %}</td>
+        <td class="num">{% if row.fat is not None %}{{ row.fat|money }}{% endif %}</td>
+        <td class="num">{% if row.snf is not None %}{{ row.snf|money }}{% endif %}</td>
+        <td class="num">{% if row.rate > 0 %}{{ row.rate|money }}{% endif %}</td>
+        <td class="num">{% if row.amount > 0 %}{{ row.amount|money }}{% endif %}</td>
+        <td class="sig-col"></td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="9" class="text-center">—</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="shaded bold">
+        <td colspan="2">{{ pl.total }}</td>
+        <td class="num">{{ ps.farmer_totals.kg|money }}</td>
+        <td class="num">{{ ps.farmer_totals.liters|money }}</td>
+        <td></td>
+        <td></td>
+        <td class="num">{{ ps.farmer_totals.rate|money }}</td>
+        <td class="num">{{ ps.farmer_totals.amount|money }}</td>
+        <td></td>
+      </tr>
+      {% if ps.advance_amount > 0 %}
+      <tr class="bold">
+        <td colspan="7">{{ pl.advance }}</td>
+        <td class="num">{{ ps.advance_amount|money }}</td>
+        <td></td>
+      </tr>
+      {% endif %}
+      <tr class="bold">
+        <td colspan="7">{{ pl.goods_deduction }}</td>
+        <td class="num">{{ ps.goods_deduction|money }}</td>
+        <td></td>
+      </tr>
+      {% if ps.loan_total > 0 %}
+      <tr class="bold">
+        <td colspan="7">{{ pl.loan }}</td>
+        <td class="num">{{ ps.loan_total|money }}</td>
+        <td></td>
+      </tr>
+      {% endif %}
+      {% if ps.previous_outstanding_amount > 0 %}
+      <tr class="bold">
+        <td colspan="7">{{ pl.previous_outstanding }}</td>
+        <td class="num">{{ ps.previous_outstanding_amount|money }}</td>
+        <td></td>
+      </tr>
+      {% endif %}
+      {% if ps.payment_correction_amount > 0 %}
+      <tr class="bold">
+        <td colspan="7">{{ pl.payment_correction }}</td>
+        <td class="num">{{ ps.payment_correction_amount|money }}</td>
+        <td></td>
+      </tr>
+      {% endif %}
+      <tr class="bold">
+        <td colspan="5">{{ pl.collector_fee }}</td>
+        <td class="num">{{ ps.collector_fee_rate|money }}</td>
+        <td></td>
+        <td class="num">{{ ps.collector_fee_amount|money }}</td>
+        <td></td>
+      </tr>
+      {% if ps.additional_amount > 0 %}
+      <tr class="bold">
+        <td colspan="5">{{ pl.additional }}</td>
+        <td class="num">{{ ps.additional_rate|money }}</td>
+        <td></td>
+        <td class="num">{{ ps.additional_amount|money }}</td>
+        <td></td>
+      </tr>
+      {% endif %}
+      <tr class="shaded bold">
+        <td colspan="7">{{ pl.balance_payment }}</td>
+        <td class="num">{{ ps.balance_payment|money }}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  {% if not ps.has_goods_attachment %}
+  <div class="payslip-a5-sheet__closing">
+    <div class="payslip-a5-signature">
+      <div class="payslip-a5-signature__space" aria-hidden="true"></div>
+      <p class="payslip-a5-signature__label">{{ pl.authorized_by }}</p>
+    </div>
+    {% if pl.footer %}
+    <p class="payslip-a5-footer">{{ pl.footer }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

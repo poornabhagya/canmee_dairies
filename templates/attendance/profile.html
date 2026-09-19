@@ -1,0 +1,28 @@
+{% extends "attendance/base_portal.html" %}
+{% block title %}Profile · Attendance{% endblock %}
+{% block content %}
+<div class="att-card">
+  <div class="att-profile-head">
+    <div class="att-avatar">{{ employee_initials }}</div>
+    <p class="att-eyebrow">Profile</p>
+    <h1 class="att-title">{{ employee.get_full_name }}</h1>
+    <p class="att-subtitle mb-0">{{ employee.employee_number }}{% if employee.job_title %} · {{ employee.job_title }}{% endif %}</p>
+  </div>
+
+  <div class="att-panel">
+    <div class="att-meta-row"><span>NIC</span><span>{{ employee.nic|default:"—" }}</span></div>
+    <div class="att-meta-row"><span>Department</span><span>{% if employee.department %}{{ employee.department.name }}{% else %}—{% endif %}</span></div>
+    <div class="att-meta-row"><span>Phone</span><span>{{ employee.phone|default:"—" }}</span></div>
+    <div class="att-meta-row"><span>Username</span><span>{{ request.user.get_username }}</span></div>
+  </div>
+
+  <div class="d-grid gap-2 mt-4">
+    <a class="att-btn att-btn-ghost" href="{% url 'attendance:password-change' %}">
+      <i class="bi bi-key"></i> Change password
+    </a>
+    <a class="att-btn att-btn-danger" href="{% url 'attendance:logout' %}">
+      <i class="bi bi-box-arrow-right"></i> Sign out
+    </a>
+  </div>
+</div>
+{% endblock %}

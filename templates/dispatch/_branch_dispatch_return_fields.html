@@ -1,0 +1,18 @@
+<p class="text-muted small mb-3">
+  <strong>{{ dispatch.destination_branch.name }}</strong> requested to return
+  <strong>{{ dispatch.branch_return_quantity_kg|default:dispatch.kg }} kg</strong>
+  from dispatch <strong>#{{ dispatch.dispatch_no }}</strong>.
+</p>
+{% if dispatch.branch_response_notes %}
+<p class="small mb-3"><strong>Notes:</strong> {{ dispatch.branch_response_notes }}</p>
+{% endif %}
+<div class="mb-3">
+  <label class="form-label d-block">Decision</label>
+  {% for radio in form.decision %}
+  <div class="form-check">{{ radio.tag }} <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>
+  {% endfor %}
+</div>
+<div class="mb-0">
+  <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+  {{ form.notes }}
+</div>

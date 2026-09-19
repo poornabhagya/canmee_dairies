@@ -1,0 +1,38 @@
+# 1. Network එක හැදීම
+module "vpc" {
+  source = "./modules/vpc"
+}
+
+# 2. Firewall Rules හැදීම
+module "security_groups" {
+  source = "./modules/security_groups"
+  vpc_id = module.vpc.vpc_id
+}
+
+# 3. IAM (OIDC සහ SSM) Roles හැදීම
+module "iam" {
+  source = "./modules/iam"
+}
+
+module "oidc" {
+  source = "./modules/oidc"
+}
+
+# 4. EC2 සර්වර් හැදීම (Network, Firewall, IAM Role එකට කනෙක්ට් කිරීම)
+module "compute" {
+  source                = "./modules/compute"
+  production_subnet_id  = module.vpc.production_subnet_id
+  staging_subnet_id     = module.vpc.staging_subnet_id
+  security_group_id     = module.security_groups.security_group_id
+  instance_profile_name = module.iam.instance_profile_name
+}
+
+# 5. ECR (Container Registry) එක හැදීම
+module "ecr" {
+  source = "./modules/ecr"
+}
+
+# CI/CD එකට අවශ්‍ය දත්ත Output කිරීම
+output "github_actions_role_arn" {
+  value = module.oidc.github_actions_role_arn
+}

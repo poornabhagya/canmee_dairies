@@ -1,0 +1,69 @@
+<script>
+(function () {
+  var RESET_FLAG = "smartDtResetFilters";
+  var shouldReset = false;
+  try {
+    shouldReset = sessionStorage.getItem(RESET_FLAG) === "1";
+    if (shouldReset) sessionStorage.removeItem(RESET_FLAG);
+  } catch (err) {}
+
+  function markAssetListFilterReset() {
+    try { sessionStorage.setItem(RESET_FLAG, "1"); } catch (err) {}
+  }
+
+  function resetAssetListFilters() {
+    document.querySelectorAll("select.smart-dt-branch-filter").forEach(function (sel) {
+      if (sel.value === "all") return;
+      sel.value = "all";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    var allChip = document.querySelector(".smart-dt-chip[data-smart-filter='all']");
+    if (allChip && !allChip.classList.contains("is-active")) {
+      allChip.click();
+    } else if (allChip) {
+      document.querySelectorAll(".smart-dt-chip[data-smart-filter]").forEach(function (chip) {
+        chip.classList.toggle("is-active", chip === allChip);
+      });
+    }
+    if (window.jQuery && jQuery.fn.dataTable) {
+      jQuery("table.datatable-smart").each(function () {
+        if (!jQuery.fn.dataTable.isDataTable(this)) return;
+        jQuery(this).DataTable().search("").draw();
+      });
+    }
+  }
+
+  window.markAssetListFilterReset = markAssetListFilterReset;
+  window.resetAssetListFilters = resetAssetListFilters;
+
+  if (shouldReset) {
+    document.querySelectorAll("select.smart-dt-branch-filter").forEach(function (sel) {
+      sel.value = "all";
+    });
+  }
+
+  function applyPendingReset() {
+    if (!shouldReset) return;
+    resetAssetListFilters();
+  }
+
+  if (window.jQuery) {
+    jQuery(function () {
+      setTimeout(applyPendingReset, 0);
+    });
+  } else {
+    document.addEventListener("DOMContentLoaded", function () {
+      setTimeout(applyPendingReset, 0);
+    });
+  }
+  window.addEventListener("pageshow", applyPendingReset);
+
+  document.querySelectorAll(".js-asset-stat-filter").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var filter = btn.getAttribute("data-smart-filter") || "all";
+      var chip = document.querySelector('.smart-dt-chip[data-smart-filter="' + filter + '"]');
+      if (chip && chip !== btn) chip.click();
+    });
+  });
+})();
+</script>

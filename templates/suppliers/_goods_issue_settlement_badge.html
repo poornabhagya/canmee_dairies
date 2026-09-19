@@ -1,0 +1,13 @@
+{% if settlement_status == "n/a" %}
+<span class="text-muted">—</span>
+{% elif settlement_status == "awaiting_driver" %}
+<span class="badge text-bg-primary-subtle text-primary-emphasis">Awaiting driver</span>
+{% elif settlement_status == "rejected" %}
+<span class="badge text-bg-danger-subtle text-danger-emphasis">Rejected</span>
+{% elif settlement_status == "settled" %}
+<span class="badge text-bg-success-subtle text-success-emphasis"{% if settled_at %} title="Settled {{ settled_at|date:'Y-m-d H:i' }}"{% endif %}>Settled</span>
+{% elif settlement_status == "partial" %}
+<span class="badge text-bg-info-subtle text-info-emphasis" title="{{ settled_count }} of {{ line_count }} lines settled">Partial</span>
+{% else %}
+<span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+{% endif %}

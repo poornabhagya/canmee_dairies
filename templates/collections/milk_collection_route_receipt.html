@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>
+    {% if receipt_kind == 'receipts' %}{% if include_goods %}මධ්‍යස්ථාන + භාණ්ඩ · {% endif %}මධ්‍යස්ථාන රිසිට්පත් · {{ route.code }} · {{ collection_date }}
+    {% else %}මාර්ග දින සාරාංශය · {{ route.code }} · {{ collection_date }}{% endif %}
+  </title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+  {% include 'collections/_receipt_common_styles.html' %}
+  {% if receipt_kind == 'receipts' or receipt_kind == 'summary' %}
+  <style>
+    @media print {
+      @page { size: A4 portrait; margin: 10mm 14mm; }
+    }
+  </style>
+  {% endif %}
+</head>
+<body class="receipt-body receipt-print-mode-{{ receipt_kind }}{% if include_goods %} receipt-with-goods{% endif %}">
+  <div class="receipt-shell">
+    {% if receipt_kind == 'summary' %}
+    <p class="no-print section-label" style="text-align:center;margin-bottom:1rem;font-weight:400;color:#64748b;">
+      මාර්ගයක සියලු මධ්‍යස්ථාන සඳහා එකතුව — සාරාංශ වගුව පමණි.
+    </p>
+
+    <section class="route-summary-section receipt-slip">
+      <header class="company">
+        <h1 class="receipt-text-14">කැන්මී ඩේරීස් පුද්ගලික සමාගම</h1>
+        <p class="phone receipt-text-12">දු. අංකය : 071 5435019</p>
+      </header>
+
+      <div class="meta-two">
+        <span><span class="receipt-text-12"><strong>දිනය :</strong></span> <span class="receipt-text-14">{{ collection_date|date:"Y-m-d" }}</span></span>
+        <span><span class="receipt-text-12"><strong>අංකය :</strong></span> <span class="receipt-text-14">{{ receipt_no }}</span></span>
+      </div>
+      <div class="center-name-row">
+        <span class="receipt-text-12"><strong>මාර්ගය :</strong></span> <span class="receipt-text-14">{{ route.code }} — {{ route.name }}</span>
+      </div>
+
+      <table class="receipt-grid route-summary-grid">
+        <thead>
+          <tr>
+            <th class="receipt-text-12">මධ්‍යස්ථානයේ නම</th>
+            <th class="receipt-text-12">කිරි ප්‍රමාණය L/Kg</th>
+            <th class="receipt-text-12">මේදය</th>
+            <th class="receipt-text-12">මේද නොවන ඝන ද්‍රව්‍ය</th>
+            <th class="receipt-text-12">කිරි L/Kg මිල</th>
+            <th class="receipt-text-12">වෙනත්</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in lines %}
+          <tr>
+            <td class="point receipt-text-14">{% if line.point_name %}{{ line.point_name }}{% else %}{{ line.point_label }}{% endif %}</td>
+            <td class="num receipt-text-14 receipt-qty-cell">
+              {% include 'collections/_receipt_qty_stack.html' with kg=line.kg liters=line.liters %}
+            </td>
+            <td class="num receipt-text-14">{% if line.fat is not None %}{{ line.fat|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="num receipt-text-14">{% if line.snf is not None %}{{ line.snf|floatformat:2 }}{% else %}—{% endif %}</td>
+            <td class="num receipt-text-14">{% if line.price is not None %}{{ line.price|money }}{% else %}—{% endif %}</td>
+            <td class="num receipt-text-14">{% if line.other is not None %}{{ line.other|money }}{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" style="text-align:center;padding:1rem;color:#64748b;">මෙම දිනය සහ මාර්ගය සඳහා එකතු කිරීම් නැත.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if lines %}
+        <tfoot>
+          <tr>
+            <td class="receipt-text-14">එකතුව</td>
+            <td class="num receipt-text-14 receipt-qty-cell">
+              {% include 'collections/_receipt_qty_stack.html' with kg=total_kg liters=total_liters %}
+            </td>
+            <td colspan="4"></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </section>
+
+    {% else %}
+    <p class="no-print section-label" style="text-align:center;margin-bottom:1rem;font-weight:400;color:#64748b;">
+      රිසිට්පත පළල 100&nbsp;mm — එක් පිටුවකට උපරිම 6ක්, එක් තීරුවක්, පිටු මැදට (A4 උඩු අතට). මුද්‍රණය කරන්න.
+      {% if include_goods %}<span class="d-block mt-1" style="color:#059669;">සම්බන්ධිත භාණ්ඩ නිකුතු ඇතුළත් — පටි අමතර උස විය හැක.</span>{% endif %}
+    </p>
+    {% if lines %}
+    {% for line in lines %}
+    {% if forloop.first or forloop.counter0|divisibleby:6 %}<div class="receipt-print-sheet">{% endif %}
+      {% if include_goods %}
+      <div class="point-receipt-block receipt-slip point-receipt-unified">
+        {% include 'collections/_point_receipt_sinhala_inner.html' %}
+        {% if line.issue_receipt_sections %}
+        {% include 'collections/_point_receipt_issue_goods_block.html' with issue_receipt_sections=line.issue_receipt_sections %}
+        {% endif %}
+      </div>
+      {% else %}
+      {% include 'collections/_point_receipt_sinhala_block.html' %}
+      {% endif %}
+    {% if forloop.counter|divisibleby:6 or forloop.last %}</div>{% endif %}
+    {% endfor %}
+    {% else %}
+    <p class="text-center text-muted p-4">මෙම දිනය සහ මාර්ගය සඳහා එකතු කිරීම් නැත.</p>
+    {% endif %}
+    {% endif %}
+
+    <p class="footer-note no-print">මුද්‍රණය: {{ printed_at|date:"Y-m-d H:i" }}</p>
+
+    <div class="actions no-print">
+      <button type="button" class="btn btn-print" onclick="printAndClose()">මුද්‍රණය</button>
+      <a class="btn btn-back" href="{% url 'milk-collection-list' %}?tab=route" onclick="return closeTabOrRedirect(this.href)">ආපසු</a>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function closeTab() {
+        try {
+          window.open('', '_self');
+          window.close();
+        } catch (e) {}
+      }
+      window.printAndClose = function () {
+        var done = false;
+        function finish() {
+          if (done) return;
+          done = true;
+          setTimeout(closeTab, 120);
+        }
+        window.addEventListener('afterprint', finish, { once: true });
+        window.print();
+        setTimeout(finish, 1200);
+      };
+      window.closeTabOrRedirect = function (href) {
+        closeTab();
+        setTimeout(function () {
+          if (href) window.location.href = href;
+        }, 250);
+        return false;
+      };
+    })();
+  </script>
+</body>
+</html>

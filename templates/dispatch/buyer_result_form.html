@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Buyer result · Dispatch · Canmee Dairies{% endblock %}
+{% block page_heading %}Buyer result{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Update buyer result</h1>
+    <p class="page-subtitle">{{ object.date }} · {{ object.buyer }} · {{ object.dispatch_no }}</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card" style="max-width: 36rem;" id="buyer-result-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <p class="text-muted small">Dispatched {{ object.liters_equivalent }} L ({{ object.kg }} kg). Choose delivered or returned.</p>
+      <input type="hidden" name="status" value="{{ object.status }}">
+      {{ form.result_kind }}
+      <div class="mb-3">
+        <label class="form-label d-block">Result</label>
+        <div class="btn-group" role="group" aria-label="Result type">
+          <button type="button" class="btn btn-outline-success js-result-kind{% if form.initial.result_kind != 'returned' %} active{% endif %}" data-result-kind="delivered">Delivered</button>
+          <button type="button" class="btn btn-outline-success js-result-kind{% if form.initial.result_kind == 'returned' %} active{% endif %}" data-result-kind="returned">Returned</button>
+        </div>
+      </div>
+      <div id="delivered-panel">
+        <div class="mb-3">
+          {{ form.delivered_qty.errors }}
+          <label class="form-label" for="{{ form.delivered_qty.id_for_label }}">Delivered quantity</label>
+          <div class="row g-2">
+            <div class="col">{{ form.delivered_qty }}</div>
+            <div class="col-auto">{{ form.delivered_qty_unit }}</div>
+          </div>
+        </div>
+        <div class="mb-3" id="delivered-ts-wrap">
+          {{ form.delivered_ts.errors }}
+          <label class="form-label" for="{{ form.delivered_ts.id_for_label }}">TS (buyer)</label>
+          {{ form.delivered_ts }}
+          <p class="form-text text-muted small mb-0">Total solids as measured at the buyer.</p>
+        </div>
+      </div>
+      <div id="returned-panel">
+        <div class="mb-3">
+          {{ form.buyer_result_liters.errors }}
+          <label class="form-label" for="{{ form.buyer_result_liters.id_for_label }}">Returned quantity</label>
+          <div class="row g-2">
+            <div class="col">{{ form.buyer_result_liters }}</div>
+            <div class="col-auto">{{ form.return_qty_unit }}</div>
+          </div>
+        </div>
+        <div class="mb-3" id="returned-branch-wrap">
+          {{ form.returned_branch.errors }}
+          <label class="form-label" for="{{ form.returned_branch.id_for_label }}">Returned branch</label>
+          {{ form.returned_branch }}
+          <p class="form-text text-muted small mb-0">Required for a return. Quantity is converted to kg and added to this branch's stock.</p>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Save result</button>
+      <a href="{% url 'distribution-list' %}" class="btn btn-outline-secondary mt-2 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var kindInput = document.querySelector('[name="result_kind"]');
+  var deliveredPanel = document.getElementById("delivered-panel");
+  var returnedPanel = document.getElementById("returned-panel");
+  var deliveredQty = document.getElementById("{{ form.delivered_qty.id_for_label }}");
+  var returnQty = document.getElementById("{{ form.buyer_result_liters.id_for_label }}");
+  var branch = document.getElementById("{{ form.returned_branch.id_for_label }}");
+  function applyKind(kind, options) {
+    var returned = kind === "returned";
+    if (kindInput) kindInput.value = returned ? "returned" : "delivered";
+    if (deliveredPanel) deliveredPanel.classList.toggle("d-none", returned);
+    if (returnedPanel) returnedPanel.classList.toggle("d-none", !returned);
+    document.querySelectorAll(".js-result-kind").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-result-kind") === (returned ? "returned" : "delivered"));
+    });
+    if (options && options.clear === false) return;
+    if (returned) {
+      if (deliveredQty) deliveredQty.value = "";
+    } else {
+      if (returnQty) returnQty.value = "";
+      if (branch) branch.value = "";
+    }
+  }
+  document.querySelectorAll(".js-result-kind").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      applyKind(btn.getAttribute("data-result-kind"));
+    });
+  });
+  applyKind(kindInput && kindInput.value ? kindInput.value : "delivered", { clear: false });
+})();
+</script>
+{% endblock %}

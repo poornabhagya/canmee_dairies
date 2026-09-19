@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% load static format_extras %}
+{% block title %}Point goods summary · Canmee Dairies{% endblock %}
+{% block page_heading %}Point goods summary{% endblock %}
+{% block extra_css %}
+<style>
+  .point-goods-filter .form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+  }
+  .point-goods-filter .flatpickr-range-wrap .form-control,
+  .point-goods-filter .flatpickr-range-wrap .input-group-text,
+  .point-goods-filter .form-select {
+    height: 38px;
+    min-height: 38px;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+  .point-goods-report {
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+  .point-goods-report__header {
+    text-align: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #0f766e;
+  }
+  .point-goods-report__header img {
+    height: 42px;
+    margin-bottom: 0.35rem;
+  }
+  .point-goods-report__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    color: #0f172a;
+  }
+  .point-goods-report__meta {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin: 0.25rem 0 0;
+  }
+  .point-goods-branch {
+    margin-bottom: 1.25rem;
+  }
+  .point-goods-branch__title {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 0.55rem 0.85rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #065f46;
+    margin-bottom: 0.75rem;
+  }
+  .point-goods-point {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    background: #fff;
+  }
+  .point-goods-point__head {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+  }
+  .point-goods-point__name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #0f172a;
+    margin: 0;
+  }
+  .point-goods-point__route {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin: 0.15rem 0 0;
+  }
+  .point-goods-table {
+    width: 100%;
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+  .point-goods-table th,
+  .point-goods-table td {
+    padding: 0.4rem 0.65rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .point-goods-table thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    background: #fff;
+    white-space: nowrap;
+  }
+  .point-goods-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .point-goods-table tfoot th,
+  .point-goods-table tfoot td {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    font-weight: 600;
+  }
+  .point-goods-branch-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    background: #f1f5f9;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .point-goods-grand {
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: #f8fafc;
+    font-weight: 600;
+  }
+  .point-goods-empty {
+    padding: 0.75rem;
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+  .point-goods-print-footer {
+    display: none;
+  }
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 12mm 10mm 20mm 10mm;
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        font-weight: 600;
+        color: #334155;
+        vertical-align: top;
+        padding-top: 1.5mm;
+      }
+    }
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    .point-goods-no-print {
+      display: none !important;
+    }
+    .app-main,
+    .content-wrap {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .point-goods-report {
+      max-width: none;
+      padding-bottom: 4mm;
+    }
+    .point-goods-report__header {
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    .point-goods-branch + .point-goods-branch {
+      break-before: page;
+      page-break-before: always;
+    }
+    .point-goods-branch {
+      margin-bottom: 0.75rem;
+    }
+    .point-goods-branch__title {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    .point-goods-point {
+      border-color: #cbd5e1;
+      overflow: visible;
+      margin-bottom: 0.5rem;
+    }
+    .point-goods-point:not(.point-goods-point--long) {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .point-goods-point__head {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    .point-goods-branch-total,
+    .point-goods-grand {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      break-before: avoid;
+      page-break-before: avoid;
+    }
+    .point-goods-table {
+      font-size: 9pt;
+    }
+    .point-goods-table thead {
+      display: table-header-group;
+    }
+    .point-goods-table th,
+    .point-goods-table td {
+      padding: 0.25rem 0.4rem;
+    }
+    .point-goods-table tbody tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .point-goods-table tfoot {
+      display: table-row-group;
+    }
+    .point-goods-table tfoot tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .point-goods-print-footer {
+      display: flex !important;
+      position: fixed;
+      left: 10mm;
+      right: 38mm;
+      bottom: 0;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: 0.75rem;
+      padding: 2mm 0 3mm;
+      border-top: 1px solid #cbd5e1;
+      background: #fff;
+      font-size: 8pt;
+      line-height: 1.35;
+      color: #475569;
+    }
+    .point-goods-print-footer__company {
+      font-weight: 700;
+      color: #0f766e;
+      letter-spacing: 0.02em;
+    }
+    .point-goods-print-footer__tagline {
+      font-size: 7.5pt;
+      color: #64748b;
+    }
+    .point-goods-print-footer__page {
+      display: none !important;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header point-goods-no-print">
+  <div>
+    <h1 class="page-title">Point goods summary</h1>
+    <p class="page-subtitle">Branch → collection point → products issued in the selected period. The same product is listed separately when receipts used different GRN issue prices; 0.00 means no issue price was found on stock.</p>
+  </div>
+</div>
+
+<div class="card mb-3 point-goods-no-print">
+  <div class="card-body point-goods-filter">
+    {{ point_goods_filter_routes_json|json_script:"point-goods-filter-routes-data" }}
+    {{ point_goods_filter_points_json|json_script:"point-goods-filter-points-data" }}
+    <form method="get" class="row g-3 align-items-end js-no-enter-submit point-goods-filter" id="point-goods-filter-form">
+      <div class="col-12 col-md-6 col-lg-2">
+        <label class="form-label" for="point-goods-branch">Branch</label>
+        <select id="point-goods-branch" name="branch" class="form-select no-global-select2">
+          <option value="" {% if not selected_branch %}selected{% endif %}>All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-lg-2">
+        <label class="form-label" for="point-goods-route">Route</label>
+        <select id="point-goods-route" name="route" class="form-select no-global-select2">
+          <option value="">All routes</option>
+          {% for ro in filter_routes %}
+          <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == selected_route %}selected{% endif %}>{{ ro.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-lg-2">
+        <label class="form-label" for="point-goods-point">Collection point</label>
+        <select id="point-goods-point" name="collection_point" class="form-select no-global-select2">
+          <option value="">All points</option>
+          {% for p in filter_points %}
+          <option value="{{ p.id }}" data-branch-id="{{ p.route.branch_id }}" data-route-id="{{ p.route_id }}" {% if p.id|stringformat:'d' == selected_collection_point %}selected{% endif %}>{{ p.number }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6 col-lg-3">
+        <label class="form-label" for="point-goods-period">Period</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+          <input
+            type="text"
+            id="point-goods-period"
+            class="form-control border-start-0 js-datepicker-range"
+            data-range-start="start"
+            data-range-end="end"
+            placeholder="Select period"
+            autocomplete="off"
+            readonly
+            aria-label="Date range"
+          >
+        </div>
+        <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+      </div>
+      <div class="col-auto d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Show report</button>
+        <a href="{% url 'point-goods-summary-report' %}" class="btn btn-outline-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3 point-goods-no-print">
+  <button type="button" class="btn btn-primary btn-sm" onclick="preparePointGoodsPrint(); window.print();">
+    <i class="bi bi-printer me-1"></i>Print A4
+  </button>
+  <a
+    class="btn btn-outline-primary btn-sm"
+    href="{% url 'point-goods-summary-slip-print' %}?{{ point_goods_filter_query }}"
+    target="_blank"
+    rel="noopener"
+  ><i class="bi bi-receipt me-1"></i>Print 100mm</a>
+  <a
+    class="btn btn-outline-secondary btn-sm"
+    href="{% url 'point-goods-summary-report-export-excel' %}?{{ point_goods_filter_query }}"
+  ><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+  <a
+    class="btn btn-outline-secondary btn-sm"
+    href="{% url 'point-goods-summary-report-export-pdf' %}?{{ point_goods_filter_query }}"
+  ><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+</div>
+
+<div class="point-goods-report">
+  <header class="point-goods-report__header">
+    <img src="{% static 'img/logo.png' %}" alt="Canmee Dairies">
+    <h2 class="point-goods-report__title">Collection Point Goods Summary</h2>
+    <p class="point-goods-report__meta">
+      Period: <strong>{{ start|date:"Y-m-d" }}</strong> to <strong>{{ end|date:"Y-m-d" }}</strong>
+      {% if generated_at %} · Generated {{ generated_at|date:"Y-m-d H:i" }}{% endif %}
+    </p>
+  </header>
+
+  {% if branch_sections %}
+    {% for section in branch_sections %}
+    <section class="point-goods-branch">
+      <div class="point-goods-branch__title">{{ section.branch_label }}</div>
+
+      {% if section.point_sections %}
+        {% for point_section in section.point_sections %}
+        <article class="point-goods-point">
+          <div class="point-goods-point__head">
+            <p class="point-goods-point__name">{{ point_section.point_label }}</p>
+            <p class="point-goods-point__route">Route: {{ point_section.route_label }}</p>
+          </div>
+          {% if point_section.product_rows %}
+          <div class="table-responsive">
+            <table class="table point-goods-table mb-0">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th class="num">Qty</th>
+                  <th class="num">Unit price</th>
+                  <th class="num">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in point_section.product_rows %}
+                <tr>
+                  <td>{{ row.product_name }}</td>
+                  <td>{{ row.category_bucket|default:"—" }}</td>
+                  <td class="num">{{ row.quantity|money }}</td>
+                  <td class="num{% if not row.unit_price %} text-muted{% endif %}">{{ row.unit_price|money }}</td>
+                  <td class="num">{{ row.amount|money }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="2">
+                    Point total
+                    <span class="text-muted fw-normal">({{ point_section.totals.receipt_count }} receipt{{ point_section.totals.receipt_count|pluralize }}, {{ point_section.totals.product_count }} product{{ point_section.totals.product_count|pluralize }})</span>
+                  </th>
+                  <td class="num">{{ point_section.totals.quantity|money }}</td>
+                  <td></td>
+                  <td class="num">{{ point_section.totals.amount|money }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          {% else %}
+          <div class="point-goods-empty">No products in this period.</div>
+          {% endif %}
+        </article>
+        {% endfor %}
+
+        {% if section.totals.line_count %}
+        <div class="point-goods-branch-total">
+          <span>{{ section.branch_label }} total — {{ section.totals.receipt_count }} receipts, {{ section.totals.product_count }} products</span>
+          <span>{{ section.totals.amount|money }} LKR</span>
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="point-goods-empty">No goods issued to collection points in this period.</div>
+      {% endif %}
+    </section>
+    {% endfor %}
+
+    {% if grand_totals.line_count %}
+    <div class="point-goods-grand d-flex justify-content-between flex-wrap gap-2">
+      <span>Grand total — {{ grand_totals.receipt_count }} receipts across {{ grand_totals.product_count }} product lines</span>
+      <span>{{ grand_totals.amount|money }} LKR</span>
+    </div>
+    {% endif %}
+  {% else %}
+  <div class="alert alert-light border point-goods-no-print">No goods issued to collection points match these filters.</div>
+  {% endif %}
+</div>
+
+{% if print_footer %}
+<footer class="point-goods-print-footer" aria-hidden="true">
+  <div>
+    <div class="point-goods-print-footer__company">{{ print_footer.company }}</div>
+    <div class="point-goods-print-footer__tagline">{{ print_footer.phone }}{% if print_footer.footer %} · {{ print_footer.footer }}{% endif %}</div>
+  </div>
+</footer>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function preparePointGoodsPrint() {
+  document.querySelectorAll(".point-goods-point").forEach(function (el) {
+    el.classList.remove("point-goods-point--long");
+    var rowCount = el.querySelectorAll(".point-goods-table tbody tr").length;
+    if (rowCount > 10) {
+      el.classList.add("point-goods-point--long");
+    }
+  });
+}
+
+(function () {
+  function readJson(id) {
+    try {
+      var el = document.getElementById(id);
+      return el ? JSON.parse(el.textContent || "[]") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  var branchSel = document.getElementById("point-goods-branch");
+  var routeSel = document.getElementById("point-goods-route");
+  var pointSel = document.getElementById("point-goods-point");
+  if (!routeSel || !pointSel) return;
+
+  var routes = readJson("point-goods-filter-routes-data");
+  var points = readJson("point-goods-filter-points-data");
+  var initialRoute = String(routeSel.value || "");
+  var initialPoint = String(pointSel.value || "");
+
+  function appendOption(selectEl, value, label, attrs) {
+    var opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    if (attrs) {
+      Object.keys(attrs).forEach(function (key) {
+        opt.setAttribute(key, attrs[key]);
+      });
+    }
+    selectEl.appendChild(opt);
+  }
+
+  function refillRoutes(preserveValue) {
+    var branchId = branchSel ? String(branchSel.value || "") : "";
+    var keep = preserveValue != null ? String(preserveValue) : String(routeSel.value || "");
+    routeSel.innerHTML = "";
+    appendOption(routeSel, "", "All routes");
+    routes.forEach(function (route) {
+      if (!branchId || String(route.branch_id) === branchId) {
+        appendOption(routeSel, String(route.id), route.label, {
+          "data-branch-id": String(route.branch_id),
+        });
+      }
+    });
+    if (keep && Array.prototype.some.call(routeSel.options, function (o) { return o.value === keep; })) {
+      routeSel.value = keep;
+    } else {
+      routeSel.value = "";
+    }
+  }
+
+  function refillPoints(preserveValue) {
+    var branchId = branchSel ? String(branchSel.value || "") : "";
+    var routeId = String(routeSel.value || "");
+    var keep = preserveValue != null ? String(preserveValue) : String(pointSel.value || "");
+    pointSel.innerHTML = "";
+    appendOption(pointSel, "", "All points");
+    points.forEach(function (point) {
+      var branchOk = !branchId || String(point.branch_id) === branchId;
+      var routeOk = !routeId || String(point.route_id) === routeId;
+      if (branchOk && routeOk) {
+        appendOption(pointSel, String(point.id), point.label, {
+          "data-branch-id": String(point.branch_id),
+          "data-route-id": String(point.route_id),
+        });
+      }
+    });
+    if (keep && Array.prototype.some.call(pointSel.options, function (o) { return o.value === keep; })) {
+      pointSel.value = keep;
+    } else {
+      pointSel.value = "";
+    }
+  }
+
+  if (branchSel) {
+    branchSel.addEventListener("change", function () {
+      refillRoutes("");
+      refillPoints("");
+    });
+  }
+  routeSel.addEventListener("change", function () {
+    refillPoints("");
+  });
+
+  refillRoutes(initialRoute);
+  refillPoints(initialPoint);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Audit logs · Canmee Dairies{% endblock %}
+{% block page_heading %}Audit logs{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .audit-log-card {
+    margin-top: 0.35rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .audit-log-card .card-body.table-wrap {
+    padding: 1rem 1.05rem 1.1rem;
+    overflow-x: hidden;
+  }
+  .audit-range-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .audit-range-pills a {
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.28rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    background: #fff;
+    text-decoration: none;
+  }
+  .audit-range-pills a:hover {
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+  .audit-range-pills a.is-active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #fff;
+  }
+  .audit-log-filters {
+    padding: 0.15rem 0 0.85rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .audit-log-filters .form-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+  }
+  .audit-user-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+  .audit-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #0f766e;
+    background: #ecfdf5;
+    flex-shrink: 0;
+  }
+  .audit-user-name {
+    display: block;
+    font-weight: 650;
+    color: #0f172a;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .audit-user-meta {
+    display: block;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .audit-when {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .audit-when-date {
+    font-weight: 650;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+  .audit-when-time {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+  }
+  .audit-when-rel {
+    font-size: 0.7rem;
+    color: #64748b;
+  }
+  .audit-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.18rem 0.55rem;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .audit-badge--success { background: #ecfdf5; color: #047857; }
+  .audit-badge--danger { background: #fef2f2; color: #b91c1c; }
+  .audit-badge--warn { background: #fffbeb; color: #b45309; }
+  .audit-badge--info { background: #eff6ff; color: #1d4ed8; }
+  .audit-badge--muted { background: #f1f5f9; color: #475569; }
+  .audit-module {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.15rem 0.45rem;
+    white-space: nowrap;
+  }
+  .audit-summary {
+    display: block;
+    max-width: 28rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #334155;
+  }
+  .audit-status {
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+    font-size: 0.78rem;
+  }
+  .audit-status--ok { color: #047857; }
+  .audit-status--err { color: #b91c1c; }
+  .audit-ip {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+  .audit-log-table tbody tr.audit-row--danger td {
+    background: rgba(254, 226, 226, 0.28);
+  }
+  .audit-detail-pre {
+    font-size: 0.78rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    max-height: min(55vh, 28rem);
+    overflow: auto;
+    margin: 0;
+  }
+  .audit-truncated {
+    font-size: 0.8rem;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  @media (max-width: 767.98px) {
+    .audit-log-card .card-body.table-wrap { padding: 0.75rem; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Audit logs</h1>
+    <p class="page-subtitle">Every sign-in, change, and deletion with who did it and when. Superuser only.</p>
+  </div>
+</div>
+
+<div class="card card-table audit-log-card smart-list-card">
+  <div class="card-body table-wrap">
+    <form method="get" class="audit-log-filters" role="search">
+      <input type="hidden" name="range" value="custom">
+      {% if filter_kind and filter_kind != "all" %}
+      <input type="hidden" name="kind" value="{{ filter_kind }}">
+      {% endif %}
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div class="audit-range-pills" role="group" aria-label="Date range">
+          <a class="{% if range_key == 'today' %}is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?range=today{% if range_base %}&amp;{{ range_base }}{% endif %}">Today</a>
+          <a class="{% if range_key == '7d' %}is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?range=7d{% if range_base %}&amp;{{ range_base }}{% endif %}">7 days</a>
+          <a class="{% if range_key == '14d' %}is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?range=14d{% if range_base %}&amp;{{ range_base }}{% endif %}">14 days</a>
+          <a class="{% if range_key == '30d' %}is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?range=30d{% if range_base %}&amp;{{ range_base }}{% endif %}">30 days</a>
+          <a class="{% if range_key == 'all' %}is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?range=all{% if range_base %}&amp;{{ range_base }}{% endif %}">All time</a>
+        </div>
+      </div>
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4 col-xl-3">
+          <label class="form-label" for="audit-filter-q">Search</label>
+          <input type="search" id="audit-filter-q" class="form-control" name="q" value="{{ search_query }}" placeholder="User, action, path, IP" autocomplete="off">
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="form-label" for="audit-filter-user">User</label>
+          <select id="audit-filter-user" name="user" class="form-select">
+            <option value="">All users</option>
+            {% for u in filter_users %}
+            <option value="{{ u.pk }}" {% if filter_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.get_username }} ({{ u.get_username }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="form-label" for="audit-filter-module">Module</label>
+          <select id="audit-filter-module" name="module" class="form-select">
+            <option value="">All modules</option>
+            {% for mod in filter_modules %}
+            <option value="{{ mod }}" {% if filter_module == mod %}selected{% endif %}>{{ mod }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <label class="form-label" for="audit-filter-action">Action</label>
+          <select id="audit-filter-action" name="action" class="form-select">
+            <option value="">All actions</option>
+            {% for act in filter_actions %}
+            <option value="{{ act }}" {% if filter_action == act %}selected{% endif %}>{{ act }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-xl-3">
+          <label class="form-label" for="audit-filter-period">Period</label>
+          <div class="input-group flatpickr-range-wrap">
+            <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="audit-filter-period"
+              class="form-control border-start-0 js-datepicker-range js-datepicker-range-iso"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="Choose dates"
+              autocomplete="off"
+              readonly
+              aria-label="Date period"
+              value="{% if date_from and date_to %}{{ date_from }} to {{ date_to }}{% elif date_from %}{{ date_from }}{% elif date_to %}{{ date_to }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ date_from }}">
+          <input type="hidden" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="col-auto d-flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
+          <a href="{% url 'user_management:audit-logs' %}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </div>
+    </form>
+
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Audit summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Events</span>
+        <span class="smart-dt-stat-value">{{ kpis.total }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">People</span>
+        <span class="smart-dt-stat-value">{{ kpis.users }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Created</span>
+        <span class="smart-dt-stat-value">{{ kpis.creates }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Errors</span>
+        <span class="smart-dt-stat-value">{{ kpis.errors }}</span>
+      </div>
+    </div>
+
+    <div id="auditDtFilters" class="smart-dt-filters mb-2" role="toolbar" aria-label="Event type">
+      <a class="smart-dt-chip{% if filter_kind == 'all' %} is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?{% if filter_base %}{{ filter_base }}&amp;{% endif %}kind=all">
+        All<span class="smart-dt-chip-count">{{ kind_counts.all }}</span>
+      </a>
+      <a class="smart-dt-chip{% if filter_kind == 'create' %} is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?{% if filter_base %}{{ filter_base }}&amp;{% endif %}kind=create">
+        Created<span class="smart-dt-chip-count">{{ kind_counts.create }}</span>
+      </a>
+      <a class="smart-dt-chip{% if filter_kind == 'update' %} is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?{% if filter_base %}{{ filter_base }}&amp;{% endif %}kind=update">
+        Updated<span class="smart-dt-chip-count">{{ kind_counts.update }}</span>
+      </a>
+      <a class="smart-dt-chip smart-dt-chip--danger{% if filter_kind == 'delete' %} is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?{% if filter_base %}{{ filter_base }}&amp;{% endif %}kind=delete">
+        Deleted<span class="smart-dt-chip-count">{{ kind_counts.delete }}</span>
+      </a>
+      <a class="smart-dt-chip{% if filter_kind == 'auth' %} is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?{% if filter_base %}{{ filter_base }}&amp;{% endif %}kind=auth">
+        Sign-in<span class="smart-dt-chip-count">{{ kind_counts.auth }}</span>
+      </a>
+      <a class="smart-dt-chip smart-dt-chip--danger{% if filter_kind == 'error' %} is-active{% endif %}" href="{% url 'user_management:audit-logs' %}?{% if filter_base %}{{ filter_base }}&amp;{% endif %}kind=error">
+        Errors<span class="smart-dt-chip-count">{{ kind_counts.error }}</span>
+      </a>
+    </div>
+
+    {% if list_truncated %}
+    <p class="audit-truncated mb-3">Showing the latest {{ list_limit }} matching events. Narrow the period or filters to see the rest.</p>
+    {% endif %}
+
+    <table
+      class="table table-hover datatable datatable-smart datatable-no-responsive audit-log-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No audit events in this range."
+      data-smart-order="1,desc"
+    >
+      <thead>
+        <tr>
+          <th class="dt-seq">#</th>
+          <th class="all">When</th>
+          <th class="all">User</th>
+          <th class="all">Action</th>
+          <th class="min-tablet-l">Module</th>
+          <th class="all">What happened</th>
+          <th class="min-desktop">Status</th>
+          <th class="min-desktop">IP</th>
+          <th class="all text-end">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in audit_events %}
+        <tr class="{% if ev.action_tone == 'danger' %}audit-row--danger{% endif %}">
+          <td class="dt-seq"></td>
+          <td data-order="{{ ev.created_at|date:'Y-m-d H:i:s' }}">
+            <span class="audit-when">
+              <span class="audit-when-date">{{ ev.created_at|date:"Y-m-d" }}</span>
+              <span class="audit-when-time">{{ ev.created_at|date:"H:i:s" }}</span>
+              <span class="audit-when-rel js-audit-rel" data-iso="{{ ev.created_at|date:'c' }}"></span>
+            </span>
+          </td>
+          <td>
+            <span class="audit-user-cell">
+              <span class="audit-avatar" aria-hidden="true">{{ ev.user_initials }}</span>
+              <span class="min-w-0">
+                <span class="audit-user-name">{{ ev.user_display|default:ev.username|default:"System" }}</span>
+                {% if ev.username and ev.user_display and ev.username != ev.user_display %}
+                <span class="audit-user-meta">{{ ev.username }}</span>
+                {% elif not ev.user_id %}
+                <span class="audit-user-meta">No account</span>
+                {% endif %}
+              </span>
+            </span>
+          </td>
+          <td>
+            <span class="audit-badge audit-badge--{{ ev.action_tone }}">{{ ev.action_label }}</span>
+          </td>
+          <td class="min-tablet-l">
+            {% if ev.module %}<span class="audit-module">{{ ev.module }}</span>{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            <span class="audit-summary" title="{{ ev.summary }}{% if ev.path %} · {{ ev.path }}{% endif %}">{{ ev.summary|default:ev.path|default:"—" }}</span>
+          </td>
+          <td class="min-desktop">
+            {% if ev.status_code %}
+            <span class="audit-status {% if ev.status_code >= 400 %}audit-status--err{% else %}audit-status--ok{% endif %}">{{ ev.status_code }}</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="min-desktop"><span class="audit-ip">{{ ev.ip_address|default:"—" }}</span></td>
+          <td class="text-end">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary js-audit-detail"
+              data-bs-toggle="offcanvas"
+              data-bs-target="#auditDetailDrawer"
+              data-when="{{ ev.created_at|date:'Y-m-d H:i:s' }}"
+              data-user="{{ ev.user_display|default:ev.username|default:'System' }}"
+              data-action="{{ ev.action_label }}"
+              data-module="{{ ev.module }}"
+              data-summary="{{ ev.summary }}"
+              data-path="{{ ev.path }}"
+              data-method="{{ ev.method }}"
+              data-status="{{ ev.status_code|default_if_none:'' }}"
+              data-ip="{{ ev.ip_address|default:'' }}"
+              data-agent="{{ ev.user_agent }}"
+              data-source="{{ ev.source }}"
+              data-json-id="{{ ev.details_script_id }}"
+            >
+              View
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="d-none" aria-hidden="true">
+      {% for ev in audit_events %}
+      {{ ev.details|json_script:ev.details_script_id }}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="auditDetailDrawer" aria-labelledby="auditDetailTitle">
+  <div class="offcanvas-header border-bottom">
+    <div>
+      <h2 class="offcanvas-title h5 mb-0" id="auditDetailTitle">Event details</h2>
+      <p class="small text-muted mb-0" id="auditDetailSub"></p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <dl class="row small mb-3" id="auditDetailMeta"></dl>
+    <h3 class="h6 text-muted text-uppercase mb-2" style="letter-spacing:0.04em;font-size:0.72rem;">Payload</h3>
+    <pre class="audit-detail-pre" id="auditDetailJson">{}</pre>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  function relTime(iso) {
+    if (!iso) return "";
+    var then = new Date(iso);
+    if (isNaN(then.getTime())) return "";
+    var seconds = Math.round((Date.now() - then.getTime()) / 1000);
+    if (seconds < 45) return "just now";
+    if (seconds < 90) return "1 min ago";
+    if (seconds < 3600) return Math.floor(seconds / 60) + " min ago";
+    if (seconds < 5400) return "1 hr ago";
+    if (seconds < 86400) return Math.floor(seconds / 3600) + " hr ago";
+    if (seconds < 172800) return "yesterday";
+    if (seconds < 2592000) return Math.floor(seconds / 86400) + " days ago";
+    return "";
+  }
+  document.querySelectorAll(".js-audit-rel").forEach(function (el) {
+    var text = relTime(el.getAttribute("data-iso"));
+    if (text) el.textContent = text;
+  });
+
+  var drawer = document.getElementById("auditDetailDrawer");
+  if (!drawer) return;
+  drawer.addEventListener("show.bs.offcanvas", function (event) {
+    var btn = event.relatedTarget;
+    if (!btn) return;
+    var sub = document.getElementById("auditDetailSub");
+    var meta = document.getElementById("auditDetailMeta");
+    var pre = document.getElementById("auditDetailJson");
+    if (sub) {
+      sub.textContent = [btn.getAttribute("data-when"), btn.getAttribute("data-user")].filter(Boolean).join(" · ");
+    }
+    var rows = [
+      ["Action", btn.getAttribute("data-action")],
+      ["Module", btn.getAttribute("data-module")],
+      ["Summary", btn.getAttribute("data-summary")],
+      ["Method", btn.getAttribute("data-method")],
+      ["Path", btn.getAttribute("data-path")],
+      ["Status", btn.getAttribute("data-status")],
+      ["IP", btn.getAttribute("data-ip")],
+      ["Source", btn.getAttribute("data-source")],
+      ["Browser", btn.getAttribute("data-agent")]
+    ];
+    if (meta) {
+      meta.replaceChildren();
+      rows.filter(function (row) { return row[1]; }).forEach(function (row) {
+        var dt = document.createElement("dt");
+        dt.className = "col-4 text-muted";
+        dt.textContent = row[0];
+        var dd = document.createElement("dd");
+        dd.className = "col-8 text-break mb-2";
+        dd.textContent = row[1];
+        meta.appendChild(dt);
+        meta.appendChild(dd);
+      });
+    }
+    var jsonEl = document.getElementById(btn.getAttribute("data-json-id") || "");
+    var payload = {};
+    if (jsonEl) {
+      try { payload = JSON.parse(jsonEl.textContent || "{}"); } catch (e) { payload = {}; }
+    }
+    if (pre) pre.textContent = JSON.stringify(payload, null, 2);
+  });
+})();
+</script>
+{% endblock %}

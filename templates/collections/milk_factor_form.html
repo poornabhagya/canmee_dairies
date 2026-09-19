@@ -1,0 +1,1103 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.16.1/dist/sweetalert2.min.css" crossorigin="anonymous">
+<style>
+  .milk-conflict-swal { font-family: var(--font-sans, "Plus Jakarta Sans", system-ui, sans-serif) !important; border-radius: 12px !important; }
+  .milk-conflict-swal .swal2-html-container { text-align: left; margin-top: 0.5rem; }
+  .milk-conflict-swal .swal2-actions { gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+  .milk-conflict-swal .btn { min-height: 44px; padding: 0.5rem 1rem; font-weight: 600; border-radius: 8px; }
+  .milk-conflict-swal .swal2-confirm.btn-primary { background: #059669 !important; border-color: #059669 !important; color: #fff !important; }
+  .milk-factor-readings .form-control { min-height: 44px; }
+  .milk-factor-snf-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 0.35rem;
+    border-radius: 50%;
+    border: 1px solid #cbd5e1;
+    color: #64748b;
+    font-size: 0.72rem;
+    cursor: help;
+    vertical-align: middle;
+  }
+  .milk-factor-form {
+    padding-bottom: 1.5rem;
+  }
+  .milk-factor-form .field-readonly { background: #f8fafc; }
+  .milk-form-row-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    align-items: end;
+  }
+  .milk-form-row-two .form-col { min-width: 0; }
+  .milk-form-row-two .form-label { margin-bottom: 0.35rem; }
+  .milk-form-row-two.date-moved {
+    grid-template-columns: 1fr;
+  }
+  .milk-form-row-two #farmer-reg-lookup-input,
+  .milk-form-row-two .select2-container .select2-selection--single {
+    min-height: 40px;
+    height: 40px;
+  }
+  .milk-form-row-two .select2-container .select2-selection--single {
+    display: flex;
+    align-items: center;
+  }
+  .milk-form-row-two .select2-container .select2-selection__rendered {
+    line-height: 38px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 2rem !important;
+  }
+  .milk-form-row-two .select2-container .select2-selection__arrow {
+    height: 38px !important;
+  }
+  .milk-collection-farmer-route-row {
+    display: block;
+    width: 100%;
+  }
+  .milk-collection-farmer-route-row__farmer { width: 100%; }
+  .milk-collection-farmer-route-row__route { display: none; }
+  .milk-factor-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+    align-items: start;
+  }
+  .milk-factor-readings {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem;
+    margin: 0;
+  }
+  .milk-factor-readings .row.g-3 {
+    --bs-gutter-x: 0.75rem;
+    --bs-gutter-y: 0.75rem;
+  }
+  .farmer-lookup-result {
+    margin-top: 0.35rem;
+    font-size: 0.84rem;
+    color: #0f766e;
+    font-weight: 600;
+  }
+  .farmer-lookup-result.is-empty {
+    color: #64748b;
+    font-weight: 500;
+  }
+  @media (max-width: 767.98px) {
+    .milk-form-row-two {
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+    }
+    .milk-factor-two-col {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+  }
+  .farmer-lookup-result {
+    margin-top: 0.35rem;
+    font-size: 0.84rem;
+    color: #0f766e;
+    font-weight: 600;
+  }
+  .farmer-lookup-result.is-empty {
+    color: #64748b;
+    font-weight: 500;
+  }
+  @media (max-width: 576px) {
+    .milk-collection-card .card-body { padding: 0.9rem; }
+    .milk-collection-panel { padding: 0.75rem; }
+    .milk-factor-readings .row.g-3 { --bs-gutter-x: 0.65rem; --bs-gutter-y: 0.65rem; }
+    .milk-factor-readings .col-md-4 { width: 50%; }
+    .milk-factor-readings .col-md-4 label { font-size: 0.82rem; margin-bottom: 0.3rem; }
+    .milk-factor-topbar-actions .btn {
+      min-height: 36px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.875rem;
+    }
+  }
+</style>
+{% endblock %}
+{% block page_heading %}{% if object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions milk-factor-topbar-actions">
+  <button type="submit" form="milk-factor-form" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
+  <a href="{% url 'milk-factor-list' %}" class="btn btn-outline-secondary js-cancel-close-tab">Cancel</a>
+</div>
+{% endblock %}
+{% block content %}
+{{ collection_points_json|json_script:"collection-points-data" }}
+{{ farmers_route_json|json_script:"farmers-route-data" }}
+<div class="card milk-collection-card">
+  <div class="card-body">
+    <form
+      id="milk-factor-form"
+      method="post"
+      class="milk-factor-form"
+      action="{% if not object %}{% url 'milk-factor-add' %}{% else %}{% url 'milk-factor-edit' object.pk %}{% endif %}"
+      novalidate
+      data-ajax-create="{% if not object %}1{% endif %}"
+      data-duplicate-check-url="{% url 'milk-factor-duplicate-check' %}"
+      data-errors-on="{% if form.fat.errors %}fat{% elif form.collection_point.errors %}point{% elif form.route.errors or form.farmer.errors %}farmer{% endif %}"
+      data-object-source="{% if object %}{{ object.source }}{% endif %}"
+      data-object-point="{% if object and object.collection_point_id %}{{ object.collection_point_id }}{% endif %}"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="standalone" value="{% if request.GET.standalone == '1' %}1{% endif %}">
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="mb-4">
+        {{ form.source.errors }}
+        <div class="source-toggle-wrap">
+          <div class="visually-hidden" aria-hidden="true">
+            {% for sub in form.source %}
+              {{ sub.tag }}
+            {% endfor %}
+          </div>
+          <div class="source-segment" role="group" aria-label="Source">
+            <button type="button" class="source-segment__btn" data-source-value="point" id="source-btn-point">
+              <i class="bi bi-geo-alt-fill source-segment__icon" aria-hidden="true"></i>
+              <span class="source-segment__text">Collection point</span>
+            </button>
+            <button type="button" class="source-segment__btn" data-source-value="farmer" id="source-btn-farmer">
+              <i class="bi bi-person-badge source-segment__icon" aria-hidden="true"></i>
+              <span class="source-segment__text">Farmer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="milk-factor-two-col">
+      <div>
+      <div class="mb-3 milk-form-row-two" id="milk-factor-date-row">
+        <div class="form-col" id="milk-factor-date-col">
+          <div class="milk-factor-topbar-date">
+            <label class="form-label fw-semibold" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+            {{ form.date.errors }}
+            {{ form.date }}
+          </div>
+        </div>
+        <div class="form-col" id="route-date-inline-wrap">
+          <label class="form-label fw-semibold" for="{{ form.route.id_for_label }}">{{ form.route.label }}</label>
+          <div id="route-date-inline-slot"></div>
+        </div>
+      </div>
+      <div class="milk-collection-panel milk-collection-panel--point" id="field-collection-point" data-source-panel="point">
+        <div class="milk-collection-panel__title">Collection point</div>
+        <div class="milk-collection-point-route-row">
+          <div class="milk-collection-point-route-row__point">
+            <label class="form-label fw-semibold" for="point-combo-input">Point number</label>
+            <input
+              type="text"
+              class="form-control form-control-lg milk-collection-combo"
+              id="point-combo-input"
+              autocomplete="off"
+              list="point-datalist"
+              placeholder="e.g. 12 or pick from list"
+              inputmode="text"
+              aria-describedby="point-combo-hint"
+            >
+            <datalist id="point-datalist">
+              {% for p in collection_points_json %}
+              <option value="{{ p.label }}"></option>
+              {% endfor %}
+            </datalist>
+            <p class="form-text mb-0 mt-1" id="point-combo-hint"></p>
+          </div>
+          <div class="milk-collection-point-route-row__route">
+            <span class="form-label text-muted small text-uppercase fw-semibold mb-1 d-block milk-collection-route-label">Route (from point)</span>
+            <div class="route-chip route-chip--row" id="route-chip" aria-live="polite">—</div>
+          </div>
+        </div>
+        {{ form.collection_point.errors }}
+        <div class="visually-hidden" aria-hidden="true" id="point-fk-slot">
+          {{ form.collection_point }}
+        </div>
+        <div class="visually-hidden" aria-hidden="true" id="route-point-slot">
+          {{ form.route }}
+        </div>
+      </div>
+
+      <div class="milk-collection-panel milk-collection-panel--farmer d-none" id="field-farmer" data-source-panel="farmer">
+        <div class="milk-collection-panel__title">Farmer</div>
+        <div class="milk-collection-farmer-route-row">
+          <div class="milk-collection-farmer-route-row__farmer">
+            <div class="milk-form-row-two">
+              <div class="form-col">
+                <label class="form-label fw-semibold" for="farmer-reg-lookup-input">Farmer quick find (Reg last 5 digits)</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  id="farmer-reg-lookup-input"
+                  placeholder="e.g. 7 or 00007"
+                  inputmode="numeric"
+                  autocomplete="off"
+                >
+              </div>
+              <div class="form-col">
+                <label class="form-label fw-semibold" for="{{ form.farmer.id_for_label }}">{{ form.farmer.label }}</label>
+                {{ form.farmer.errors }}
+                {{ form.farmer }}
+              </div>
+            </div>
+          </div>
+          <div class="milk-collection-farmer-route-row__route" id="route-field-farmer-wrap">
+            <div id="route-farmer-select-slot"></div>
+            {{ form.route.errors }}
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div class="milk-factor-readings">
+        <h2 class="h6 fw-bold mb-3">Quality readings</h2>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.fat.id_for_label }}">FAT (%)</label>
+            {{ form.fat.errors }}
+            {{ form.fat }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.lr.id_for_label }}">LR</label>
+            {{ form.lr.errors }}
+            {{ form.lr }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.snf.id_for_label }}">
+              SNF (%)
+              <span
+                class="milk-factor-snf-tip"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Auto: SNF = (LR / 4) + (0.2 × FAT) + 0.36"
+                aria-label="SNF formula tooltip"
+              >?</span>
+            </label>
+            {{ form.snf.errors }}
+            {{ form.snf }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.alcohol_result.id_for_label }}">Alcohol</label>
+            {{ form.alcohol_result.errors }}
+            {{ form.alcohol_result }}
+            {{ form.alcohol }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.acidity.id_for_label }}">Acidity (%)</label>
+            {{ form.acidity.errors }}
+            {{ form.acidity }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="{{ form.kq.id_for_label }}">KQ</label>
+            {{ form.kq.errors }}
+            {{ form.kq }}
+          </div>
+        </div>
+      </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.16.1/dist/sweetalert2.all.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+  var form = document.querySelector('.milk-factor-form');
+  if (!form) return;
+
+  var elScript = document.getElementById('collection-points-data');
+  var points = [];
+  try {
+    points = elScript ? JSON.parse(elScript.textContent) : [];
+  } catch (e) {
+    points = [];
+  }
+
+  var labelToPoint = {};
+  var byNumber = {};
+  points.forEach(function (p) {
+    labelToPoint[p.label] = p;
+    var key = String(p.number || '').trim();
+    if (!byNumber[key]) byNumber[key] = [];
+    byNumber[key].push(p);
+  });
+
+  var panels = {
+    point: document.getElementById('field-collection-point'),
+    farmer: document.getElementById('field-farmer'),
+  };
+  var routeSelect = form.querySelector('#id_route');
+  var pointSelect = form.querySelector('#id_collection_point');
+  var dateInput = form.querySelector('#id_date') || form.querySelector('[name="date"]');
+  var comboInput = document.getElementById('point-combo-input');
+  var routeChip = document.getElementById('route-chip');
+  var hintEl = document.getElementById('point-combo-hint');
+  var routeFarmerSlot = document.getElementById('route-farmer-select-slot');
+  var routeDateInlineWrap = document.getElementById('route-date-inline-wrap');
+  var routeDateInlineSlot = document.getElementById('route-date-inline-slot');
+  var dateRow = document.getElementById('milk-factor-date-row');
+  var dateCol = document.getElementById('milk-factor-date-col');
+  var routePointSlot = document.getElementById('route-point-slot');
+  var farmerSelect = form.querySelector('#id_farmer');
+  var farmerLookupInput = document.getElementById('farmer-reg-lookup-input');
+  var farmerLookupResult = document.getElementById('farmer-lookup-result');
+  var elFarmersRoute = document.getElementById('farmers-route-data');
+  var duplicateCheckUrl = form.getAttribute('data-duplicate-check-url') || '';
+  var duplicateCheckKey = '';
+  var farmerRouteById = {};
+  var farmerByRegTail = {};
+  var farmerNameById = {};
+  var farmerMetaById = {};
+  var farmerOptionTextById = {};
+  var farmerOptionOrder = [];
+  try {
+    var frList = elFarmersRoute ? JSON.parse(elFarmersRoute.textContent) : [];
+    frList.forEach(function (f) {
+      var fid = String(f.id);
+      farmerRouteById[fid] = f.route_id;
+      farmerNameById[fid] = f.common_name || '';
+      farmerMetaById[fid] = f;
+      var reg = String(f.registration_number || '').trim();
+      var tail = reg.slice(-5);
+      if (/^\d{5}$/.test(tail)) {
+        farmerByRegTail[tail] = f;
+      }
+    });
+  } catch (e) {
+    farmerRouteById = {};
+    farmerByRegTail = {};
+    farmerNameById = {};
+    farmerMetaById = {};
+  }
+  if (farmerSelect) {
+    Array.prototype.forEach.call(farmerSelect.options, function (opt) {
+      var id = String(opt.value || '').trim();
+      if (!id) return;
+      farmerOptionTextById[id] = opt.textContent || farmerNameById[id] || id;
+      farmerOptionOrder.push(id);
+    });
+  }
+  var segmentBtns = form.querySelectorAll('.source-segment__btn');
+  var fatInput = form.querySelector('#id_fat');
+  var snfInput = form.querySelector('#id_snf');
+  var lrInput = form.querySelector('#id_lr');
+  var alcoholInput = form.querySelector('#id_alcohol_result');
+  var acidityInput = form.querySelector('#id_acidity');
+  var kqInput = form.querySelector('#id_kq');
+  var qualityDefaults = {
+    fat: fatInput ? String(fatInput.defaultValue || fatInput.value || '') : '',
+    snf: snfInput ? String(snfInput.defaultValue || snfInput.value || '') : '',
+    lr: lrInput ? String(lrInput.defaultValue || lrInput.value || '') : '',
+    alcohol: alcoholInput ? String(alcoholInput.defaultValue || alcoholInput.value || '') : '',
+    acidity: acidityInput ? String(acidityInput.defaultValue || acidityInput.value || '') : '',
+    kq: kqInput ? String(kqInput.defaultValue || kqInput.value || '') : '',
+  };
+
+  // Keep date in the form row (same as previous layout).
+
+  function parseDecimal(el) {
+    if (!el) return NaN;
+    var s = String(el.value || '').trim().replace(',', '.');
+    if (!s) return NaN;
+    var n = parseFloat(s);
+    return isNaN(n) ? NaN : n;
+  }
+
+  function format2(n) {
+    return (Math.round(n * 100) / 100).toFixed(2);
+  }
+
+  function autoComputeSnf() {
+    if (!snfInput) return;
+    var fat = parseDecimal(fatInput);
+    var lr = parseDecimal(lrInput);
+    if (isNaN(fat) || isNaN(lr)) return;
+    var snf = (lr / 4) + (0.2 * fat) + 0.36;
+    snfInput.value = format2(snf);
+  }
+
+  function currentSource() {
+    var el = form.querySelector('input[name="source"]:checked');
+    return el ? el.value : 'point';
+  }
+
+  function setRouteChip(text) {
+    if (routeChip) routeChip.textContent = text || '—';
+  }
+
+  function applyPoint(p) {
+    if (!p || !pointSelect || !routeSelect) return;
+    pointSelect.value = String(p.id);
+    routeSelect.value = String(p.route_id);
+    setRouteChip(p.route_code + ' — ' + p.route_name);
+    if (comboInput) comboInput.value = String(p.number != null ? p.number : '').trim();
+    if (hintEl) hintEl.textContent = '';
+  }
+
+  function clearPointSelection() {
+    if (pointSelect) pointSelect.value = '';
+    if (routeSelect && currentSource() === 'point') routeSelect.value = '';
+    setRouteChip('—');
+  }
+
+  function focusFat() {
+    if (!fatInput) return;
+    fatInput.focus();
+    if (typeof fatInput.select === 'function') {
+      fatInput.select();
+    }
+  }
+
+  function showPointLookupAlert(title, html, icon) {
+    icon = icon || 'info';
+    if (typeof Swal === 'undefined') {
+      if (hintEl) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        hintEl.textContent = tmp.textContent || html.replace(/<[^>]+>/g, ' ');
+      }
+      return;
+    }
+    if (hintEl) hintEl.textContent = '';
+    Swal.fire({
+      icon: icon,
+      title: title,
+      html: html,
+      confirmButtonText: 'OK',
+      allowEnterKey: true,
+      returnFocus: false,
+      buttonsStyling: false,
+      customClass: {
+        popup: 'milk-conflict-swal',
+        confirmButton: 'btn btn-primary',
+      },
+    });
+  }
+
+  function resolveComboValue(opts) {
+    opts = opts || {};
+    var silent = opts.silent === true;
+    if (!comboInput) return false;
+    var raw = comboInput.value.trim();
+    if (!raw) {
+      clearPointSelection();
+      if (hintEl) hintEl.textContent = '';
+      return false;
+    }
+    if (labelToPoint[raw]) {
+      applyPoint(labelToPoint[raw]);
+      return true;
+    }
+    var matches = byNumber[raw] || [];
+    if (matches.length === 1) {
+      applyPoint(matches[0]);
+      return true;
+    }
+    if (matches.length > 1) {
+      clearPointSelection();
+      if (comboInput) comboInput.value = raw;
+      if (silent) {
+        if (hintEl) {
+          hintEl.textContent =
+            'Several points use this number. Pick the full line (Route - Point - Name) from the list.';
+        }
+      } else {
+        showPointLookupAlert(
+          'Multiple matches',
+          '<p class="text-start mb-0">Several points use this number. Choose the full line from the list.</p>',
+          'warning'
+        );
+      }
+      return false;
+    }
+    clearPointSelection();
+    if (comboInput) comboInput.value = raw;
+    if (silent) {
+      if (hintEl) {
+        hintEl.textContent = 'No point matches. Check the number or pick from the list.';
+      }
+    } else {
+      showPointLookupAlert(
+        'No matching point',
+        '<p class="text-start mb-0">No point matches that number. Check the value or pick a row from the suggestion list.</p>',
+        'info'
+      );
+    }
+    return false;
+  }
+
+  function syncRouteVisibility() {
+    var src = currentSource();
+    var isPoint = src === 'point';
+    if (routeDateInlineWrap) {
+      routeDateInlineWrap.classList.toggle('d-none', isPoint);
+    }
+    if (panels.point) panels.point.classList.toggle('d-none', !isPoint);
+    if (panels.farmer) panels.farmer.classList.toggle('d-none', isPoint);
+    if (routeSelect) {
+      if (isPoint && routePointSlot && !routePointSlot.contains(routeSelect)) {
+        routePointSlot.appendChild(routeSelect);
+      } else if (!isPoint) {
+        if (routeDateInlineSlot && !routeDateInlineSlot.contains(routeSelect)) {
+          routeDateInlineSlot.appendChild(routeSelect);
+        }
+        if (routeFarmerSlot) routeFarmerSlot.innerHTML = '';
+      }
+    }
+    if (isPoint) {
+      var selId = pointSelect && pointSelect.value;
+      if (selId) {
+        var found = points.filter(function (p) { return String(p.id) === String(selId); })[0];
+        if (found) applyPoint(found);
+      } else {
+        resolveComboValue({ silent: true });
+      }
+    } else {
+      setRouteChip('—');
+      syncRouteFromFarmer();
+    }
+    segmentBtns.forEach(function (btn) {
+      var v = btn.getAttribute('data-source-value');
+      var on = v === src;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function focusPointCombo() {
+    if (currentSource() !== 'point' || !comboInput) return;
+    comboInput.focus();
+    if (typeof comboInput.select === 'function') {
+      comboInput.select();
+    }
+  }
+
+  function scheduleFocusPointCombo() {
+    window.setTimeout(focusPointCombo, 0);
+  }
+
+  function syncRouteFromFarmer() {
+    if (currentSource() !== 'farmer' || !farmerSelect || !routeSelect) return;
+    var fid = farmerSelect.value;
+    if (!fid) return;
+    var rid = farmerRouteById[fid];
+    if (rid != null && rid !== '') {
+      routeSelect.value = String(rid);
+    }
+    if (farmerLookupResult) {
+      var n = farmerNameById[String(fid)] || '';
+      farmerLookupResult.textContent = n ? ('Farmer: ' + n) : '—';
+      farmerLookupResult.classList.toggle('is-empty', !n);
+    }
+    checkDuplicateFactor(true);
+  }
+
+  function rebuildFarmersForRoute() {
+    if (!farmerSelect || !routeSelect) return;
+    var selectedRoute = String(routeSelect.value || '').trim();
+    var keepFarmerId = String(farmerSelect.value || '').trim();
+    var nextOptions = ['<option value=""></option>'];
+    var keepStillValid = false;
+    farmerOptionOrder.forEach(function (fid) {
+      var meta = farmerMetaById[fid];
+      if (!meta) return;
+      var farmerRoute = String(meta.route_id || '').trim();
+      if (selectedRoute && farmerRoute !== selectedRoute) return;
+      if (fid === keepFarmerId) keepStillValid = true;
+      nextOptions.push(
+        '<option value="' + fid + '">' +
+        String(farmerOptionTextById[fid] || farmerNameById[fid] || fid) +
+        '</option>'
+      );
+    });
+    farmerSelect.innerHTML = nextOptions.join('');
+    farmerSelect.value = keepStillValid ? keepFarmerId : '';
+    if (window.jQuery && jQuery.fn && jQuery.fn.select2 && jQuery(farmerSelect).hasClass('select2-hidden-accessible')) {
+      jQuery(farmerSelect).trigger('change.select2');
+    }
+    if (!keepStillValid && farmerLookupResult && currentSource() === 'farmer') {
+      farmerLookupResult.textContent = selectedRoute
+        ? 'Select a farmer from the selected route.'
+        : 'Select a farmer.';
+      farmerLookupResult.classList.add('is-empty');
+    }
+    checkDuplicateFactor(true);
+  }
+
+  function checkDuplicateFactor(silent) {
+    if (!duplicateCheckUrl) return;
+    var src = currentSource();
+    var dateVal = dateInput ? String(dateInput.value || '').trim() : '';
+    var routeVal = routeSelect ? String(routeSelect.value || '').trim() : '';
+    var pointVal = pointSelect ? String(pointSelect.value || '').trim() : '';
+    var farmerVal = farmerSelect ? String(farmerSelect.value || '').trim() : '';
+    if (!dateVal || !routeVal) return;
+    if (src === 'point' && !pointVal) return;
+    if (src === 'farmer' && !farmerVal) return;
+    var key = [src, dateVal, routeVal, pointVal, farmerVal].join('|');
+    if (silent && key === duplicateCheckKey) return;
+    duplicateCheckKey = key;
+    var url = new URL(duplicateCheckUrl, window.location.origin);
+    url.searchParams.set('source', src);
+    url.searchParams.set('date', dateVal);
+    url.searchParams.set('route', routeVal);
+    if (src === 'point') url.searchParams.set('point', pointVal);
+    if (src === 'farmer') url.searchParams.set('farmer', farmerVal);
+    fetch(url.toString(), {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+      .then(function (r) {
+        var ct = r.headers.get('content-type') || '';
+        if (ct.indexOf('application/json') === -1) return null;
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || data.ok !== true || !data.exists) return;
+        if (typeof Swal === 'undefined') return;
+        var txt = src === 'farmer'
+          ? 'Duplicate found: this farmer already has a milk factor for selected date and route.'
+          : 'Duplicate found: this collection point already has a milk factor for selected date and route.';
+        Swal.fire({
+          icon: 'warning',
+          title: 'Duplicate record',
+          text: txt,
+          confirmButtonText: 'OK',
+          buttonsStyling: false,
+          customClass: {
+            popup: 'milk-conflict-swal',
+            confirmButton: 'btn btn-primary',
+          },
+        });
+      })
+      .catch(function () {
+        return;
+      });
+  }
+
+  function normalizeRegLookupDigits(raw) {
+    var digits = String(raw || '').replace(/\D+/g, '');
+    if (!digits) return '';
+    if (digits.length > 5) digits = digits.slice(-5);
+    return digits.padStart(5, '0');
+  }
+
+  function applyFarmerLookup(fromEnter) {
+    if (!farmerLookupInput || !farmerSelect) return false;
+    var normalized = normalizeRegLookupDigits(farmerLookupInput.value);
+    if (!normalized) {
+      if (farmerLookupResult) {
+        farmerLookupResult.textContent = 'Type registration last 5 digits and press Enter.';
+        farmerLookupResult.classList.add('is-empty');
+      }
+      return false;
+    }
+    farmerLookupInput.value = normalized;
+    var match = farmerByRegTail[normalized];
+    if (!match) {
+      if (farmerLookupResult) {
+        farmerLookupResult.textContent = 'No farmer found for ' + normalized + '.';
+        farmerLookupResult.classList.add('is-empty');
+      }
+      return false;
+    }
+    if (routeSelect) {
+      var selectedRouteId = String(routeSelect.value || '').trim();
+      var matchRouteId = String(match.route_id || '').trim();
+      if (selectedRouteId && matchRouteId !== selectedRouteId) {
+        if (farmerLookupResult) {
+          farmerLookupResult.textContent = 'No farmer found for ' + normalized + ' in selected route.';
+          farmerLookupResult.classList.add('is-empty');
+        }
+        return false;
+      }
+    }
+    farmerSelect.value = String(match.id);
+    if (window.jQuery && jQuery.fn && jQuery.fn.select2 && jQuery(farmerSelect).hasClass('select2-hidden-accessible')) {
+      jQuery(farmerSelect).val(String(match.id)).trigger('change');
+    }
+    syncRouteFromFarmer();
+    if (farmerLookupResult) {
+      farmerLookupResult.textContent = 'Farmer: ' + (match.common_name || '');
+      farmerLookupResult.classList.remove('is-empty');
+    }
+    if (fromEnter) {
+      focusFat();
+    }
+    checkDuplicateFactor(true);
+    return true;
+  }
+
+  function focusFarmerSelect() {
+    if (currentSource() !== 'farmer') return;
+    if (farmerLookupInput) {
+      farmerLookupInput.focus();
+      if (typeof farmerLookupInput.select === 'function') farmerLookupInput.select();
+      return;
+    }
+    if (!farmerSelect) return;
+    farmerSelect.focus();
+  }
+
+  function scheduleFocusFarmer() {
+    window.setTimeout(focusFarmerSelect, 0);
+  }
+
+  function setSource(value) {
+    var radio = form.querySelector('input[name="source"][value="' + value + '"]');
+    if (radio) {
+      radio.checked = true;
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
+  segmentBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = btn.getAttribute('data-source-value');
+      setSource(next);
+      if (next === 'point') {
+        scheduleFocusPointCombo();
+      } else if (next === 'farmer') {
+        scheduleFocusFarmer();
+      }
+    });
+  });
+
+  form.querySelectorAll('input[name="source"]').forEach(function (r) {
+    r.addEventListener('change', syncRouteVisibility);
+  });
+
+  if (comboInput) {
+    comboInput.addEventListener('input', function () {
+      var raw = comboInput.value.trim();
+      if (labelToPoint[raw]) {
+        applyPoint(labelToPoint[raw]);
+      }
+    });
+    comboInput.addEventListener('change', resolveComboValue);
+    comboInput.addEventListener('blur', resolveComboValue);
+    comboInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (resolveComboValue()) {
+        checkDuplicateFactor(true);
+        focusFat();
+      }
+    });
+  }
+
+  if (farmerSelect) {
+    farmerSelect.addEventListener('change', syncRouteFromFarmer);
+    farmerSelect.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (currentSource() !== 'farmer') return;
+      if (!farmerSelect.value) return;
+      e.preventDefault();
+      syncRouteFromFarmer();
+      if (routeSelect && routeSelect.value) {
+        focusFat();
+      } else if (routeSelect) {
+        routeSelect.focus();
+      }
+    });
+    if (window.jQuery && jQuery.fn && jQuery.fn.select2) {
+      jQuery(farmerSelect).select2({
+        width: '100%',
+        placeholder: 'Search farmer',
+        allowClear: true
+      }).on('change', function () {
+        syncRouteFromFarmer();
+        checkDuplicateFactor(true);
+      });
+    }
+  }
+
+  if (farmerLookupInput) {
+    farmerLookupInput.addEventListener('blur', function () {
+      applyFarmerLookup(false);
+    });
+    farmerLookupInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      applyFarmerLookup(true);
+    });
+  }
+
+  if (routeSelect) {
+    routeSelect.addEventListener('change', function () {
+      if (currentSource() === 'farmer') {
+        rebuildFarmersForRoute();
+      } else {
+        checkDuplicateFactor(true);
+      }
+    });
+    routeSelect.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      if (currentSource() !== 'farmer') return;
+      if (!routeSelect.value || !farmerSelect || !farmerSelect.value) return;
+      e.preventDefault();
+      focusFat();
+    });
+  }
+
+  if (dateInput) {
+    dateInput.addEventListener('change', function () {
+      duplicateCheckKey = '';
+      checkDuplicateFactor(true);
+    });
+  }
+
+  if (fatInput) {
+    fatInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (lrInput) lrInput.focus();
+    });
+    fatInput.addEventListener('input', autoComputeSnf);
+    fatInput.addEventListener('blur', autoComputeSnf);
+  }
+
+  if (lrInput) {
+    lrInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      autoComputeSnf();
+      if (alcoholInput) alcoholInput.focus();
+    });
+    lrInput.addEventListener('input', autoComputeSnf);
+    lrInput.addEventListener('blur', autoComputeSnf);
+  }
+
+  if (alcoholInput) {
+    alcoholInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (acidityInput) acidityInput.focus();
+    });
+  }
+
+  if (acidityInput) {
+    acidityInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (kqInput) kqInput.focus();
+    });
+  }
+
+  if (kqInput) {
+    kqInput.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        form.submit();
+      }
+    });
+  }
+
+  function showDuplicateAlert(kind) {
+    if (typeof Swal === 'undefined') return;
+    var txt = kind === 'farmer'
+      ? 'This farmer already has a milk factor entry for this date and route.'
+      : 'This collection point already has a milk factor entry for this date and route.';
+    Swal.fire({
+      icon: 'warning',
+      title: 'Already recorded today',
+      text: txt,
+      confirmButtonText: 'OK',
+      buttonsStyling: false,
+      customClass: {
+        popup: 'milk-conflict-swal',
+        confirmButton: 'btn btn-primary',
+      },
+    });
+  }
+
+  function showValidationAlert(payload) {
+    if (typeof Swal === 'undefined') return;
+    var lines = [];
+    if (payload && payload.errors) {
+      Object.keys(payload.errors).forEach(function (k) {
+        var msgs = payload.errors[k];
+        if (!Array.isArray(msgs)) return;
+        msgs.forEach(function (m) {
+          if (!m || !m.message) return;
+          lines.push((k === '__all__' ? '' : (k + ': ')) + m.message);
+        });
+      });
+    }
+    if (!lines.length) lines.push('Could not save. Please check the form.');
+    Swal.fire({
+      icon: 'error',
+      title: 'Could not save',
+      text: lines.join(' | '),
+      confirmButtonText: 'OK',
+      buttonsStyling: false,
+      customClass: {
+        popup: 'milk-conflict-swal',
+        confirmButton: 'btn btn-primary',
+      },
+    });
+  }
+
+  function resetFactorFormAfterSave() {
+    if (currentSource() === 'point') {
+      if (comboInput) comboInput.value = '';
+      clearPointSelection();
+      scheduleFocusPointCombo();
+    } else {
+      if (farmerLookupInput) farmerLookupInput.value = '';
+      if (farmerSelect) {
+        farmerSelect.value = '';
+        if (window.jQuery && jQuery.fn && jQuery.fn.select2 && jQuery(farmerSelect).hasClass('select2-hidden-accessible')) {
+          jQuery(farmerSelect).val('').trigger('change');
+        }
+      }
+      scheduleFocusFarmer();
+    }
+    if (fatInput) fatInput.value = qualityDefaults.fat;
+    if (lrInput) lrInput.value = qualityDefaults.lr;
+    if (snfInput) snfInput.value = qualityDefaults.snf;
+    if (alcoholInput) alcoholInput.value = qualityDefaults.alcohol;
+    if (acidityInput) acidityInput.value = qualityDefaults.acidity;
+    if (kqInput) kqInput.value = qualityDefaults.kq;
+    autoComputeSnf();
+  }
+
+  var ajaxSaving = false;
+  form.addEventListener('submit', function (e) {
+    if (form.getAttribute('data-ajax-create') !== '1') return;
+    e.preventDefault();
+    if (ajaxSaving) return;
+    ajaxSaving = true;
+    var fd = new FormData(form);
+    var action = form.getAttribute('action') || window.location.pathname;
+    fetch(action, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin',
+    })
+      .then(function (r) {
+        var ct = r.headers.get('content-type') || '';
+        if (ct.indexOf('application/json') !== -1) return r.json();
+        return { ok: false };
+      })
+      .then(function (data) {
+        if (data && data.ok === true) {
+          if (window.location.search.indexOf('standalone=1') !== -1) {
+            resetFactorFormAfterSave();
+            return;
+          }
+          if (data.redirect_url) {
+            window.location.assign(data.redirect_url);
+            return;
+          }
+          window.location.assign("{% url 'milk-factor-list' %}");
+          return;
+        }
+        if (data && data.duplicate) {
+          showDuplicateAlert(data.duplicate_kind || 'point');
+          return;
+        }
+        showValidationAlert(data || {});
+      })
+      .catch(function () {
+        showValidationAlert({});
+      })
+      .finally(function () {
+        ajaxSaving = false;
+      });
+  });
+
+  var objectSource = String(form.getAttribute('data-object-source') || '').trim();
+  var objectPointId = String(form.getAttribute('data-object-point') || '').trim();
+  if (objectSource === 'farmer') {
+    setSource('farmer');
+  }
+  if (objectPointId) {
+    (function () {
+      var _p = points.filter(function (p) {
+        return String(p.id) === objectPointId;
+      })[0];
+      if (_p) applyPoint(_p);
+    })();
+  }
+
+  syncRouteVisibility();
+  rebuildFarmersForRoute();
+  checkDuplicateFactor(true);
+  if (snfInput) {
+    snfInput.readOnly = true;
+    snfInput.classList.add('field-readonly');
+  }
+  autoComputeSnf();
+
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    if (window.bootstrap && window.bootstrap.Tooltip) {
+      bootstrap.Tooltip.getOrCreateInstance(el);
+    }
+  });
+
+  var errOn = form.getAttribute('data-errors-on') || '';
+  if (errOn === 'fat' && fatInput) {
+    fatInput.focus();
+    if (typeof fatInput.select === 'function') {
+      fatInput.select();
+    }
+  } else if (errOn === 'farmer') {
+    scheduleFocusFarmer();
+  } else if (errOn === 'point') {
+    scheduleFocusPointCombo();
+  } else if (currentSource() === 'farmer') {
+    scheduleFocusFarmer();
+  } else if (currentSource() === 'point') {
+    scheduleFocusPointCombo();
+  }
+
+  (function showConstraintAlertOnLoad() {
+    if (typeof Swal === 'undefined') return;
+    var messages = [];
+    form.querySelectorAll('.errorlist li').forEach(function (li) {
+      var t = String(li.textContent || '').trim();
+      if (t) messages.push(t);
+    });
+    if (!messages.length) return;
+    var merged = messages.join(' | ');
+    var isPointDup = merged.indexOf('uniq_daily_route_point_factor') !== -1;
+    var isFarmerDup = merged.indexOf('uniq_daily_route_farmer_factor') !== -1;
+    if (!isPointDup && !isFarmerDup) return;
+    var msg = isPointDup
+      ? 'This collection point already has a milk factor entry for this date and route.'
+      : 'This farmer already has a milk factor entry for this date and route.';
+    Swal.fire({
+      icon: 'warning',
+      title: 'Already recorded today',
+      text: msg,
+      confirmButtonText: 'OK',
+      buttonsStyling: false,
+      customClass: {
+        popup: 'milk-conflict-swal',
+        confirmButton: 'btn btn-primary',
+      },
+    });
+  })();
+
+  var cancelLink = document.querySelector('.js-cancel-close-tab');
+  if (cancelLink && window.location.search.indexOf('standalone=1') !== -1) {
+    cancelLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.open('', '_self');
+      window.close();
+    });
+  }
+})();
+</script>
+{% endblock %}

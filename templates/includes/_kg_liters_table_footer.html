@@ -1,0 +1,14 @@
+{% if totals.count %}
+<tfoot>
+  <tr>
+    <th colspan="{{ label_colspan }}" class="text-end">Totals</th>
+    <th class="text-end dt-foot-total">{{ totals.total_kg }}</th>
+    <th class="text-end dt-foot-total">{{ totals.total_liters }}</th>
+    {% if trailing_colspan %}
+    <th colspan="{{ trailing_colspan }}" class="none"></th>
+    {% else %}
+    <th class="none"></th>
+    {% endif %}
+  </tr>
+</tfoot>
+{% endif %}

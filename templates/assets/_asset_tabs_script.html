@@ -1,0 +1,44 @@
+<script>
+(function () {
+  var root = document.querySelector("[data-asset-tabs]");
+  if (!root) return;
+  var tabs = Array.prototype.slice.call(root.querySelectorAll("[data-asset-tab]"));
+  var panels = Array.prototype.slice.call(document.querySelectorAll("[data-asset-panel]"));
+  var valid = {};
+  tabs.forEach(function (tab) {
+    valid[tab.getAttribute("data-asset-tab")] = true;
+  });
+  function activate(id, pushHash) {
+    if (!valid[id]) return;
+    tabs.forEach(function (tab) {
+      var on = tab.getAttribute("data-asset-tab") === id;
+      tab.classList.toggle("is-active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    panels.forEach(function (panel) {
+      panel.classList.toggle("is-active", panel.getAttribute("data-asset-panel") === id);
+    });
+    if (pushHash && history.replaceState) {
+      history.replaceState(null, "", "#" + id);
+    }
+  }
+  var initial = (location.hash || "").replace(/^#/, "");
+  if (!valid[initial]) {
+    initial = tabs[0] ? tabs[0].getAttribute("data-asset-tab") : "";
+  }
+  if (initial) activate(initial, false);
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      activate(tab.getAttribute("data-asset-tab"), true);
+    });
+  });
+  document.querySelectorAll(".js-asset-tab-link").forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      var id = el.getAttribute("data-asset-tab") || (el.getAttribute("href") || "").replace(/^#/, "");
+      if (!valid[id]) return;
+      e.preventDefault();
+      activate(id, true);
+    });
+  });
+})();
+</script>

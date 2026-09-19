@@ -1,0 +1,170 @@
+{% load format_extras %}
+{% if awaiting_driver %}
+<div class="alert alert-primary no-print mb-3" id="record-payment">
+  <strong>Awaiting accept / reject</strong>
+  <div class="small mb-0">This collection-point issue is pending accept/reject (route driver, Admin, or Branch Manager). Stock and payment sheet are updated only after it is accepted.</div>
+</div>
+{% elif driver_rejected %}
+<div class="alert alert-danger no-print mb-3" id="record-payment">
+  <strong>Rejected</strong>
+  <div class="small mb-0">Stock was returned. This issue will not appear on the payment sheet.</div>
+</div>
+{% elif perms.reports.record_manual_settlement and not is_branch_transfer and payment_eligible %}
+<div class="card no-print mb-3 goods-issue-payment-card" id="record-payment">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+      <div>
+        <h6 class="mb-1">Record payment</h6>
+        <p class="small text-muted mb-0">Pay the full receipt or selected lines when the farmer or collection point pays manually.</p>
+      </div>
+      <div class="text-end small">
+        <div><span class="text-muted">Paid:</span> <strong>{{ payment_settled_amount|money }}</strong></div>
+        <div><span class="text-muted">Pending:</span> <strong class="text-warning-emphasis">{{ payment_pending_amount|money }}</strong></div>
+      </div>
+    </div>
+
+    {% if payment_pending_amount > 0 %}
+    <form
+      method="post"
+      action="{% url 'farmer-goods-issue-settle' batch_ref %}"
+      class="goods-partial-payment-form"
+      id="goods-partial-payment-form"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ payment_next_url|default:request.get_full_path }}">
+      <input type="hidden" name="action" value="partial" id="goods-payment-action">
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-2 goods-payment-lines-table">
+          <thead class="table-light">
+            <tr>
+              <th class="goods-payment-select-col">
+                <input
+                  type="checkbox"
+                  class="form-check-input custom-check js-goods-pay-select-all"
+                  id="goods-pay-select-all"
+                  aria-label="Select all pending lines"
+                >
+              </th>
+              <th>Product</th>
+              <th class="text-end">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in issue_lines %}
+            {% if not row.issue.is_settled %}
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  class="form-check-input custom-check js-goods-pay-line"
+                  name="line_ids"
+                  value="{{ row.issue.pk }}"
+                  data-amount="{{ row.line_amount }}"
+                >
+              </td>
+              <td>{{ row.issue.product.name }}</td>
+              <td class="text-end">{{ row.line_amount|money }}</td>
+              <td><span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span></td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </form>
+    <form
+      method="post"
+      action="{% url 'farmer-goods-issue-settle' batch_ref %}"
+      id="goods-full-payment-form"
+      class="d-none js-swal-settlement-form"
+      aria-hidden="true"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ payment_next_url|default:request.get_full_path }}">
+      <input type="hidden" name="action" value="full">
+    </form>
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+      <span class="small text-muted me-auto">Selected total: <strong id="goods-selected-total">0.00</strong></span>
+      <button
+        type="submit"
+        form="goods-partial-payment-form"
+        class="btn btn-sm btn-primary js-goods-partial-pay-btn js-swal-settlement-trigger"
+        data-validate-goods-lines="1"
+        data-swal-title="Record partial payment"
+        data-swal-text="Mark the selected lines as paid."
+      >Pay selected</button>
+      <button
+        type="submit"
+        form="goods-full-payment-form"
+        class="btn btn-sm btn-success js-swal-settlement-trigger"
+        data-swal-title="Record full payment"
+        data-swal-text="Mark all pending lines on this receipt as paid ({{ payment_pending_amount|money }})."
+      >Pay full ({{ payment_pending_amount|money }})</button>
+    </div>
+    {% endif %}
+
+    {% if payment_settled_amount > 0 %}
+    <div class="{% if payment_pending_amount > 0 %}mt-3 pt-3 border-top{% endif %}">
+      <div class="small fw-semibold text-muted mb-2">Paid lines</div>
+      <form method="post" action="{% url 'farmer-goods-issue-settle' batch_ref %}" id="goods-unsettle-form" class="js-swal-submit-guard">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ payment_next_url|default:request.get_full_path }}">
+        <input type="hidden" name="action" value="unsettle_lines">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-2">
+            <thead class="table-light">
+              <tr>
+                <th style="width:2.5rem;"></th>
+                <th>Product</th>
+                <th class="text-end">Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in issue_lines %}
+              {% if row.issue.is_settled %}
+              <tr>
+                <td>
+                  <input
+                    type="checkbox"
+                    class="form-check-input custom-check"
+                    name="line_ids"
+                    value="{{ row.issue.pk }}"
+                  >
+                </td>
+                <td>{{ row.issue.product.name }}</td>
+                <td class="text-end">{{ row.line_amount|money }}</td>
+                <td>
+                  <span class="badge text-bg-success-subtle text-success-emphasis"{% if row.issue.settled_at %} title="Paid {{ row.issue.settled_at|date:'Y-m-d' }}{% if row.issue.settlement_note %} — {{ row.issue.settlement_note }}{% endif %}"{% endif %}>Paid</span>
+                </td>
+              </tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button
+            type="submit"
+            class="btn btn-sm btn-outline-warning js-swal-submit-trigger"
+            data-swal-title="Undo payment for selected lines?"
+            data-swal-text="Selected lines will count toward deductions again."
+          >Undo selected</button>
+          <button
+            type="submit"
+            class="btn btn-sm btn-outline-danger js-swal-submit-trigger"
+            name="action"
+            value="unsettle_all"
+            data-swal-title="Undo all payments on this receipt?"
+            data-swal-text="Every paid line will be marked pending again."
+          >Undo all payments</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

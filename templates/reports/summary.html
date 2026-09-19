@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Daily summary · Canmee Dairies{% endblock %}
+{% block page_heading %}Daily summary{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Daily / periodic summary</h1>
+    <p class="page-subtitle">Filter by date range, route, collection point, or farmer.</p>
+  </div>
+</div>
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end filter-bar" id="summary-filter-form">
+      <div class="col-12 col-md-auto" style="min-width: 17rem;">
+        <label class="form-label small text-muted mb-1">Date range</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-funnel"></i></span>
+          <input type="text" class="form-control border-start-0 js-datepicker-range" placeholder="Filter by date range" autocomplete="off" readonly aria-label="Filter by date range">
+        </div>
+        <input type="hidden" name="start" value="{{ request.GET.start|default:'' }}">
+        <input type="hidden" name="end" value="{{ request.GET.end|default:'' }}">
+      </div>
+      <div class="col-12 col-md-auto flex-grow-1">
+        <label class="form-label small text-muted mb-1">Branches</label>
+        <select name="branches" class="form-select" multiple>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' in selected_branches %}selected{% endif %}>{{ b.code }} - {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-auto">
+        <div class="form-check mt-4">
+          <input class="form-check-input" type="checkbox" value="1" name="all_branches" id="allBranches" {% if request.GET.all_branches == '1' %}checked{% endif %}>
+          <label class="form-check-label" for="allBranches">
+            All branches (company total)
+          </label>
+        </div>
+      </div>
+      <div class="col-12 col-md-auto flex-grow-1">
+        <label class="form-label small text-muted mb-1">Route</label>
+        <select name="route" class="form-select">
+          <option value="">All routes</option>
+          {% for r in routes %}
+          <option value="{{ r.id }}" data-branch-id="{{ r.branch_id|default:'' }}" {% if request.GET.route == r.pk|stringformat:"d" %}selected{% endif %}>{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-auto flex-grow-1">
+        <label class="form-label small text-muted mb-1">Point</label>
+        <select name="point" class="form-select">
+          <option value="">All points</option>
+          {% for p in points %}
+          <option value="{{ p.id }}" data-branch-id="{{ p.route.branch_id|default:'' }}" {% if request.GET.point == p.pk|stringformat:"d" %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-auto flex-grow-1">
+        <label class="form-label small text-muted mb-1">Farmer</label>
+        <select name="farmer" class="form-select">
+          <option value="">All farmers</option>
+          {% for f in farmers %}<option value="{{ f.id }}" {% if request.GET.farmer == f.pk|stringformat:"d" %}selected{% endif %}>{{ f.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-auto">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% if perms.reports.view_farmerpaymentsheet %}
+  <a class="btn btn-outline-primary btn-sm" href="{% url 'farmer-payment-sheet' %}"><i class="bi bi-receipt me-1"></i>PaymentSheet</a>
+  {% endif %}
+  {% if perms.collections.view_milkcollection %}
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'export-csv' %}"><i class="bi bi-filetype-csv me-1"></i>CSV</a>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'export-excel' %}"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel</a>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'export-pdf' %}"><i class="bi bi-filetype-pdf me-1"></i>PDF</a>
+  {% endif %}
+</div>
+{% if perms.collections.add_milkcollection %}
+<form method="post" action="{% url 'import-collections' %}" enctype="multipart/form-data" class="import-row mb-4">
+  {% csrf_token %}
+  <input type="file" name="file" class="form-control form-control-sm" style="max-width: 280px;" required>
+  <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-upload me-1"></i>Import collections</button>
+</form>
+{% endif %}
+<div class="card card-table">
+  <div class="card-body p-0 table-wrap">
+    <table class="table table-hover datatable mb-0">
+      <thead><tr><th>Date</th><th>Branch</th><th>Route</th><th>Point / farmer</th><th>Kg</th><th>Liters</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.date }}</td>
+          <td>{{ row.branch__name|default:'—' }}</td>
+          <td>{{ row.route__name }}</td>
+          <td>{{ row.place_name }}</td>
+          <td>{{ row.total_kg }}</td>
+          <td>{{ row.total_liters }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById("summary-filter-form");
+  if (!form) return;
+  var branchSelect = form.querySelector('select[name="branches"]');
+  var routeSelect = form.querySelector('select[name="route"]');
+  var pointSelect = form.querySelector('select[name="point"]');
+  if (!branchSelect || !routeSelect || !pointSelect) return;
+
+  function selectedBranchIds() {
+    return Array.from(branchSelect.options)
+      .filter(function (o) { return o.selected; })
+      .map(function (o) { return o.value; });
+  }
+
+  function filterOptions(selectEl, selectedIds) {
+    Array.from(selectEl.options).forEach(function (opt, idx) {
+      if (idx === 0) {
+        opt.hidden = false;
+        return;
+      }
+      var branchId = opt.getAttribute("data-branch-id") || "";
+      var visible = !selectedIds.length || selectedIds.indexOf(branchId) !== -1;
+      opt.hidden = !visible;
+      if (!visible && opt.selected) opt.selected = false;
+    });
+  }
+
+  function applyBranchFilter() {
+    var ids = selectedBranchIds();
+    filterOptions(routeSelect, ids);
+    filterOptions(pointSelect, ids);
+  }
+
+  branchSelect.addEventListener("change", applyBranchFilter);
+  applyBranchFilter();
+})();
+</script>
+{% endblock %}

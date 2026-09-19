@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+{% block page_heading %}{% if object %}Edit{% else %}Add{% endif %} Raw Milk Bulk Collection{% endblock %}
+{% block extra_css %}
+<style>
+  .bulk-form-grid-three {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+  }
+  .bulk-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+  }
+  .bulk-form-grid .full {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 767.98px) {
+    .bulk-form-grid-three,
+    .bulk-form-grid {
+      grid-template-columns: 1fr;
+    }
+    .bulk-form-grid .full {
+      grid-column: auto;
+    }
+  }
+  .qty-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--color-surface-muted, #f1f5f9);
+    border: 1px solid var(--color-border, #e2e8f0);
+    gap: 2px;
+  }
+  .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: var(--color-text-muted, #64748b);
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .qty-segment__btn:hover {
+    color: var(--color-text, #0f172a);
+    background: rgba(255, 255, 255, 0.6);
+  }
+  .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .raw-milk-supplier-wrap .input-group .form-select {
+    min-width: 0;
+  }
+  .raw-milk-supplier-modal .modal-content {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if object %}Edit{% else %}Add{% endif %} Raw milk bulk collection</h1>
+    <p class="page-subtitle">Dispatch-like entry screen. Saves as branch milk collection stock.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card js-master-form-enter-next">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="bulk-form-grid-three">
+        <div>
+          {{ form.date.errors }}
+          {{ form.date.label_tag }}
+          {{ form.date }}
+          {% if form.date.help_text %}
+          <p class="form-text text-muted small mb-0">{{ form.date.help_text }}</p>
+          {% endif %}
+        </div>
+        <div>
+          {{ form.branch.errors }}
+          {{ form.branch.label_tag }}
+          {{ form.branch }}
+          {% if form.branch.help_text %}
+          <p class="form-text text-muted small mb-0">{{ form.branch.help_text }}</p>
+          {% endif %}
+        </div>
+        <div>
+          {{ form.dispatch_no.errors }}
+          {{ form.dispatch_no.label_tag }}
+          {{ form.dispatch_no }}
+          {% if form.dispatch_no.help_text %}
+          <p class="form-text text-muted small mb-0">{{ form.dispatch_no.help_text }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="bulk-form-grid mt-2">
+        <div class="raw-milk-supplier-wrap">
+          {{ form.supplier.errors }}
+          <label class="form-label" for="{{ form.supplier.id_for_label }}">{{ form.supplier.label }}</label>
+          <div class="input-group">
+            {{ form.supplier }}
+            {% if perms.suppliers.add_supplier %}
+            <button
+              type="button"
+              class="btn btn-outline-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#rawMilkSupplierModal"
+              title="Add supplier"
+              aria-label="Add supplier"
+            ><i class="bi bi-plus-lg"></i></button>
+            {% endif %}
+          </div>
+          {% if form.supplier.help_text %}
+          <p class="form-text text-muted small mb-0">{{ form.supplier.help_text }}</p>
+          {% endif %}
+        </div>
+        <div id="raw-milk-qty-wrap">
+          <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3 mb-2">
+            <label class="form-label fw-semibold mb-0" for="{{ form.liters.id_for_label }}" id="raw-milk-qty-label">Quantity (liters)</label>
+            <div class="qty-segment" role="group" aria-label="Quantity unit">
+              <button type="button" class="qty-segment__btn" data-qty-unit="kg" id="raw-milk-qty-unit-kg" aria-pressed="false">Kg</button>
+              <button type="button" class="qty-segment__btn is-active" data-qty-unit="liters" id="raw-milk-qty-unit-liters" aria-pressed="true">Liters</button>
+            </div>
+          </div>
+          {{ form.liters.errors }}
+          {{ form.liters }}
+          <input type="hidden" name="quantity_unit" id="id_quantity_unit" value="{% if request.POST.quantity_unit %}{{ request.POST.quantity_unit }}{% else %}liters{% endif %}">
+        </div>
+      </div>
+      <div class="bulk-form-grid mt-2">
+        {% for field in form %}
+        {% if field.name == "date" or field.name == "branch" or field.name == "dispatch_no" or field.name == "supplier" or field.name == "liters" %}
+        {% elif field.is_hidden %}
+        {{ field }}
+        {% else %}
+        <div class="{% if field.name == 'remarks' %}full{% endif %}">
+          {{ field.errors }}
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.help_text %}
+          <p class="form-text text-muted small mb-0">{{ field.help_text }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-check2 me-1"></i>Save</button>
+      <a href="{% url 'raw-milk-collection-list' %}" class="btn btn-outline-secondary mt-3 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+
+{% if perms.suppliers.add_supplier %}
+<div class="modal fade raw-milk-supplier-modal" id="rawMilkSupplierModal" tabindex="-1" aria-labelledby="rawMilkSupplierModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rawMilkSupplierModalLabel">New supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Creates a raw milk supplier and selects it on this form.</p>
+        <div class="mb-3">
+          <label class="form-label" for="raw-milk-quick-supplier-name">Name</label>
+          <input type="text" class="form-control" id="raw-milk-quick-supplier-name" maxlength="140" autocomplete="off" required>
+          <div class="invalid-feedback" data-rm-supplier-error="name"></div>
+        </div>
+        <div class="mb-0">
+          <label class="form-label" for="raw-milk-quick-supplier-phone">Phone (optional)</label>
+          <input type="text" class="form-control" id="raw-milk-quick-supplier-phone" maxlength="25" autocomplete="off">
+          <div class="invalid-feedback" data-rm-supplier-error="contact_number"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="raw-milk-quick-supplier-save">Save &amp; select</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if supplier_branch_options %}{{ supplier_branch_options|json_script:"supplier-branch-options" }}{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.querySelector('form.js-master-form-enter-next');
+  if (!form) return;
+
+  var KG_TO_L = Number("{{ MILK_LITER_FACTOR_JS }}");
+  var branchSelect = document.getElementById('id_branch');
+  var supplierSelect = document.getElementById('id_supplier');
+  var litersInput = document.getElementById('id_liters');
+  var supplierBranchOptions = [];
+  var supplierBranchOptionsEl = document.getElementById('supplier-branch-options');
+  if (supplierBranchOptionsEl) {
+    try { supplierBranchOptions = JSON.parse(supplierBranchOptionsEl.textContent || '[]'); } catch (e) {}
+  }
+
+  function filterSupplierOptions() {
+    if (!supplierSelect || !supplierBranchOptions.length) return;
+    var branchId = branchSelect ? parseInt(branchSelect.value, 10) : NaN;
+    var current = supplierSelect.value;
+    supplierSelect.innerHTML = '';
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '---------';
+    supplierSelect.appendChild(placeholder);
+    supplierBranchOptions.forEach(function (supplier) {
+      if (!branchId || (supplier.branches || []).indexOf(branchId) >= 0) {
+        var opt = new Option(supplier.name, supplier.id, false, String(supplier.id) === current);
+        supplierSelect.appendChild(opt);
+      }
+    });
+    if (current && supplierSelect.querySelector('option[value="' + current + '"]')) {
+      supplierSelect.value = current;
+    }
+  }
+
+  if (branchSelect) {
+    branchSelect.addEventListener('change', function () {
+      filterSupplierOptions();
+      if (String(branchSelect.value || '').trim()) {
+        focusLit(supplierSelect);
+      }
+    });
+    if (window.jQuery) {
+      window.jQuery(branchSelect).on('change select2:select', function () {
+        filterSupplierOptions();
+        if (String(branchSelect.value || '').trim()) {
+          focusLit(supplierSelect);
+        }
+      });
+    }
+  }
+  filterSupplierOptions();
+  window.setTimeout(filterSupplierOptions, 0);
+  var unitField = document.getElementById('id_quantity_unit');
+  var qtyLabel = document.getElementById('raw-milk-qty-label');
+  var qtyUnitBtns = form.querySelectorAll('#raw-milk-qty-wrap .qty-segment__btn[data-qty-unit]');
+  var qtyUnit = (unitField && unitField.value === 'kg') ? 'kg' : 'liters';
+
+  function focusLit(el) {
+    if (!el) return;
+    el.focus();
+    if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') return;
+    if (typeof el.select === 'function' && el.type !== 'email' && el.type !== 'date') {
+      try { el.select(); } catch (err) {}
+    }
+  }
+
+  if (supplierSelect) {
+    supplierSelect.addEventListener('change', function () {
+      if (String(supplierSelect.value || '').trim()) {
+        focusLit(litersInput);
+      }
+    });
+  }
+
+  function formatQty2(n) {
+    return (Math.round(n * 100) / 100).toFixed(2);
+  }
+
+  function parseQtyVal() {
+    if (!litersInput) return NaN;
+    var n = parseFloat(String(litersInput.value || '').replace(',', '.'));
+    return isNaN(n) ? NaN : n;
+  }
+
+  function applyQtyChrome(unit) {
+    qtyUnit = unit;
+    qtyUnitBtns.forEach(function (btn) {
+      var u = btn.getAttribute('data-qty-unit');
+      var on = u === unit;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    if (qtyLabel) {
+      qtyLabel.textContent = unit === 'liters' ? 'Quantity (liters)' : 'Quantity (kg)';
+    }
+    if (unitField) unitField.value = unit;
+  }
+
+  function switchQtyUnit(next) {
+    if (!litersInput || next === qtyUnit) return;
+    var n = parseQtyVal();
+    if (!isNaN(n)) {
+      if (qtyUnit === 'kg' && next === 'liters') {
+        litersInput.value = formatQty2(n * KG_TO_L);
+      } else if (qtyUnit === 'liters' && next === 'kg') {
+        litersInput.value = formatQty2(n / KG_TO_L);
+      }
+    }
+    applyQtyChrome(next);
+  }
+
+  function syncLitersForSubmit() {
+    if (!litersInput || !unitField) return;
+    unitField.value = qtyUnit;
+    var n = parseQtyVal();
+    if (isNaN(n)) return;
+    if (qtyUnit === 'kg') {
+      litersInput.value = formatQty2(n * KG_TO_L);
+    }
+  }
+
+  qtyUnitBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      switchQtyUnit(btn.getAttribute('data-qty-unit'));
+      if (litersInput) litersInput.focus();
+    });
+  });
+
+  var initialUnit = (unitField && unitField.value === 'kg') ? 'kg' : 'liters';
+  applyQtyChrome(initialUnit);
+  if (litersInput && litersInput.value && initialUnit === 'kg') {
+    var storedLiters = parseQtyVal();
+    if (!isNaN(storedLiters)) {
+      litersInput.value = formatQty2(storedLiters / KG_TO_L);
+    }
+  }
+
+  form.addEventListener('submit', syncLitersForSubmit, true);
+
+  function listFocusables() {
+    var sel =
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]),' +
+      'select, textarea';
+    var nodes = form.querySelectorAll(sel);
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.disabled) continue;
+      if (el.closest('[hidden]')) continue;
+      if (el.closest('.d-none')) continue;
+      out.push(el);
+    }
+    return out;
+  }
+
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    var target = e.target;
+    if (!form.contains(target)) return;
+    if (target.tagName === 'BUTTON' || target.tagName === 'A') return;
+
+    e.preventDefault();
+
+    if (target.tagName === 'TEXTAREA') return;
+
+    var focusables = listFocusables();
+    var idx = focusables.indexOf(target);
+    if (idx === -1) return;
+    var next = focusables[idx + 1];
+    if (!next) return;
+
+    next.focus();
+    if (next.tagName === 'SELECT' || next.tagName === 'TEXTAREA') return;
+    if (typeof next.select === 'function' && next.type !== 'email' && next.type !== 'date') {
+      try { next.select(); } catch (err) {}
+    }
+  });
+
+  function getCsrfToken() {
+    var input = form.querySelector('[name=csrfmiddlewaretoken]');
+    return input ? input.value : '';
+  }
+
+  function clearQuickSupplierErrors() {
+    document.querySelectorAll('[data-rm-supplier-error]').forEach(function (el) {
+      el.textContent = '';
+    });
+    document.querySelectorAll('#rawMilkSupplierModal .is-invalid').forEach(function (el) {
+      el.classList.remove('is-invalid');
+    });
+  }
+
+  function setQuickSupplierErrors(errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = document.getElementById(
+        field === 'name' ? 'raw-milk-quick-supplier-name' : 'raw-milk-quick-supplier-phone'
+      );
+      var msg = document.querySelector('[data-rm-supplier-error="' + field + '"]');
+      var text = (errors[field] || []).join(' ');
+      if (input) input.classList.add('is-invalid');
+      if (msg) msg.textContent = text;
+    });
+  }
+
+  function showQuickSupplierError(message) {
+    if (window.appAlert) {
+      window.appAlert(message, { icon: 'error', title: 'Could not create supplier' });
+      return;
+    }
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Could not create supplier',
+        text: message,
+        buttonsStyling: false,
+        customClass: { popup: 'app-swal-popup', confirmButton: 'btn btn-primary' }
+      });
+    }
+  }
+
+  function parseSupplierApiError(payload) {
+    if (!payload || typeof payload !== 'object') return 'Could not create supplier.';
+    if (payload.detail) return String(payload.detail);
+    var parts = [];
+    Object.keys(payload).forEach(function (key) {
+      var val = payload[key];
+      if (Array.isArray(val)) parts.push(val.join(' '));
+      else if (val) parts.push(String(val));
+    });
+    return parts.join(' ') || 'Could not create supplier.';
+  }
+
+  var quickSupplierModalEl = document.getElementById('rawMilkSupplierModal');
+  var quickSupplierSaveBtn = document.getElementById('raw-milk-quick-supplier-save');
+  var quickSupplierNameInput = document.getElementById('raw-milk-quick-supplier-name');
+
+  if (quickSupplierSaveBtn && supplierSelect) {
+    quickSupplierSaveBtn.addEventListener('click', function () {
+      clearQuickSupplierErrors();
+      var name = quickSupplierNameInput ? quickSupplierNameInput.value.trim() : '';
+      if (!name) {
+        if (quickSupplierNameInput) quickSupplierNameInput.classList.add('is-invalid');
+        setQuickSupplierErrors({ name: ['This field is required.'] });
+        if (quickSupplierNameInput) quickSupplierNameInput.focus();
+        return;
+      }
+
+      quickSupplierSaveBtn.disabled = true;
+      fetch('{% url "api-supplier-create" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          name: name,
+          category: 'raw_milk_supplier',
+          contact_number: (document.getElementById('raw-milk-quick-supplier-phone') || {}).value || '',
+          address: '',
+          email: '',
+          status: 'active',
+          branch: branchSelect && branchSelect.value ? branchSelect.value : null
+        })
+      })
+        .then(function (r) {
+          return r.json().then(function (payload) {
+            if (!r.ok) {
+              var err = new Error(parseSupplierApiError(payload));
+              err.payload = payload;
+              throw err;
+            }
+            return payload;
+          });
+        })
+        .then(function (data) {
+          var branchId = branchSelect ? parseInt(branchSelect.value, 10) : NaN;
+          supplierBranchOptions.push({
+            id: data.id,
+            name: data.name || name,
+            branches: branchId ? [branchId] : []
+          });
+          filterSupplierOptions();
+          var existing = supplierSelect.querySelector('option[value="' + data.id + '"]');
+          if (existing) {
+            existing.textContent = data.name || name;
+          } else {
+            supplierSelect.appendChild(new Option(data.name || name, data.id, true, true));
+          }
+          supplierSelect.value = String(data.id);
+          supplierSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          if (quickSupplierModalEl && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(quickSupplierModalEl).hide();
+          }
+          focusLit(litersInput);
+        })
+        .catch(function (err) {
+          if (err.payload && typeof err.payload === 'object') {
+            var fieldErrors = {};
+            Object.keys(err.payload).forEach(function (key) {
+              if (Array.isArray(err.payload[key])) fieldErrors[key] = err.payload[key];
+            });
+            if (Object.keys(fieldErrors).length) {
+              setQuickSupplierErrors(fieldErrors);
+              return;
+            }
+          }
+          showQuickSupplierError(String(err.message || err));
+        })
+        .finally(function () {
+          quickSupplierSaveBtn.disabled = false;
+        });
+    });
+  }
+
+  if (quickSupplierModalEl) {
+    quickSupplierModalEl.addEventListener('hidden.bs.modal', function () {
+      clearQuickSupplierErrors();
+      if (quickSupplierNameInput) quickSupplierNameInput.value = '';
+      var phoneInput = document.getElementById('raw-milk-quick-supplier-phone');
+      if (phoneInput) phoneInput.value = '';
+    });
+    quickSupplierModalEl.addEventListener('shown.bs.modal', function () {
+      if (quickSupplierNameInput) quickSupplierNameInput.focus();
+    });
+  }
+})();
+</script>
+{% endblock %}

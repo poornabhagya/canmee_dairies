@@ -1,0 +1,19 @@
+{% load format_extras %}
+{% with status=o.payment_status_from_amounts %}
+<div class="raw-milk-payment-cell" title="Paid {{ o.paid_amount|default:0|money }} / {{ o.total_amount|default:0|money }}">
+  <span class="raw-milk-payment-badge raw-milk-payment-badge--{{ status }}">
+    {% if status == "paid" %}Paid
+    {% elif status == "partial" %}Partial
+    {% else %}Pending{% endif %}
+  </span>
+  {% if o.total_amount %}
+  <span class="raw-milk-payment-meta">
+    {% if status == "paid" %}
+      {{ o.total_amount|money }}
+    {% else %}
+      {{ o.outstanding_amount|money }} due
+    {% endif %}
+  </span>
+  {% endif %}
+</div>
+{% endwith %}

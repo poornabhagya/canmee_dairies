@@ -1,0 +1,96 @@
+{# Shown after a Generate / reload / pay navigation while the sheet finishes painting. #}
+<div id="payment-sheet-boot-loader" class="payment-sheet-boot-loader" hidden aria-live="polite" aria-busy="true">
+  <div class="payment-sheet-boot-loader__card">
+    <div class="payment-sheet-boot-loader__title" id="payment-sheet-boot-loader-title">Loading payment sheet…</div>
+    <div class="progress mb-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60" style="height: 12px;">
+      <div id="payment-sheet-boot-loader-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 60%;"></div>
+    </div>
+    <div class="d-flex justify-content-between small text-muted">
+      <span id="payment-sheet-boot-loader-pct">60%</span>
+      <span>Finishing page load…</span>
+    </div>
+  </div>
+</div>
+<style>
+  .payment-sheet-boot-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 250, 252, 0.72);
+    backdrop-filter: blur(2px);
+  }
+  .payment-sheet-boot-loader[hidden] {
+    display: none !important;
+  }
+  .payment-sheet-boot-loader__card {
+    width: min(420px, calc(100vw - 2rem));
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    padding: 1.25rem 1.35rem;
+  }
+  .payment-sheet-boot-loader__title {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+</style>
+<script>
+(function () {
+  var KEY = "canmee.paymentSheetLoading";
+  var raw = null;
+  try {
+    raw = sessionStorage.getItem(KEY);
+    if (raw) sessionStorage.removeItem(KEY);
+  } catch (e) {
+    raw = null;
+  }
+  if (!raw) return;
+
+  var meta = {};
+  try {
+    meta = JSON.parse(raw) || {};
+  } catch (e2) {
+    meta = {};
+  }
+
+  var el = document.getElementById("payment-sheet-boot-loader");
+  if (!el) return;
+  var titleEl = document.getElementById("payment-sheet-boot-loader-title");
+  var bar = document.getElementById("payment-sheet-boot-loader-bar");
+  var pctEl = document.getElementById("payment-sheet-boot-loader-pct");
+  var isFarmer = meta.kind === "farmer";
+  if (titleEl) {
+    titleEl.textContent = meta.title || (isFarmer ? "Loading farmer payment sheet…" : "Loading payment sheet…");
+  }
+  el.hidden = false;
+
+  var pct = 60;
+  var timer = window.setInterval(function () {
+    pct = Math.min(94, pct + 2);
+    if (bar) bar.style.width = pct + "%";
+    if (pctEl) pctEl.textContent = Math.round(pct) + "%";
+    if (bar && bar.parentElement) {
+      bar.parentElement.setAttribute("aria-valuenow", String(Math.round(pct)));
+    }
+  }, 700);
+
+  function hide() {
+    window.clearInterval(timer);
+    if (bar) bar.style.width = "100%";
+    if (pctEl) pctEl.textContent = "100%";
+    window.setTimeout(function () {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }, 120);
+  }
+
+  if (document.readyState === "complete") {
+    hide();
+  } else {
+    window.addEventListener("load", hide);
+  }
+})();
+</script>

@@ -1,0 +1,13 @@
+{% load format_extras %}
+{% if totals.count %}
+<tfoot>
+  <tr class="dispatch-totals-row">
+    {% if has_select_col %}<th class="all dispatch-select-col"></th>{% endif %}
+    <th colspan="{% if branch_status_col %}7{% else %}6{% endif %}" class="text-end fw-semibold">Total</th>
+    <th class="min-desktop text-end dt-right dispatch-rate-col"></th>
+    <th class="all fw-semibold text-end dispatch-qty js-qty-col-kg">{{ totals.total_kg|money }}</th>
+    <th class="all fw-semibold text-end dispatch-qty js-qty-col-liters">{{ totals.total_liters|money }}</th>
+    <th class="all"></th>
+  </tr>
+</tfoot>
+{% endif %}

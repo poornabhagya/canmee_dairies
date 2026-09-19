@@ -1,0 +1,344 @@
+{% comment %}
+  Collapsible sidebar — each section expands/collapses; active page auto-opens its group.
+{% endcomment %}
+
+<div class="sidebar-label">Overview</div>
+<a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'dashboard' %}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+
+{% if perms.branches.view_branch or perms.masters.view_route or perms.masters.view_collectionpoint or perms.masters.view_farmer or perms.masters.view_buyer or perms.suppliers.view_supplier or perms.masters.view_companyprofile or request.user.is_superuser %}
+<div class="sidebar-group" data-sidebar-group="setup">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-sliders"></i>
+    <span>Setup</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.masters.view_companyprofile or perms.masters.change_companyprofile or request.user.is_superuser %}
+    <a class="nav-link {% if '/masters/company' in request.path %}active{% endif %}" href="{% url 'company-profile' %}"><i class="bi bi-building"></i> Company</a>
+    {% endif %}
+    {% if perms.branches.view_branch %}
+    <a class="nav-link {% if '/branches/' in request.path %}active{% endif %}" href="{% url 'branch-list' %}"><i class="bi bi-diagram-3"></i> Branches</a>
+    {% endif %}
+    {% if perms.masters.view_route %}
+    <a class="nav-link {% if '/masters/routes' in request.path %}active{% endif %}" href="{% url 'route-list' %}"><i class="bi bi-signpost-2"></i> Routes</a>
+    {% endif %}
+    {% if perms.masters.view_collectionpoint %}
+    <a class="nav-link {% if '/masters/points' in request.path %}active{% endif %}" href="{% url 'point-list' %}"><i class="bi bi-geo-alt"></i> Collection Points</a>
+    {% endif %}
+    {% if perms.masters.view_farmer %}
+    <a class="nav-link {% if '/masters/farmers' in request.path %}active{% endif %}" href="{% url 'farmer-list' %}"><i class="bi bi-person-badge"></i> Farmers</a>
+    {% endif %}
+    {% if perms.masters.view_buyer %}
+    <a class="nav-link {% if '/masters/buyers' in request.path %}active{% endif %}" href="{% url 'buyer-list' %}"><i class="bi bi-shop"></i> Buyers</a>
+    {% endif %}
+    {% if perms.suppliers.view_supplier %}
+    <a
+      class="nav-link {% if request.GET.category == 'raw_milk_supplier' or '/suppliers/raw-milk/suppliers/' in request.path %}active{% endif %}"
+      href="{% url 'supplier-list' %}?category=raw_milk_supplier"
+    ><i class="bi bi-truck"></i> Bulk Supplier</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if perms.collections.view_milkcollection or perms.collections.add_milkcollection or perms.collections.view_milkcollectiontallysheet or perms.suppliers.view_rawmilkbulkcollection or perms.dispatch.view_milkdistribution or perms.suppliers.view_farmergoodsissue or perms.suppliers.add_farmergoodsissue or perms.collections.view_milkfactor %}
+<div class="sidebar-group" data-sidebar-group="collection">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-droplet-half"></i>
+    <span>Collection</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.collections.view_milkcollection or perms.collections.add_milkcollection or perms.collections.view_milkcollectiontallysheet %}
+    <div class="sidebar-subgroup" data-sidebar-group="collection-milk">
+      <button type="button" class="sidebar-subgroup-toggle" aria-expanded="false">
+        <span>Milk Collection</span>
+        <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="sidebar-subgroup-menu">
+        {% if perms.collections.view_milkcollection %}
+        <a class="nav-link {% if '/collections/milk' in request.path and '/collections/milk/add/' not in request.path and '/collections/milk/tally/' not in request.path %}active{% endif %}" href="{% url 'milk-collection-list' %}"><i class="bi bi-list-ul"></i> View All</a>
+        {% endif %}
+        {% if perms.collections.add_milkcollection %}
+        <a class="nav-link {% if '/collections/milk/add/' in request.path %}active{% endif %}" href="{% url 'milk-collection-add' %}?standalone=1" target="_blank" rel="noopener"><i class="bi bi-plus-lg"></i> Quick Add</a>
+        {% endif %}
+        {% if perms.collections.view_milkcollectiontallysheet %}
+        <a class="nav-link {% if '/collections/milk/tally/' in request.path %}active{% endif %}" href="{% url 'milk-collection-tally' %}"><i class="bi bi-table"></i> Tally Sheet</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if perms.suppliers.view_rawmilkbulkcollection %}
+    <a class="nav-link {% if '/suppliers/raw-milk/collections/' in request.path %}active{% endif %}" href="{% url 'raw-milk-collection-list' %}"><i class="bi bi-box2-heart"></i> Bulk Milk Collection</a>
+    {% endif %}
+    {% if perms.suppliers.view_farmergoodsissue or perms.suppliers.add_farmergoodsissue or can_view_driver_farmer_goods_requests or can_manage_farmer_goods_notifications or request.user.is_superuser %}
+    <div class="sidebar-subgroup" data-sidebar-group="collection-goods">
+      <button type="button" class="sidebar-subgroup-toggle" aria-expanded="false">
+        <span>Farmer Goods</span>
+        <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="sidebar-subgroup-menu">
+        {% if perms.suppliers.view_farmergoodsissue %}
+        <a class="nav-link {% if '/suppliers/farmer-goods/issues/' in request.path or '/suppliers/farmer-goods/issue/' in request.path and request.path != '/suppliers/farmer-goods/issue/' and '/suppliers/farmer-goods/check/' not in request.path and '/suppliers/farmer-goods/driver-requests/' not in request.path and '/suppliers/farmer-goods/pending-accept/' not in request.path and '/suppliers/farmer-goods/settings/' not in request.path %}active{% endif %}" href="{% url 'farmer-goods-issue-list' %}"><i class="bi bi-bag-check"></i> All Issues</a>
+        <a class="nav-link {% if '/suppliers/farmer-goods/check/' in request.path %}active{% endif %}" href="{% url 'farmer-goods-check' %}"><i class="bi bi-search"></i> Stock & Price</a>
+        {% endif %}
+        {% if can_manage_farmer_goods_notifications and farmer_goods_accept_notifications_enabled or can_manage_farmer_goods_notifications and pending_farmer_goods_count %}
+        <a class="nav-link {% if '/suppliers/farmer-goods/pending-accept/' in request.path %}active{% endif %}" href="{% url 'farmer-goods-pending-accept-list' %}"><i class="bi bi-check2-square"></i> Pending Accept{% if pending_farmer_goods_count %} <span class="badge text-bg-warning ms-1">{{ pending_farmer_goods_count }}</span>{% endif %}</a>
+        {% endif %}
+        {% if can_view_driver_farmer_goods_requests %}
+        <a class="nav-link {% if '/suppliers/farmer-goods/driver-requests/' in request.path %}active{% endif %}" href="{% url 'farmer-goods-driver-request-list' %}"><i class="bi bi-truck"></i> Driver Requests{% if pending_driver_goods_request_count %} <span class="badge text-bg-warning ms-1">{{ pending_driver_goods_request_count }}</span>{% endif %}</a>
+        {% endif %}
+        {% if perms.suppliers.add_farmergoodsissue %}
+        <a class="nav-link {% if request.path == '/suppliers/farmer-goods/issue/' %}active{% endif %}" href="{% url 'farmer-goods-issue' %}"><i class="bi bi-plus-lg"></i> New Issue</a>
+        {% endif %}
+        {% if request.user.is_superuser %}
+        <a class="nav-link {% if '/suppliers/farmer-goods/settings/' in request.path %}active{% endif %}" href="{% url 'farmer-goods-settings' %}"><i class="bi bi-gear"></i> Settings</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if perms.dispatch.view_milkdistribution %}
+    <a class="nav-link {% if '/dispatch/' in request.path %}active{% endif %}" href="{% url 'distribution-list' %}"><i class="bi bi-truck"></i> Dispatch</a>
+    {% endif %}
+    {% if perms.collections.view_milkfactor %}
+    <a class="nav-link {% if '/collections/factors' in request.path %}active{% endif %}" href="{% url 'milk-factor-list' %}"><i class="bi bi-speedometer2"></i> Milk Factors</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if perms.farmer_loans.view_farmerloan or perms.collection_point_loans.view_collectionpointloan or perms.reports.view_farmerpaymentsheet or perms.masters.view_farmeradvancepayment or perms.reports.view_collectionpointpaymentsheet or perms.masters.view_collectionpointadvancepayment %}
+<div class="sidebar-group" data-sidebar-group="finance">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-cash-stack"></i>
+    <span>Finance</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.reports.view_farmerpaymentsheet or perms.masters.view_farmeradvancepayment or perms.farmer_loans.view_farmerloan %}
+    <div class="sidebar-subgroup" data-sidebar-group="finance-farmer">
+      <button type="button" class="sidebar-subgroup-toggle" aria-expanded="false">
+        <span>Farmer</span>
+        <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="sidebar-subgroup-menu">
+        {% if perms.reports.view_farmerpaymentsheet %}
+        <a class="nav-link js-payment-sheet-load-progress {% if '/reports/farmer-payslip/' in request.path or '/reports/farmer-payment-sheet/' in request.path and '/reports/farmer-payment-sheet/paid/' not in request.path %}active{% endif %}" href="{% url 'farmer-payment-sheet' %}" data-sheet-kind="farmer" data-prompt-filters="1" data-load-title="Loading farmer payment sheet…"><i class="bi bi-receipt-cutoff"></i> Payment Sheet</a>
+        <a class="nav-link {% if '/reports/farmer-payment-sheet/paid/' in request.path %}active{% endif %}" href="{% url 'paid-farmer-payment-sheet-list' %}"><i class="bi bi-clock-history"></i> Paid Sheets</a>
+        {% endif %}
+        {% if perms.masters.view_farmeradvancepayment %}
+        <a class="nav-link {% if '/reports/farmer-advances/' in request.path %}active{% endif %}" href="{% url 'farmer-advance-list' %}"><i class="bi bi-cash-coin"></i> Farmer Advances</a>
+        {% endif %}
+        {% if perms.farmer_loans.view_farmerloan %}
+        <a class="nav-link {% if '/loans/' in request.path and '/point-loans/' not in request.path %}active{% endif %}" href="{% url 'farmer-loan-list' %}"><i class="bi bi-bank"></i> Farmer Loans</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if perms.reports.view_collectionpointpaymentsheet or perms.masters.view_collectionpointadvancepayment or perms.collection_point_loans.view_collectionpointloan %}
+    <div class="sidebar-subgroup" data-sidebar-group="finance-point">
+      <button type="button" class="sidebar-subgroup-toggle" aria-expanded="false">
+        <span>Collection Point</span>
+        <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="sidebar-subgroup-menu">
+        {% if perms.reports.view_collectionpointpaymentsheet %}
+        <a class="nav-link js-payment-sheet-load-progress {% if '/reports/collection-point-payslip' in request.path or '/reports/collection-point-payment-sheet/' in request.path and '/reports/collection-point-payment-sheet/paid/' not in request.path %}active{% endif %}" href="{% url 'collection-point-payment-sheet' %}" data-sheet-kind="collection_point" data-prompt-filters="1" data-load-title="Loading payment sheet…"><i class="bi bi-receipt"></i> Payment Sheet</a>
+        <a class="nav-link {% if '/reports/collection-point-payment-sheet/paid/' in request.path %}active{% endif %}" href="{% url 'paid-collection-point-payment-sheet-list' %}"><i class="bi bi-clock-history"></i> Paid Sheets</a>
+        {% endif %}
+        {% if perms.masters.view_collectionpointadvancepayment %}
+        <a class="nav-link {% if '/reports/collection-point-advances/' in request.path %}active{% endif %}" href="{% url 'collection-point-advance-list' %}"><i class="bi bi-cash-coin"></i> Point Advances</a>
+        {% endif %}
+        {% if perms.collection_point_loans.view_collectionpointloan %}
+        <a class="nav-link {% if '/point-loans/' in request.path %}active{% endif %}" href="{% url 'cp-loan-list' %}"><i class="bi bi-geo-alt"></i> Point Loans</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if request.user.is_superuser or perms.stock_management.view_mainstock or perms.stock_management.view_stocktransfernote or perms.stock_management.add_stocktransfernote or perms.stock_management.add_stocktransfer or perms.stock_management.view_stocklog or perms.stock_management.view_stockcount or perms.stock_management.add_stockcount or perms.suppliers.view_farmergoodsissue or perms.reports.view_pointgoodssummary or perms.collections.view_milkcollectionreconcile %}
+<div class="sidebar-group" data-sidebar-group="stock">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-box-seam"></i>
+    <span>Stock</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.stock_management.view_mainstock %}
+    <a class="nav-link {% if request.path == '/stock/' or request.path == '/stock' %}active{% endif %}" href="{% url 'stock-overview' %}"><i class="bi bi-boxes"></i> Stock Overview</a>
+    {% endif %}
+    {% if perms.stock_management.view_stocktransfernote or perms.stock_management.add_stocktransfernote or perms.stock_management.add_stocktransfer %}
+    <a class="nav-link {% if '/stock/transfer/' in request.path %}active{% endif %}" href="{% url 'stock-transfer-note-list' %}"><i class="bi bi-arrow-left-right"></i> Transfer Notes</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.stock_management.view_stockcount or perms.stock_management.add_stockcount or perms.stock_management.view_mainstock %}
+    <a class="nav-link {% if '/stock/count/' in request.path %}active{% endif %}" href="{% url 'stock-count-list' %}"><i class="bi bi-clipboard-check"></i> Stock Counts</a>
+    {% endif %}
+    {% if perms.stock_management.view_stocklog %}
+    <a class="nav-link {% if '/stock/history/' in request.path %}active{% endif %}" href="{% url 'stock-history' %}"><i class="bi bi-clock-history"></i> Stock History</a>
+    {% endif %}
+    {% if perms.suppliers.view_farmergoodsissue %}
+    <a class="nav-link {% if '/reports/farmer-goods-summary/' in request.path %}active{% endif %}" href="{% url 'farmer-goods-summary-report' %}"><i class="bi bi-box-seam"></i> Farmer Goods Summary</a>
+    {% endif %}
+    {% if perms.reports.view_pointgoodssummary %}
+    <a class="nav-link {% if '/reports/point-goods-summary/' in request.path %}active{% endif %}" href="{% url 'point-goods-summary-report' %}"><i class="bi bi-shop"></i> Point Goods Summary</a>
+    {% endif %}
+    {% if perms.collections.view_milkcollectionreconcile %}
+    <a class="nav-link {% if '/reports/point-reconcile-report/' in request.path %}active{% endif %}" href="{% url 'point-reconcile-report' %}"><i class="bi bi-check2-square"></i> Reconcile Report</a>
+    {% endif %}
+    {% if request.user.is_superuser %}
+    <a class="nav-link {% if '/stock/correct-negative/' in request.path %}active{% endif %}" href="{% url 'stock-correct-negative' %}"><i class="bi bi-shield-exclamation"></i> Correct Negative Stock</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if request.user.is_superuser or perms.assets.view_asset or perms.assets.add_asset or perms.assets.verify_assets or perms.assets.print_asset_labels or perms.assets.manage_asset_settings or perms.assets.view_assettype or perms.assets.view_assetcategory %}
+<div class="sidebar-group" data-sidebar-group="assets">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-hdd-rack"></i>
+    <span>Assets</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if request.user.is_superuser or perms.assets.view_asset %}
+    <a class="nav-link {% if request.path == '/assets/' or request.path == '/assets' or '/assets/' in request.path and '/types/' not in request.path and '/categories/' not in request.path and '/locations/' not in request.path and '/labels/' not in request.path and '/verifications/' not in request.path and '/policies/' not in request.path and '/depreciation/' not in request.path and '/settings/' not in request.path %}active{% endif %}" href="{% url 'asset-list' %}"><i class="bi bi-collection"></i> All Assets</a>
+    <a class="nav-link {% if '/assets/' in request.path and request.GET.scope == 'main' %}active{% endif %}" href="{% url 'asset-list' %}?scope=main"><i class="bi bi-building"></i> Main</a>
+    <a class="nav-link {% if '/assets/' in request.path and request.GET.scope == 'branch' %}active{% endif %}" href="{% url 'asset-list' %}?scope=branch"><i class="bi bi-diagram-3"></i> Branch-Wise</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.view_assettype %}
+    <a class="nav-link {% if '/assets/types/' in request.path %}active{% endif %}" href="{% url 'asset-type-list' %}"><i class="bi bi-layers"></i> Types</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.view_assetcategory %}
+    <a class="nav-link {% if '/assets/categories/' in request.path %}active{% endif %}" href="{% url 'asset-category-list' %}"><i class="bi bi-tags"></i> Categories</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.view_assetlocation %}
+    <a class="nav-link {% if '/assets/locations/' in request.path %}active{% endif %}" href="{% url 'asset-location-list' %}"><i class="bi bi-geo-alt"></i> Locations</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.verify_assets %}
+    <a class="nav-link {% if '/assets/verifications/' in request.path %}active{% endif %}" href="{% url 'asset-verification-list' %}"><i class="bi bi-clipboard-check"></i> Verification</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.print_asset_labels %}
+    <a class="nav-link {% if '/assets/labels/' in request.path %}active{% endif %}" href="{% url 'asset-label-generate' %}"><i class="bi bi-upc"></i> Labels</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.view_depreciationpolicy or perms.assets.run_asset_depreciation %}
+    {% if asset_depreciation_enabled %}
+    <a class="nav-link {% if '/assets/policies/' in request.path %}active{% endif %}" href="{% url 'asset-policy-list' %}"><i class="bi bi-percent"></i> Depreciation Policies</a>
+    <a class="nav-link {% if '/assets/depreciation/' in request.path %}active{% endif %}" href="{% url 'asset-depreciation-run' %}"><i class="bi bi-calendar2-check"></i> Run Depreciation</a>
+    {% endif %}
+    {% endif %}
+    {% if request.user.is_superuser or perms.assets.manage_asset_settings %}
+    <a class="nav-link {% if '/assets/settings/' in request.path %}active{% endif %}" href="{% url 'asset-settings' %}"><i class="bi bi-gear"></i> Asset Settings</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if perms.suppliers.view_supplier or perms.suppliers.view_grn or perms.suppliers.view_suppliertransaction %}
+<div class="sidebar-group" data-sidebar-group="procurement">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-building"></i>
+    <span>Procurement</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.suppliers.view_supplier %}
+    <a class="nav-link {% if '/suppliers/' in request.path and '/suppliers/grn/' not in request.path and '/suppliers/ledger/' not in request.path and '/suppliers/raw-milk/' not in request.path and '/suppliers/farmer-goods/' not in request.path and request.GET.category != 'raw_milk_supplier' %}active{% endif %}" href="{% url 'supplier-list' %}"><i class="bi bi-people"></i> Suppliers</a>
+    {% endif %}
+    {% if perms.suppliers.view_grn %}
+    <a class="nav-link {% if '/suppliers/grn/' in request.path %}active{% endif %}" href="{% url 'grn-list' %}"><i class="bi bi-receipt"></i> GRN</a>
+    {% endif %}
+    {% if perms.suppliers.view_suppliertransaction %}
+    <a class="nav-link {% if '/suppliers/ledger/' in request.path %}active{% endif %}" href="{% url 'supplier-ledger' %}"><i class="bi bi-journal-text"></i> Supplier Ledger</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if perms.collections.view_milkcollection or perms.collections.view_milkfactor or perms.dispatch.view_milkdistribution %}
+<div class="sidebar-group" data-sidebar-group="reports">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-bar-chart-line"></i>
+    <span>Reports</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    <div class="sidebar-subgroup" data-sidebar-group="reports-analytics">
+      <button type="button" class="sidebar-subgroup-toggle" aria-expanded="false">
+        <span>Analytics</span>
+        <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="sidebar-subgroup-menu">
+        {% if perms.collections.view_milkcollection %}
+        <a class="nav-link {% if '/reports/summary' in request.path %}active{% endif %}" href="{% url 'summary' %}"><i class="bi bi-calendar3"></i> Daily Summary</a>
+        {% endif %}
+        {% if perms.collections.view_milkfactor %}
+        <a class="nav-link {% if '/reports/overall' in request.path %}active{% endif %}" href="{% url 'overall-dashboard' %}"><i class="bi bi-graph-up-arrow"></i> Overall Dashboard</a>
+        {% endif %}
+        {% if perms.dispatch.view_milkdistribution %}
+        <a class="nav-link {% if '/reports/buyer-summary' in request.path %}active{% endif %}" href="{% url 'buyer-summary' %}"><i class="bi bi-pie-chart"></i> Buyer Summary</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.hrm.view_employee or perms.attendance.view_attendancerecord or perms.attendance.view_attendance_admin %}
+<div class="sidebar-group" data-sidebar-group="people">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-person-vcard"></i>
+    <span>People</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.hrm.view_employee %}
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'hrm' %}active{% endif %}" href="{% url 'hrm:employee_list' %}"><i class="bi bi-people"></i> Employees</a>
+    {% endif %}
+    {% if request.user.is_superuser or perms.attendance.view_attendance_admin or perms.attendance.view_attendancerecord or perms.hrm.view_employee %}
+    <a class="nav-link {% if request.resolver_match.namespace == 'attendance' %}{% if request.resolver_match.url_name == 'admin-list' or request.resolver_match.url_name == 'admin-detail' %}active{% endif %}{% endif %}" href="{% url 'attendance:admin-list' %}"><i class="bi bi-fingerprint"></i> Attendance</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% if has_attendance_profile %}
+<div class="sidebar-group" data-sidebar-group="my-attendance">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-clock-history"></i>
+    <span>My Attendance</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    <a class="nav-link {% if request.resolver_match.namespace == 'attendance' and request.resolver_match.url_name == 'punch' %}active{% endif %}" href="{% url 'attendance:punch' %}"><i class="bi bi-geo-alt"></i> Check In / Out</a>
+    <a class="nav-link {% if request.resolver_match.namespace == 'attendance' and request.resolver_match.url_name == 'my-history' %}active{% endif %}" href="{% url 'attendance:my-history' %}"><i class="bi bi-list-ul"></i> My History</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="sidebar-group" data-sidebar-group="administration">
+  <button type="button" class="sidebar-group-toggle" aria-expanded="false">
+    <i class="bi bi-shield-lock"></i>
+    <span>Administration</span>
+    <i class="bi bi-chevron-right sidebar-group-chevron" aria-hidden="true"></i>
+  </button>
+  <div class="sidebar-group-menu">
+    {% if perms.auth.view_user %}
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'user_management' %}{% with u=request.resolver_match.url_name %}{% if u == 'user-list' or u == 'user-create' or u == 'user-update' or u == 'user-delete' or u == 'user-set-password' %}active{% endif %}{% endwith %}{% endif %}" href="{% url 'user_management:user-list' %}"><i class="bi bi-people"></i> Users</a>
+    {% endif %}
+    {% if perms.auth.view_group %}
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'user_management' %}{% with u=request.resolver_match.url_name %}{% if u == 'group-list' or u == 'group-create' or u == 'group-update' or u == 'group-delete' or u == 'group-permissions' %}active{% endif %}{% endwith %}{% endif %}" href="{% url 'user_management:group-list' %}"><i class="bi bi-shield-check"></i> Roles</a>
+    {% endif %}
+    {% if perms.auth.change_group %}
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'user_management' and request.resolver_match.url_name == 'role-permission-matrix' %}active{% endif %}" href="{% url 'user_management:role-permission-matrix' %}"><i class="bi bi-grid-3x3-gap"></i> Role Permissions</a>
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'user_management' and request.resolver_match.url_name == 'assign-roles' %}active{% endif %}" href="{% url 'user_management:assign-roles' %}"><i class="bi bi-person-check"></i> Assign Roles</a>
+    {% endif %}
+    {% if request.user.is_superuser %}
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'user_management' and request.resolver_match.url_name == 'audit-logs' %}active{% endif %}" href="{% url 'user_management:audit-logs' %}"><i class="bi bi-journal-text"></i> Audit Logs</a>
+    {% endif %}
+    <a class="nav-link {% if request.resolver_match and request.resolver_match.namespace == 'user_management' and request.resolver_match.url_name == 'profile' %}active{% endif %}" href="{% url 'user_management:profile' %}"><i class="bi bi-person-circle"></i> My Profile</a>
+    <a class="nav-link" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Log Out</a>
+  </div>
+</div>

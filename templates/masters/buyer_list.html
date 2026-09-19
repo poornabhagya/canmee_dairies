@@ -1,0 +1,802 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Buyers · Canmee Dairies{% endblock %}
+{% block page_heading %}Buyers{% endblock %}
+{% block topbar_actions %}
+{% if perms.masters.add_buyer %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#buyerQuickAddModal"><i class="bi bi-plus-lg me-1"></i>Add buyer</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .buyer-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    overflow: visible;
+  }
+  .buyer-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+  .buyer-list-card .table-wrap,
+  .buyer-list-card .dataTables_wrapper,
+  .buyer-list-card div.dt-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .buyer-hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin: -0.35rem 0 0.85rem;
+    line-height: 1.35;
+  }
+  .buyer-list-card .buyer-table {
+    width: 100% !important;
+    table-layout: fixed;
+  }
+  .buyer-list-card .buyer-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+  }
+  .buyer-list-card .buyer-table tbody td {
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .buyer-list-card .buyer-table th:nth-child(1),
+  .buyer-list-card .buyer-table td:nth-child(1) { width: 14%; }
+  .buyer-list-card .buyer-table th:nth-child(2),
+  .buyer-list-card .buyer-table td:nth-child(2) { width: 12%; }
+  .buyer-list-card .buyer-table th:nth-child(3),
+  .buyer-list-card .buyer-table td:nth-child(3) { width: 11%; }
+  .buyer-list-card .buyer-table th:nth-child(4),
+  .buyer-list-card .buyer-table td:nth-child(4) { width: 12%; }
+  .buyer-list-card .buyer-table th:nth-child(5),
+  .buyer-list-card .buyer-table td:nth-child(5) { width: 14%; }
+  .buyer-rate-inline {
+    display: flex;
+    align-items: center;
+    min-height: 1.75rem;
+  }
+  .buyer-rate-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0.35rem;
+    margin: 0;
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+    max-width: 100%;
+  }
+  .buyer-rate-display:hover,
+  .buyer-rate-display:focus {
+    background: rgba(5, 150, 105, 0.08);
+    outline: none;
+  }
+  .buyer-rate-display .buyer-rate-edit-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .buyer-rate-display:hover .buyer-rate-edit-icon,
+  .buyer-rate-display:focus .buyer-rate-edit-icon,
+  tr:hover .buyer-rate-display .buyer-rate-edit-icon {
+    opacity: 1;
+  }
+  .buyer-rate-display.is-empty {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .buyer-rate-editor {
+    display: none;
+    align-items: center;
+    gap: 0.3rem;
+    width: 100%;
+  }
+  .buyer-rate-inline.is-editing .buyer-rate-display { display: none; }
+  .buyer-rate-inline.is-editing .buyer-rate-editor { display: inline-flex; }
+  .buyer-rate-editor .js-buyer-rate-input {
+    width: 5.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .buyer-rate-editor .js-buyer-rate-unit {
+    width: auto;
+    min-width: 4.25rem;
+    border-radius: 8px;
+    padding: 0.22rem 1.5rem 0.22rem 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+  .buyer-rate-inline.is-saving { opacity: 0.65; pointer-events: none; }
+  .buyer-rate-inline.is-saved .buyer-rate-display {
+    background: rgba(5, 150, 105, 0.12);
+  }
+  .buyer-rate-inline.is-error .js-buyer-rate-input {
+    border-color: #f87171;
+  }
+  .buyer-list-card .buyer-table th:nth-child(6),
+  .buyer-list-card .buyer-table td:nth-child(6) { width: 16%; }
+  .buyer-list-card .buyer-table tbody td.buyer-actions-cell {
+    overflow: visible;
+  }
+  .buyer-actions-trigger {
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .buyer-actions-trigger.dropdown-toggle::after {
+    display: none;
+  }
+  .buyer-actions-menu {
+    min-width: 10rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+    padding: 0.35rem;
+    z-index: 1080;
+  }
+  .buyer-actions-menu .dropdown-item {
+    border-radius: 8px;
+    font-size: 0.86rem;
+    padding: 0.45rem 0.6rem;
+  }
+  .buyer-actions-menu .dropdown-item.text-danger:hover,
+  .buyer-actions-menu .dropdown-item.text-danger:focus {
+    background: #fef2f2;
+    color: #b91c1c !important;
+  }
+  .buyer-list-card .buyer-table th:nth-child(7),
+  .buyer-list-card .buyer-table td:nth-child(7) { width: 5.5rem; }
+  .buyer-list-card .buyer-table td:last-child,
+  .buyer-list-card .buyer-table th:last-child {
+    white-space: nowrap;
+  }
+  .buyer-list-card .buyer-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .buyer-name-link {
+    font-weight: 600;
+    color: #0f172a;
+    text-decoration: none;
+  }
+  .buyer-name-link:hover,
+  .buyer-name-link:focus {
+    color: var(--color-primary, #059669);
+  }
+  .buyer-modal .modal-content {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+  }
+  .buyer-modal .modal-dialog {
+    max-width: 760px;
+  }
+  .buyer-modal .modal-header {
+    border-bottom: 1px solid #edf2f7;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 0.95rem 1rem;
+  }
+  .buyer-modal .modal-title {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .buyer-modal .modal-body {
+    padding: 1rem;
+  }
+  .buyer-modal .modal-footer {
+    border-top: 1px solid #edf2f7;
+    padding: 0.8rem 1rem 1rem;
+  }
+  .buyer-form-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    margin-bottom: 0.8rem;
+  }
+  .buyer-form-row .form-label {
+    margin: 0;
+    font-weight: 600;
+    color: #334155;
+    padding-top: 0.35rem;
+  }
+  .buyer-form-row .invalid-feedback {
+    grid-column: 2 / 3;
+    margin-top: 0.2rem;
+  }
+  .buyer-modal .select2-container {
+    width: 100% !important;
+  }
+  .buyer-modal .select2-container .select2-selection--multiple {
+    min-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.2rem 0.35rem;
+  }
+  .buyer-modal .select2-container .select2-selection.is-invalid {
+    border-color: #dc3545;
+  }
+  @media (max-width: 992px) {
+    .buyer-list-card .card-body.table-wrap {
+      overflow-x: auto;
+    }
+    .buyer-list-card .buyer-table {
+      min-width: 980px;
+      table-layout: auto;
+    }
+  }
+  @media (max-width: 576px) {
+    .buyer-form-row {
+      grid-template-columns: 1fr;
+    }
+    .buyer-form-row .invalid-feedback {
+      grid-column: auto;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table buyer-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--one" aria-label="Buyer summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Buyers</span>
+        <span class="smart-dt-stat-value">{{ buyer_summary.count }}</span>
+      </div>
+    </div>
+    <p class="buyer-hint">Dispatch and sales counterparties.</p>
+
+    <div id="buyerDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter buyers">
+      {% if buyer_branch_options|length > 1 %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by branch</span>
+        <select id="buyerBranchFilter" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Filter by branch">
+          <option value="all">All branches</option>
+          {% for b in buyer_branch_options %}
+          <option value="{{ b.pk }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+    </div>
+
+    <table
+      class="table table-hover datatable datatable-smart buyer-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No buyers yet."
+      data-filters-target="buyerDtFilters"
+      {% if buyer_branch_options|length > 1 %}data-branch-filter-target="buyerBranchFilter"{% endif %}
+    >
+      <thead>
+        <tr>
+          <th class="all">Name</th>
+          <th class="min-tablet-l">Contact</th>
+          <th class="min-tablet-l">Phone</th>
+          <th class="min-desktop">Email</th>
+          <th class="min-tablet-l">Rate</th>
+          <th class="min-tablet-l">Branches</th>
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr data-branch-ids="{% for b in o.branches.all %}{{ b.pk }}{% if not forloop.last %},{% endif %}{% endfor %}">
+          <td class="all fw-medium">
+            {% if perms.masters.view_buyer %}
+            <a href="{% url 'buyer-detail' o.pk %}" class="buyer-name-link">{{ o.name }}</a>
+            {% else %}
+            {{ o.name }}
+            {% endif %}
+          </td>
+          <td class="min-tablet-l">{{ o.contact_person|default:"—" }}</td>
+          <td class="min-tablet-l">{{ o.phone|default:"—" }}</td>
+          <td class="min-desktop">{{ o.email|default:"—" }}</td>
+          <td class="min-tablet-l buyer-rate-cell" data-order="{{ o.rate|default_if_none:'0' }}">
+            {% if perms.masters.change_buyerrate or perms.masters.change_buyer %}
+            <div
+              class="buyer-rate-inline"
+              data-buyer-id="{{ o.pk }}"
+              data-rate="{{ o.rate|default_if_none:'0' }}"
+              data-rate-unit="{{ o.rate_unit|default:'liter' }}"
+            >
+              <button type="button" class="buyer-rate-display js-buyer-rate-edit {% if not o.rate %}is-empty{% endif %}" title="Edit rate">
+                <span class="js-buyer-rate-label">
+                  {% if o.rate %}
+                    {{ o.rate|money }} <span class="text-muted small">/ {{ o.get_rate_unit_display|cut:"Per "|lower }}</span>
+                  {% else %}
+                    Set rate
+                  {% endif %}
+                </span>
+                <i class="bi bi-pencil buyer-rate-edit-icon" aria-hidden="true"></i>
+              </button>
+              <div class="buyer-rate-editor">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="form-control form-control-sm js-buyer-rate-input no-global-select2"
+                  value="{% if o.rate %}{{ o.rate }}{% endif %}"
+                  aria-label="Rate for {{ o.name }}"
+                >
+                <select class="form-select form-select-sm js-buyer-rate-unit no-global-select2" aria-label="Rate unit">
+                  <option value="liter" {% if o.rate_unit == 'liter' or not o.rate_unit %}selected{% endif %}>liter</option>
+                  <option value="kg" {% if o.rate_unit == 'kg' %}selected{% endif %}>kg</option>
+                </select>
+              </div>
+            </div>
+            {% elif o.rate %}
+              {{ o.rate|money }}
+              <span class="text-muted small">/ {{ o.get_rate_unit_display|cut:"Per "|lower }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td class="min-tablet-l">{% for b in o.branches.all %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td class="all text-end text-nowrap buyer-actions-cell">
+            {% include "masters/_buyer_row_actions_dropdown.html" with buyer=o %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if perms.masters.add_buyer %}
+<div class="modal fade buyer-modal" id="buyerQuickAddModal" tabindex="-1" aria-labelledby="buyerQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="buyer-quick-add-form" method="post" action="{% url 'buyer-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="buyerQuickAddModalLabel">Add buyer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_create_form.name.id_for_label }}">Name</label>
+            {{ buyer_create_form.name }}
+            <div class="invalid-feedback" data-add-error-for="name"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_create_form.contact_person.id_for_label }}">Contact</label>
+            {{ buyer_create_form.contact_person }}
+            <div class="invalid-feedback" data-add-error-for="contact_person"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_create_form.phone.id_for_label }}">Phone</label>
+            {{ buyer_create_form.phone }}
+            <div class="invalid-feedback" data-add-error-for="phone"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_create_form.email.id_for_label }}">Email</label>
+            {{ buyer_create_form.email }}
+            <div class="invalid-feedback" data-add-error-for="email"></div>
+          </div>
+          <div class="buyer-form-row mb-0">
+            <label class="form-label" for="{{ buyer_create_form.address.id_for_label }}">Address</label>
+            {{ buyer_create_form.address }}
+            <div class="invalid-feedback" data-add-error-for="address"></div>
+          </div>
+          <div class="buyer-form-row mb-0 mt-2">
+            <label class="form-label" for="{{ buyer_create_form.branches.id_for_label }}">Branches</label>
+            {{ buyer_create_form.branches }}
+            <div class="invalid-feedback" data-add-error-for="branches"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save buyer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if perms.masters.change_buyer %}
+{{ buyer_edit_rows|json_script:"buyer-edit-data" }}
+<div class="modal fade buyer-modal" id="buyerQuickEditModal" tabindex="-1" aria-labelledby="buyerQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="buyer-quick-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="buyerQuickEditModalLabel">Edit buyer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.name.id_for_label }}">Name</label>
+            {{ buyer_edit_form.name }}
+            <div class="invalid-feedback" data-edit-error-for="name"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.contact_person.id_for_label }}">Contact</label>
+            {{ buyer_edit_form.contact_person }}
+            <div class="invalid-feedback" data-edit-error-for="contact_person"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.phone.id_for_label }}">Phone</label>
+            {{ buyer_edit_form.phone }}
+            <div class="invalid-feedback" data-edit-error-for="phone"></div>
+          </div>
+          <div class="buyer-form-row">
+            <label class="form-label" for="{{ buyer_edit_form.email.id_for_label }}">Email</label>
+            {{ buyer_edit_form.email }}
+            <div class="invalid-feedback" data-edit-error-for="email"></div>
+          </div>
+          <div class="buyer-form-row mb-0">
+            <label class="form-label" for="{{ buyer_edit_form.address.id_for_label }}">Address</label>
+            {{ buyer_edit_form.address }}
+            <div class="invalid-feedback" data-edit-error-for="address"></div>
+          </div>
+          <div class="buyer-form-row mb-0 mt-2">
+            <label class="form-label" for="{{ buyer_edit_form.branches.id_for_label }}">Branches</label>
+            {{ buyer_edit_form.branches }}
+            <div class="invalid-feedback" data-edit-error-for="branches"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update buyer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.masters.change_buyerrate or perms.masters.change_buyer %}
+<script>
+(function () {
+  var saveUrl = "{% url 'buyer-rate-cell-save' %}";
+  var csrfToken = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "{{ csrf_token }}";
+  var inFlight = Object.create(null);
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getEditors() {
+    return Array.prototype.slice.call(document.querySelectorAll(".buyer-rate-inline"));
+  }
+
+  function closeEditor(wrap, restore) {
+    if (!wrap) return;
+    var input = wrap.querySelector(".js-buyer-rate-input");
+    var unit = wrap.querySelector(".js-buyer-rate-unit");
+    if (restore && input) {
+      var original = wrap.getAttribute("data-rate") || "";
+      input.value = original === "0" || original === "0.00" ? "" : original;
+    }
+    if (restore && unit) {
+      unit.value = wrap.getAttribute("data-rate-unit") || "liter";
+    }
+    wrap.classList.remove("is-editing", "is-error");
+  }
+
+  function openEditor(wrap) {
+    getEditors().forEach(function (other) {
+      if (other !== wrap) closeEditor(other, true);
+    });
+    wrap.classList.add("is-editing");
+    wrap.classList.remove("is-error", "is-saved");
+    var input = wrap.querySelector(".js-buyer-rate-input");
+    if (input) {
+      input.focus();
+      if (typeof input.select === "function") input.select();
+    }
+  }
+
+  function setLabel(wrap, rateDisplay, unitLabel, hasRate) {
+    var label = wrap.querySelector(".js-buyer-rate-label");
+    var btn = wrap.querySelector(".buyer-rate-display");
+    if (!label) return;
+    if (hasRate) {
+      label.innerHTML = rateDisplay + ' <span class="text-muted small">/ ' + unitLabel + "</span>";
+      if (btn) btn.classList.remove("is-empty");
+    } else {
+      label.textContent = "Set rate";
+      if (btn) btn.classList.add("is-empty");
+    }
+  }
+
+  function nextEditor(wrap) {
+    var editors = getEditors().filter(function (el) {
+      return el.offsetParent !== null;
+    });
+    var idx = editors.indexOf(wrap);
+    if (idx < 0) return null;
+    return editors[idx + 1] || null;
+  }
+
+  function saveEditor(wrap, options) {
+    options = options || {};
+    var buyerId = wrap.getAttribute("data-buyer-id");
+    if (!buyerId || inFlight[buyerId]) return Promise.resolve();
+    var input = wrap.querySelector(".js-buyer-rate-input");
+    var unit = wrap.querySelector(".js-buyer-rate-unit");
+    if (!input || !unit) return Promise.resolve();
+
+    var rate = String(input.value || "").replace(/,/g, "").trim();
+    var rateUnit = unit.value;
+    var originalRate = wrap.getAttribute("data-rate") || "0";
+    var originalUnit = wrap.getAttribute("data-rate-unit") || "liter";
+    if (!rate) {
+      closeEditor(wrap, true);
+      return Promise.resolve();
+    }
+    if (rate === originalRate && rateUnit === originalUnit) {
+      closeEditor(wrap, false);
+      if (options.moveNext) {
+        var nxtSame = nextEditor(wrap);
+        if (nxtSame) openEditor(nxtSame);
+      }
+      return Promise.resolve();
+    }
+
+    inFlight[buyerId] = true;
+    wrap.classList.add("is-saving");
+    wrap.classList.remove("is-error");
+    var body = new FormData();
+    body.append("buyer_id", buyerId);
+    body.append("rate", rate);
+    body.append("rate_unit", rateUnit);
+    body.append("csrfmiddlewaretoken", csrfToken);
+
+    return fetch(saveUrl, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return { ok: r.ok, data: d };
+        });
+      })
+      .then(function (res) {
+        wrap.classList.remove("is-saving");
+        delete inFlight[buyerId];
+        if (!res.ok || !res.data || !res.data.ok) {
+          wrap.classList.add("is-error");
+          if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Could not save rate",
+              text: (res.data && res.data.error) || "Please try again.",
+              timer: 2200,
+              showConfirmButton: false,
+              toast: true,
+              position: "top-end",
+            });
+          }
+          return;
+        }
+        var data = res.data;
+        wrap.setAttribute("data-rate", data.rate);
+        wrap.setAttribute("data-rate-unit", data.rate_unit);
+        input.value = data.rate;
+        unit.value = data.rate_unit;
+        setLabel(wrap, data.rate_display || formatMoney(data.rate), data.rate_unit_label || data.rate_unit, parseFloat(data.rate) > 0);
+        var cell = wrap.closest("td");
+        if (cell) cell.setAttribute("data-order", data.rate);
+        wrap.classList.remove("is-editing");
+        wrap.classList.add("is-saved");
+        window.setTimeout(function () {
+          wrap.classList.remove("is-saved");
+        }, 900);
+        if (options.moveNext) {
+          var nxt = nextEditor(wrap);
+          if (nxt) openEditor(nxt);
+        }
+      })
+      .catch(function () {
+        wrap.classList.remove("is-saving");
+        delete inFlight[buyerId];
+        wrap.classList.add("is-error");
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var editBtn = ev.target.closest(".js-buyer-rate-edit");
+    if (editBtn) {
+      ev.preventDefault();
+      openEditor(editBtn.closest(".buyer-rate-inline"));
+      return;
+    }
+    var inside = ev.target.closest(".buyer-rate-inline.is-editing");
+    if (!inside) {
+      getEditors().forEach(function (wrap) {
+        if (wrap.classList.contains("is-editing")) saveEditor(wrap);
+      });
+    }
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var wrap = ev.target.closest(".buyer-rate-inline.is-editing");
+    if (!wrap) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor(wrap, { moveNext: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor(wrap, true);
+    }
+  });
+})();
+</script>
+{% endif %}
+{% if perms.masters.add_buyer or perms.masters.change_buyer %}
+<script>
+(function () {
+  var addForm = document.getElementById("buyer-quick-add-form");
+  var editForm = document.getElementById("buyer-quick-edit-form");
+  var addModalEl = document.getElementById("buyerQuickAddModal");
+  var editModalEl = document.getElementById("buyerQuickEditModal");
+  var addModal = addModalEl ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  var buyerEditDataEl = document.getElementById("buyer-edit-data");
+  var buyerRows = {};
+  if (buyerEditDataEl) {
+    try { (JSON.parse(buyerEditDataEl.textContent || "[]") || []).forEach(function (r) { buyerRows[String(r.id)] = r; }); } catch (e) {}
+  }
+
+  function initBuyerBranchesSelect2(selectEl) {
+    if (!selectEl || !window.jQuery || !window.jQuery.fn.select2) return;
+    var $el = window.jQuery(selectEl);
+    if ($el.hasClass("select2-hidden-accessible")) {
+      $el.select2("destroy");
+    }
+    var modalParent = $el.closest(".modal");
+    $el.select2({
+      width: "100%",
+      closeOnSelect: false,
+      allowClear: true,
+      placeholder: selectEl.getAttribute("data-placeholder") || "Select one or more branches",
+      dropdownParent: modalParent.length ? modalParent : window.jQuery("body"),
+    });
+  }
+
+  function initAllBuyerBranchesSelect2() {
+    document.querySelectorAll(".js-buyer-branches-select").forEach(initBuyerBranchesSelect2);
+  }
+
+  function setMultiBranchValues(selectEl, branchIds) {
+    if (!selectEl) return;
+    var ids = (branchIds || []).map(String);
+    Array.from(selectEl.options).forEach(function (opt) {
+      opt.selected = ids.indexOf(String(opt.value)) >= 0;
+    });
+    if (window.jQuery) {
+      var $el = window.jQuery(selectEl);
+      if ($el.hasClass("select2-hidden-accessible")) {
+        $el.val(ids).trigger("change");
+      }
+    }
+  }
+
+  function clearMultiBranchValues(selectEl) {
+    setMultiBranchValues(selectEl, []);
+  }
+
+  function clearErrors(form, attrName) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[" + attrName + "]").forEach(function (el) { el.textContent = ""; });
+    form.querySelectorAll(".select2-selection").forEach(function (el) { el.classList.remove("is-invalid"); });
+  }
+  function setErrors(form, attrName, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector("[" + attrName + '="' + field + '"]');
+      if (input) {
+        input.classList.add("is-invalid");
+        if (window.jQuery && window.jQuery(input).hasClass("select2-hidden-accessible")) {
+          window.jQuery(input).next(".select2-container").find(".select2-selection").addClass("is-invalid");
+        }
+      }
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  initAllBuyerBranchesSelect2();
+
+  if (addModalEl) {
+    addModalEl.addEventListener("shown.bs.modal", function () {
+      initBuyerBranchesSelect2(addForm ? addForm.querySelector(".js-buyer-branches-select") : null);
+    });
+  }
+  if (editModalEl) {
+    editModalEl.addEventListener("shown.bs.modal", function () {
+      initBuyerBranchesSelect2(editForm ? editForm.querySelector(".js-buyer-branches-select") : null);
+    });
+  }
+  function submitAjax(form, attrName, done) {
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErrors(form, attrName, (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: "Could not save buyer." });
+          }
+          return;
+        }
+        done();
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save buyer." });
+      });
+  }
+
+  if (addForm && addModalEl) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(addForm, "data-add-error-for");
+      submitAjax(addForm, "data-add-error-for", function () { addModal.hide(); window.location.reload(); });
+    });
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      addForm.reset();
+      clearMultiBranchValues(addForm.querySelector('[name="branches"]'));
+      clearErrors(addForm, "data-add-error-for");
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(editForm, "data-edit-error-for");
+      submitAjax(editForm, "data-edit-error-for", function () { editModal.hide(); window.location.reload(); });
+    });
+
+    document.querySelectorAll(".js-buyer-edit").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = a.getAttribute("data-buyer-id");
+        var row = buyerRows[String(id)];
+        if (!row) return;
+        editForm.action = "{% url 'buyer-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + id + "/quick-edit/");
+        editForm.querySelector('[name="name"]').value = row.name || "";
+        editForm.querySelector('[name="contact_person"]').value = row.contact_person || "";
+        editForm.querySelector('[name="phone"]').value = row.phone || "";
+        editForm.querySelector('[name="email"]').value = row.email || "";
+        editForm.querySelector('[name="address"]').value = row.address || "";
+        setMultiBranchValues(editForm.querySelector('[name="branches"]'), row.branch_ids || []);
+        clearErrors(editForm, "data-edit-error-for");
+        editModal.show();
+      });
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

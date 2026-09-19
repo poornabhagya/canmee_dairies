@@ -1,0 +1,14 @@
+{% load cp_loan_extras %}
+{% if loan_totals.count %}
+<tfoot>
+  <tr>
+    <th class="min-tablet-l dt-seq"></th>
+    <th class="all text-start cp-loan-number-col"></th>
+    <th class="all text-end">Totals</th>
+    <th class="all text-end dt-foot-total">{{ loan_totals.loan_amount|money }}</th>
+    <th class="all text-end dt-foot-total">{{ loan_totals.paid|money }}</th>
+    <th class="all text-end dt-foot-total">{{ loan_totals.balance|money }}</th>
+    <th colspan="3"></th>
+  </tr>
+</tfoot>
+{% endif %}

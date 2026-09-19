@@ -1,0 +1,139 @@
+{% load static format_extras %}
+<div class="asset-print-sheet asset-print-sheet--account" aria-hidden="true">
+  <header class="asset-print-doc">
+    <div class="asset-print-doc__brand">
+      <img src="{% static 'img/logo.png' %}" alt="" class="asset-print-doc__logo" width="48" height="48">
+      <div>
+        <div class="asset-print-doc__company">CANMEE DAIRIES (PVT) LTD</div>
+        <div class="asset-print-doc__line">Phone: 071 543 5019</div>
+      </div>
+      <div class="asset-print-doc__issued">
+        <span>Generated</span>
+        <strong>{% now "d M Y, H:i" %}</strong>
+      </div>
+    </div>
+    <div class="asset-print-doc__titleblock">
+      <h1 class="asset-print-doc__title">Asset account</h1>
+      <p class="asset-print-doc__subtitle">{{ asset.asset_tag }} · {{ asset.name }} · As at {% now "d M Y" %}</p>
+    </div>
+    <table class="asset-print-table asset-print-table--totals">
+      <thead>
+        <tr>
+          <th>Gross cost</th>
+          <th>Written down</th>
+          <th>Net book value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ asset_stats.cost|money }}</td>
+          <td>{{ asset_stats.written_down|money }}</td>
+          <td>{{ asset_stats.book|money }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </header>
+
+  <section class="asset-print-sheet__section">
+    <h2 class="asset-print-sheet__heading">Classification &amp; custody</h2>
+    <table class="asset-print-table asset-print-table--meta">
+      <tbody>
+        <tr>
+          <th>Asset tag</th>
+          <td>{{ asset.asset_tag }}</td>
+          <th>Particulars</th>
+          <td>{{ asset.name }}</td>
+        </tr>
+        <tr>
+          <th>Classification</th>
+          <td>{% if asset.asset_type %}{{ asset.asset_type.name }}{% else %}—{% endif %}</td>
+          <th>Category</th>
+          <td>{{ asset.category.name|default:"—" }}</td>
+        </tr>
+        <tr>
+          <th>Branch</th>
+          <td>{{ asset.branch_label }}</td>
+          <th>Location</th>
+          <td>{% if asset.location %}{{ asset.location }}{% else %}—{% endif %}</td>
+        </tr>
+        <tr>
+          <th>Status</th>
+          <td>{{ asset.get_status_display }}</td>
+          <th>Condition</th>
+          <td>{{ asset.get_condition_display }}</td>
+        </tr>
+        <tr>
+          <th>Custodian</th>
+          <td>{% if asset.custodian %}{{ asset.custodian }}{% else %}—{% endif %}</td>
+          <th>Serial no.</th>
+          <td>{{ asset.serial_number|default:"—" }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="asset-print-sheet__section">
+    <h2 class="asset-print-sheet__heading">Acquisition &amp; valuation</h2>
+    <table class="asset-print-table asset-print-table--meta">
+      <tbody>
+        <tr>
+          <th>Purchase date</th>
+          <td>{% if asset.purchase_date %}{{ asset.purchase_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+          <th>Warranty expiry</th>
+          <td>{% if asset.warranty_expiry %}{{ asset.warranty_expiry|date:"d M Y" }}{% else %}—{% endif %}</td>
+        </tr>
+        <tr>
+          <th>Supplier</th>
+          <td>{{ asset.supplier_name|default:"—" }}</td>
+          <th>Manufacturer / model</th>
+          <td>{% if asset.manufacturer or asset.model_number %}{{ asset.manufacturer }} {{ asset.model_number }}{% else %}—{% endif %}</td>
+        </tr>
+        <tr>
+          <th>Gross cost</th>
+          <td>{{ asset.purchase_cost|money }}</td>
+          <th>Salvage value</th>
+          <td>{{ asset.salvage_value|money }}</td>
+        </tr>
+        <tr>
+          <th>Written down</th>
+          <td>{{ asset.written_down|money }}</td>
+          <th>Net book value</th>
+          <td>{{ asset.current_value|money }}</td>
+        </tr>
+        <tr>
+          <th>Depreciation policy</th>
+          <td>{% if asset.depreciation_policy %}{{ asset.depreciation_policy }}{% else %}—{% endif %}</td>
+          <th>Useful life</th>
+          <td>{% if asset.useful_life_months %}{{ asset.useful_life_months }} months{% else %}—{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  {% if asset.description or asset.notes %}
+  <section class="asset-print-sheet__section">
+    <h2 class="asset-print-sheet__heading">Notes</h2>
+    <table class="asset-print-table asset-print-table--meta">
+      <tbody>
+        {% if asset.description %}
+        <tr>
+          <th>Description</th>
+          <td colspan="3">{{ asset.description }}</td>
+        </tr>
+        {% endif %}
+        {% if asset.notes %}
+        <tr>
+          <th>Internal notes</th>
+          <td colspan="3">{{ asset.notes }}</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <footer class="asset-print-doc__footer">
+    <span>This is a computer-generated asset account and does not require a signature.</span>
+    <span>Canmee Dairies (Pvt) Ltd · Confidential</span>
+  </footer>
+</div>

@@ -1,0 +1,51 @@
+<div class="goods-issue-pos-sheet">
+  <div class="goods-issue-pos-company">Canmee Dairies</div>
+  <div class="goods-issue-pos-title">{% if is_branch_transfer %}Transfer Note{% else %}Issue Receipt{% endif %}</div>
+  <div class="goods-issue-pos-divider"></div>
+  <div class="goods-issue-pos-meta">
+    <div class="goods-issue-pos-row">
+      <span class="goods-issue-pos-label">Ref</span>
+      <span class="goods-issue-pos-value">{{ batch_ref|slice:":8"|upper }}</span>
+    </div>
+    <div class="goods-issue-pos-row">
+      <span class="goods-issue-pos-label">Date</span>
+      <span class="goods-issue-pos-value">{{ issue_head.date|date:"Y-m-d" }}</span>
+    </div>
+    <div class="goods-issue-pos-row">
+      <span class="goods-issue-pos-label">From</span>
+      <span class="goods-issue-pos-value">{{ from_branch_name }}</span>
+    </div>
+    <div class="goods-issue-pos-row">
+      <span class="goods-issue-pos-label">Type</span>
+      <span class="goods-issue-pos-value">{{ issue_head.get_issue_to_type_display }}</span>
+    </div>
+    <div class="goods-issue-pos-row">
+      <span class="goods-issue-pos-label">To</span>
+      <span class="goods-issue-pos-value">{{ destination_name }}</span>
+    </div>
+  </div>
+  <div class="goods-issue-pos-divider"></div>
+  <table class="goods-issue-pos-lines">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th class="text-end">Qty</th>
+        <th class="text-end">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in issue_lines %}
+      <tr>
+        <td class="goods-issue-pos-product">{{ row.issue.product.name }}</td>
+        <td class="text-end text-nowrap">{{ row.quantity|floatformat:2 }} {{ row.issue.product.unit }}</td>
+        <td class="text-end text-nowrap goods-issue-pos-amount">{{ row.line_amount|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="goods-issue-pos-divider"></div>
+  <div class="goods-issue-pos-total">
+    <span>Total</span>
+    <span class="goods-issue-pos-amount">{{ issue_total|money }}</span>
+  </div>
+</div>

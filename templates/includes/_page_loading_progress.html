@@ -1,0 +1,132 @@
+{# Global page-load overlay (shown while navigating / finishing paint). #}
+<div id="app-page-loader" class="app-page-loader" hidden aria-live="polite" aria-busy="true">
+  <div class="app-page-loader__card">
+    <div class="app-page-loader__title" id="app-page-loader-title">Loading…</div>
+    <div class="progress mb-2" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="55" style="height: 12px;">
+      <div id="app-page-loader-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 55%;"></div>
+    </div>
+    <div class="d-flex justify-content-between small text-muted">
+      <span id="app-page-loader-pct">55%</span>
+      <span id="app-page-loader-status">Loading page…</span>
+    </div>
+  </div>
+</div>
+<style>
+  .app-page-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(248, 250, 252, 0.72);
+    backdrop-filter: blur(2px);
+  }
+  .app-page-loader[hidden] {
+    display: none !important;
+  }
+  .app-page-loader__card {
+    width: min(420px, calc(100vw - 2rem));
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    padding: 1.25rem 1.35rem;
+  }
+  .app-page-loader__title {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+</style>
+<script>
+(function () {
+  var PAGE_KEY = "canmee.pageLoading";
+  var SHEET_KEY = "canmee.paymentSheetLoading";
+
+  function takeMeta() {
+    var raw = null;
+    try {
+      raw = sessionStorage.getItem(PAGE_KEY) || sessionStorage.getItem(SHEET_KEY);
+      if (sessionStorage.getItem(PAGE_KEY)) sessionStorage.removeItem(PAGE_KEY);
+      if (sessionStorage.getItem(SHEET_KEY)) sessionStorage.removeItem(SHEET_KEY);
+    } catch (e) {
+      raw = null;
+    }
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) || {};
+    } catch (e2) {
+      return {};
+    }
+  }
+
+  var meta = takeMeta();
+  if (!meta) return;
+
+  var el = document.getElementById("app-page-loader");
+  if (!el) return;
+  var titleEl = document.getElementById("app-page-loader-title");
+  var bar = document.getElementById("app-page-loader-bar");
+  var pctEl = document.getElementById("app-page-loader-pct");
+  var statusEl = document.getElementById("app-page-loader-status");
+  if (titleEl) {
+    titleEl.textContent = meta.title || "Loading…";
+  }
+  if (statusEl) {
+    statusEl.textContent = "Finishing page load…";
+  }
+  el.hidden = false;
+
+  var pct = typeof meta.pct === "number" ? meta.pct : 60;
+  if (bar) bar.style.width = pct + "%";
+  if (pctEl) pctEl.textContent = Math.round(pct) + "%";
+
+  var finished = false;
+  function hide() {
+    if (finished) return;
+    finished = true;
+    window.clearInterval(timer);
+    if (bar) bar.style.width = "100%";
+    if (pctEl) pctEl.textContent = "100%";
+    if (statusEl) statusEl.textContent = "Ready";
+    if (bar && bar.parentElement) {
+      bar.parentElement.setAttribute("aria-valuenow", "100");
+    }
+    // Show the page immediately — no artificial pause after 100%.
+    if (el) {
+      el.hidden = true;
+      el.setAttribute("aria-busy", "false");
+    }
+  }
+
+  // Page already painted — skip the fake crawl.
+  if (document.readyState === "complete") {
+    hide();
+    return;
+  }
+
+  var timer = window.setInterval(function () {
+    if (finished) return;
+    pct = Math.min(96, pct + 6);
+    if (bar) bar.style.width = pct + "%";
+    if (pctEl) pctEl.textContent = Math.round(pct) + "%";
+    if (bar && bar.parentElement) {
+      bar.parentElement.setAttribute("aria-valuenow", String(Math.round(pct)));
+    }
+  }, 80);
+
+  window.addEventListener("load", hide, { once: true });
+  // DOM ready is enough for interactivity; don't wait on late assets.
+  if (document.readyState === "interactive") {
+    hide();
+  } else {
+    document.addEventListener("DOMContentLoaded", hide, { once: true });
+  }
+
+  // Safety: never leave the inbound overlay stuck (e.g. after back/forward).
+  window.addEventListener("pageshow", function () {
+    hide();
+  });
+  window.setTimeout(hide, 4000);
+})();
+</script>

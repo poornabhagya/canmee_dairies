@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}Farmer Advances · Canmee Dairies{% endblock %}
+{% block page_heading %}Farmer Advances{% endblock %}
+{% block extra_css %}
+<style>
+  .advance-page-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .advance-page-card .card-body {
+    padding: 1rem 1.1rem;
+  }
+  .advance-page-card__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.15rem;
+  }
+  .advance-page-card__hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 0.85rem;
+  }
+  .advance-page-form .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+  }
+  .advance-page-form .advance-amount-input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .advance-page-form .advance-form-actions .btn {
+    min-width: 9rem;
+    white-space: nowrap;
+  }
+  .advance-balance-panel {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.85rem;
+    font-size: 0.8125rem;
+  }
+  .advance-balance-panel .advance-balance-net {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #059669;
+    font-variant-numeric: tabular-nums;
+  }
+  .advance-balance-panel .advance-balance-net.is-negative {
+    color: #dc2626;
+  }
+  .advance-balance-panel .advance-balance-after {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .advance-list-table {
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+  }
+  .advance-list-table thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .advance-list-table tbody td {
+    vertical-align: middle;
+  }
+  .advance-list-table .money-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .advance-list-table .advance-actions-cell {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .advance-list-table tr.advance-row--recovered td {
+    background: #f0fdf4;
+  }
+  .advance-list-table .advance-recovery-col {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .advance-page-card__legend {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+  }
+  @media (max-width: 767.98px) {
+    .advance-page-form .advance-form-actions {
+      width: 100%;
+    }
+    .advance-page-form .advance-form-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% if can_add_advance %}
+<div class="card advance-page-card mb-3">
+  <div class="card-body advance-page-form">
+    <div class="advance-page-card__title">Record advance payment</div>
+    <p class="advance-page-card__hint">Advance is deducted from net pay when the advance date falls within the payment period. Balance preview uses the <a href="{% url 'farmer-payment-sheet' %}?start={{ payment_period_start|date:'Y-m-d' }}&amp;end={{ payment_period_end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}">Farmer Payment Sheet</a> period ({{ payment_period_start|date:"Y-m-d" }} → {{ payment_period_end|date:"Y-m-d" }}).</p>
+    {{ farmer_balance_data|json_script:"farmer-balance-data" }}
+    <form method="post" action="{% url 'farmer-advance-add' %}" id="farmer-advance-form">
+      {% csrf_token %}
+      <input type="hidden" name="return_to" value="advance-list">
+      {% for branch_id in selected_branches %}
+      <input type="hidden" name="return_branches" value="{{ branch_id }}">
+      {% endfor %}
+      <div id="advance-balance-panel" class="advance-balance-panel d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <span class="text-muted">Balance due this period:</span>
+            <span class="advance-balance-net ms-1" id="advance-balance-net">—</span>
+          </div>
+          <div class="text-muted">
+            After this advance:
+            <span class="advance-balance-after text-dark" id="advance-balance-after">—</span>
+          </div>
+        </div>
+        <div class="small text-muted mt-1" id="advance-balance-breakdown"></div>
+      </div>
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="{{ advance_form.farmer.id_for_label }}">{{ advance_form.farmer.label }}</label>
+          {{ advance_form.farmer }}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ advance_form.advance_type.id_for_label }}">{{ advance_form.advance_type.label }}</label>
+          {{ advance_form.advance_type }}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ advance_form.date.id_for_label }}">{{ advance_form.date.label }}</label>
+          {{ advance_form.date }}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ advance_form.amount.id_for_label }}">{{ advance_form.amount.label }}</label>
+          {{ advance_form.amount }}
+        </div>
+        <div class="col-12 col-md-auto advance-form-actions">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-cash-coin me-1"></i>Save advance</button>
+        </div>
+      </div>
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          {{ advance_form.note }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card advance-page-card">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <div class="advance-page-card__title mb-0">Advance payments</div>
+      <span class="small text-muted">All advances{% if selected_branches %} · selected branches{% endif %}</span>
+    </div>
+    <p class="advance-page-card__legend mb-2">Recovered = deducted from a payment; Pending = still owed. This list is not limited to the payment sheet period.</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover advance-list-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Farmer</th>
+            <th>Type</th>
+            <th class="text-end">Amount</th>
+            <th>Note</th>
+            <th>Status</th>
+            <th>Recorded by</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for advance in advances %}
+          <tr class="{% if advance.is_recovered %}advance-row--recovered{% endif %}">
+            <td class="text-nowrap">{{ advance.date|date:"Y-m-d" }}</td>
+            <td>{{ advance.farmer.common_name|default:advance.farmer.full_name }}</td>
+            <td class="text-nowrap">{{ advance.get_advance_type_display }}</td>
+            <td class="money-col">{{ advance.amount|money }}</td>
+            <td>{{ advance.note|default:"—" }}</td>
+            {% include "reports/_payslip_recovery_status.html" with is_recovered=advance.is_recovered recovered_at=advance.recovered_at recovery_note=advance.recovery_note %}
+            <td class="text-nowrap">{{ advance.created_by }}</td>
+            <td class="text-end advance-actions-cell">
+              {% if perms.masters.change_farmer or perms.reports.record_manual_settlement %}
+              <div class="dropdown d-inline-block">
+                <button
+                  class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Advance actions"
+                >
+                  <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  {% if perms.masters.change_farmer %}
+                  <li>
+                    <a
+                      class="dropdown-item"
+                      href="{% url 'farmer-advance-edit' advance.pk %}{% if selected_branches %}?{% for branch_id in selected_branches %}branches={{ branch_id }}{% if not forloop.last %}&amp;{% endif %}{% endfor %}{% endif %}"
+                    ><i class="bi bi-pencil-square me-2"></i>Edit</a>
+                  </li>
+                  {% endif %}
+                  {% if perms.reports.record_manual_settlement %}
+                  <li>
+                    <form
+                      method="post"
+                      action="{% url 'farmer-advance-manual-settle' advance.pk %}"
+                      class="px-0{% if not advance.is_recovered %} js-swal-settlement-form{% else %} js-swal-submit-guard{% endif %}"
+                    >
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <input type="hidden" name="recovered" value="{% if advance.is_recovered %}0{% else %}1{% endif %}">
+                      <button
+                        type="submit"
+                        class="dropdown-item {% if advance.is_recovered %}js-swal-submit-trigger{% else %}js-swal-settlement-trigger{% endif %}"
+                        data-swal-title="{% if advance.is_recovered %}Mark advance pending?{% else %}Mark advance recovered{% endif %}"
+                        data-swal-text="{% if advance.is_recovered %}This advance will count toward deductions again.{% else %}Enter when and how this advance was recovered outside the payment sheet.{% endif %}"
+                      >
+                        <i class="bi bi-{% if advance.is_recovered %}arrow-counterclockwise{% else %}check-circle{% endif %} me-2"></i>
+                        {% if advance.is_recovered %}Undo recovery{% else %}Mark recovered{% endif %}
+                      </button>
+                    </form>
+                  </li>
+                  {% endif %}
+                  {% if perms.masters.change_farmer %}
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a
+                      href="{% url 'farmer-advance-delete' advance.pk %}{% if selected_branches %}?{% for branch_id in selected_branches %}branches={{ branch_id }}{% if not forloop.last %}&amp;{% endif %}{% endfor %}{% endif %}"
+                      class="dropdown-item text-danger js-swal-delete-post"
+                      data-swal-title="Delete advance for {{ advance.farmer.common_name|default:advance.farmer.full_name }}?"
+                      data-swal-text="This cannot be undone."
+                    ><i class="bi bi-trash3 me-2"></i>Delete</a>
+                  </li>
+                  {% endif %}
+                </ul>
+              </div>
+              {% else %}
+              —
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No advance payments recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  function parseAmount(value) {
+    var n = Number(String(value || "0").replace(/,/g, ""));
+    return isFinite(n) ? n : 0;
+  }
+
+  function formatAmount(value) {
+    return parseAmount(value).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function focusNextField(form, current) {
+    var fields = Array.from(
+      form.querySelectorAll('select, input:not([type="hidden"]), textarea, button[type="submit"]')
+    ).filter(function (el) {
+      return !el.disabled && el.type !== "hidden" && el.offsetParent !== null;
+    });
+    var index = fields.indexOf(current);
+    if (index >= 0 && index < fields.length - 1) {
+      fields[index + 1].focus();
+      if (typeof fields[index + 1].select === "function") {
+        fields[index + 1].select();
+      }
+    }
+  }
+
+  function loadFarmerBalances() {
+    try {
+      var balanceEl = document.getElementById("farmer-balance-data");
+      if (!balanceEl) return {};
+      var parsed = JSON.parse(balanceEl.textContent || "{}");
+      if (typeof parsed === "string") {
+        parsed = JSON.parse(parsed);
+      }
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  var advanceForm = document.getElementById("farmer-advance-form");
+  var farmerBalances = loadFarmerBalances();
+
+  function updateAdvanceBalance() {
+    if (!advanceForm) return;
+    var panel = document.getElementById("advance-balance-panel");
+    var netEl = document.getElementById("advance-balance-net");
+    var afterEl = document.getElementById("advance-balance-after");
+    var breakdownEl = document.getElementById("advance-balance-breakdown");
+    var farmerSelect = advanceForm.querySelector('[name="farmer"]');
+    var amountInput = advanceForm.querySelector('[name="amount"]');
+    if (!panel || !farmerSelect || !netEl || !afterEl || !breakdownEl) return;
+
+    var farmerId = String(farmerSelect.value || "");
+    var data = farmerBalances[farmerId];
+    if (!farmerId || data == null) {
+      panel.classList.add("d-none");
+      return;
+    }
+    var net = parseAmount(data.net);
+    var pendingAdvance = parseAmount(amountInput ? amountInput.value : 0);
+    var after = net - pendingAdvance;
+
+    panel.classList.remove("d-none");
+    netEl.textContent = formatAmount(net);
+    netEl.classList.toggle("is-negative", net < 0);
+    afterEl.textContent = formatAmount(after);
+    afterEl.classList.toggle("text-danger", after < 0);
+    breakdownEl.textContent =
+      "Gross " + formatAmount(data.gross) +
+      " · Already advanced " + formatAmount(data.advanced) +
+      " · Goods " + formatAmount(data.goods) +
+      " · Loan " + formatAmount(data.loan);
+  }
+
+  function bindFarmerBalanceUpdates(farmerSelect) {
+    if (!farmerSelect) return;
+    farmerSelect.addEventListener("change", updateAdvanceBalance);
+    farmerSelect.addEventListener("input", updateAdvanceBalance);
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+      var $farmer = window.jQuery(farmerSelect);
+      if (!$farmer.hasClass("select2-hidden-accessible")) {
+        $farmer.select2({
+          width: "100%",
+          placeholder: "Select farmer",
+        });
+      }
+      $farmer.on("change select2:select select2:clear", updateAdvanceBalance);
+    }
+    updateAdvanceBalance();
+  }
+
+  if (advanceForm) {
+    advanceForm.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      var tag = (event.target && event.target.tagName) || "";
+      if (tag === "TEXTAREA") return;
+      if (event.target && event.target.type === "submit") return;
+      event.preventDefault();
+      focusNextField(advanceForm, event.target);
+    });
+    advanceForm.addEventListener("focusin", function (event) {
+      var target = event.target;
+      if (!target.classList || !target.classList.contains("js-money-input")) return;
+      target.value = String(target.value || "").replace(/,/g, "");
+      if (typeof target.select === "function") target.select();
+    });
+    advanceForm.addEventListener("focusout", function (event) {
+      var target = event.target;
+      if (!target.classList || !target.classList.contains("js-money-input")) return;
+      if (!String(target.value || "").trim()) return;
+      target.value = formatAmount(target.value);
+      updateAdvanceBalance();
+    });
+    advanceForm.addEventListener("input", function (event) {
+      if (event.target && event.target.name === "amount") updateAdvanceBalance();
+    });
+    bindFarmerBalanceUpdates(advanceForm.querySelector('[name="farmer"]'));
+    advanceForm.addEventListener("submit", function () {
+      advanceForm.querySelectorAll(".js-money-input").forEach(function (el) {
+        el.value = String(el.value || "").replace(/,/g, "");
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

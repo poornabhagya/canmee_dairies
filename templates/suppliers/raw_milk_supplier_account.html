@@ -1,0 +1,888 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}{{ supplier.name }} account · Canmee Dairies{% endblock %}
+{% block page_heading %}Raw milk supplier account{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .rms-account-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .rms-account-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+    background: #fff;
+  }
+  .rms-account-card > .card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem 0.85rem;
+    background: #fff;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .rms-account-card > .card-body.table-wrap {
+    padding: 1rem 1.1rem 1.1rem;
+    background: #fff;
+  }
+  .rms-account-section-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+  .rms-account-hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.35;
+    max-width: 42rem;
+  }
+  .rms-account-form-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.65rem;
+    align-items: end;
+    margin-bottom: 0.85rem;
+  }
+  .rms-account-form-row .form-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+  }
+  .rms-account-form-row .form-control,
+  .rms-account-form-row .form-select {
+    border-radius: 10px;
+    border-color: #dbe3ef;
+  }
+  .rms-account-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .rms-account-selected-summary {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    align-items: center;
+    margin: 0 0 0.85rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+    color: #475569;
+  }
+  .rms-account-selected-summary.is-visible {
+    display: flex;
+  }
+  .rms-account-selected-summary strong {
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+  .rms-account-selected-summary .rms-sel-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-right: 0.3rem;
+  }
+  .rms-alloc-input {
+    max-width: 7.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .rms-account-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .rms-account-pay-table th.dt-date,
+  .rms-account-pay-table td.dt-date,
+  .rms-account-pay-table th.text-start,
+  .rms-account-pay-table td.text-start,
+  .rms-account-pay-table th.dt-collection,
+  .rms-account-pay-table td.dt-collection,
+  .rms-account-ledger-table th.dt-date,
+  .rms-account-ledger-table td.dt-date,
+  .rms-account-ledger-table th.text-start,
+  .rms-account-ledger-table td.text-start,
+  .rms-account-ledger-table th.dt-ref,
+  .rms-account-ledger-table td.dt-ref {
+    text-align: left !important;
+  }
+  .rms-account-period-filter {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .rms-account-period-filter .form-control,
+  .rms-account-period-filter .form-select,
+  .rms-account-card .smart-dt-filters .form-control,
+  .rms-account-card .smart-dt-filters .form-select {
+    width: auto !important;
+    min-width: 8.5rem;
+    max-width: 14rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .rms-account-period-filter .form-select,
+  .rms-account-card .smart-dt-filters .form-select {
+    min-width: 7.5rem;
+    padding-right: 1.75rem;
+  }
+  .rms-account-period-filter .btn,
+  .rms-account-card .smart-dt-filters .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .rms-account-period-filter .input-group,
+  .rms-account-card .smart-dt-filters .input-group {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .rms-account-period-filter .input-group-text,
+  .rms-account-card .smart-dt-filters .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .rms-account-period-filter .input-group .form-control,
+  .rms-account-card .smart-dt-filters .input-group .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 10.5rem;
+  }
+  .rms-account-card a.smart-dt-chip {
+    text-decoration: none;
+  }
+  .rms-ledger-foot-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+    line-height: 1.25;
+  }
+  .rms-ledger-foot-stack .ledger-foot-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .rms-ledger-foot-stack .ledger-foot-credit {
+    color: #b91c1c;
+    font-variant-numeric: tabular-nums;
+  }
+  .rms-ledger-foot-stack .ledger-foot-debit {
+    color: #047857;
+    font-variant-numeric: tabular-nums;
+  }
+  .rms-account-ledger-table tfoot th.ledger-foot-balance {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    white-space: nowrap;
+  }
+  .rms-account-ledger-table tbody td.dt-amount-credit {
+    color: #b91c1c;
+  }
+  .rms-account-ledger-table tbody td.dt-amount-debit {
+    color: #047857;
+  }
+  .rms-account-card .smart-dt-filters {
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+  .rms-account-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap;
+  }
+  .rms-account-card div.dt-smart-toolbar .dt-smart-filters-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+  }
+  .rms-account-card div.dt-smart-toolbar .dt-smart-actions {
+    flex: 0 0 auto;
+    margin-left: 0.5rem;
+  }
+  @media (max-width: 991.98px) {
+    .rms-account-card .smart-dt-filters,
+    .rms-account-period-filter,
+    .rms-account-card div.dt-smart-toolbar > [class*="col-"] {
+      flex-wrap: wrap;
+    }
+  }
+  .js-money-input {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  @media (max-width: 991.98px) {
+    .rms-account-form-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 575.98px) {
+    .rms-account-form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="rms-account-shell">
+  <div class="page-header mb-0">
+    <div>
+      <h1 class="page-title">{{ supplier.name }}</h1>
+      <p class="page-subtitle">Raw milk supplier account · payable balance and payments against bulk milk collections</p>
+    </div>
+    <div class="page-actions d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-secondary" href="{% url 'raw-milk-supplier-detail' supplier.pk %}">Rates &amp; details</a>
+      <a class="btn btn-outline-secondary" href="{% url 'supplier-list' %}?category=raw_milk_supplier">All suppliers</a>
+      <a class="btn btn-outline-secondary" href="{% url 'raw-milk-collection-list' %}">Bulk collections</a>
+    </div>
+  </div>
+
+  <div class="smart-dt-stats smart-dt-stats--four" aria-label="Account summary">
+    <div class="smart-dt-stat">
+      <span class="smart-dt-stat-label">Balance (we owe)</span>
+      <span class="smart-dt-stat-value">{{ account_summary.balance|money }}</span>
+    </div>
+    <div class="smart-dt-stat {% if account_summary.outstanding %}smart-dt-stat--warn{% endif %}">
+      <span class="smart-dt-stat-label">Outstanding collections</span>
+      <span class="smart-dt-stat-value">{{ account_summary.outstanding|money }}</span>
+    </div>
+    <div class="smart-dt-stat">
+      <span class="smart-dt-stat-label">Billed total</span>
+      <span class="smart-dt-stat-value">{{ account_summary.billed|money }}</span>
+    </div>
+    <div class="smart-dt-stat {% if account_summary.paid %}smart-dt-stat--active{% endif %}">
+      <span class="smart-dt-stat-label">Paid total</span>
+      <span class="smart-dt-stat-value">{{ account_summary.paid|money }}</span>
+    </div>
+  </div>
+
+  {% if can_receive_payment %}
+  <div class="card card-table rms-account-card smart-list-card" id="rmsReceivePaymentCard">
+    <div class="card-header">
+      <div>
+        <div class="rms-account-section-title">Record payment</div>
+        <p class="rms-account-hint">
+          Select bulk collections to see the selected outstanding total. With an amount entered,
+          Allocate fills automatically (oldest first).
+        </p>
+      </div>
+      <div class="rms-account-actions">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="rmsFillSelectedFull" form="rmsPaymentForm">Fill amount = selected outstanding</button>
+        <button type="submit" class="btn btn-primary js-focus-next" form="rmsPaymentForm" {% if not outstanding_collections %}disabled{% endif %}>Record payment</button>
+      </div>
+    </div>
+    <div class="card-body table-wrap">
+      <form method="post" action="{% url 'raw-milk-supplier-payment-receive' supplier.pk %}" id="rmsPaymentForm">
+        {% csrf_token %}
+        <div class="rms-account-form-row">
+          <div>
+            <label class="form-label" for="{{ payment_form.date.id_for_label }}">Date</label>
+            {{ payment_form.date }}
+          </div>
+          <div>
+            <label class="form-label" for="{{ payment_form.amount.id_for_label }}">Amount</label>
+            {{ payment_form.amount }}
+          </div>
+          <div>
+            <label class="form-label" for="{{ payment_form.reference.id_for_label }}">Reference</label>
+            {{ payment_form.reference }}
+          </div>
+          <div>
+            <label class="form-label" for="{{ payment_form.note.id_for_label }}">Note</label>
+            {{ payment_form.note }}
+          </div>
+          <div>
+            <label class="form-label" for="id_allocation_mode">Mode</label>
+            <select name="allocation_mode" id="id_allocation_mode" class="form-select js-focus-next">
+              <option value="auto" selected>Auto (full/partial)</option>
+              <option value="explicit">Explicit amounts</option>
+            </select>
+          </div>
+        </div>
+        <div id="rmsSelectedSummary" class="rms-account-selected-summary" aria-live="polite">
+          <span><span class="rms-sel-label">Selected</span><strong id="rmsSelectedCount">0</strong></span>
+          <span><span class="rms-sel-label">Outstanding</span><strong id="rmsSelectedOutstanding">0.00</strong></span>
+          <span><span class="rms-sel-label">Allocating</span><strong id="rmsSelectedAllocating">0.00</strong></span>
+          <span><span class="rms-sel-label">Remaining</span><strong id="rmsSelectedRemaining">0.00</strong></span>
+        </div>
+      </form>
+
+      {# Filters outside POST form; DataTables moves this into the table toolbar inside this card. #}
+      <div id="rmsAccountPayDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter outstanding collections">
+        <a
+          class="smart-dt-chip {% if not account_filters.period_active %}is-active{% endif %}"
+          href="{% url 'raw-milk-supplier-account' supplier.pk %}{% if ledger_filters.period_active %}?{% if ledger_filters.date_from %}ledger_from={{ ledger_filters.date_from }}&amp;{% endif %}{% if ledger_filters.date_to %}ledger_to={{ ledger_filters.date_to }}&amp;{% endif %}{% if ledger_filters.type %}ledger_type={{ ledger_filters.type }}{% endif %}{% endif %}"
+        >All<span class="smart-dt-chip-count">{{ account_filters.all_count }}</span></a>
+        {% if account_filters.period_active %}
+        <span class="smart-dt-chip is-active">
+          Filtered<span class="smart-dt-chip-count">{{ account_filters.count }}</span>
+        </span>
+        {% endif %}
+        <form method="get" class="rms-account-period-filter" id="rmsAccountFilterForm">
+          {% if ledger_filters.date_from %}<input type="hidden" name="ledger_from" value="{{ ledger_filters.date_from }}">{% endif %}
+          {% if ledger_filters.date_to %}<input type="hidden" name="ledger_to" value="{{ ledger_filters.date_to }}">{% endif %}
+          {% if ledger_filters.type %}<input type="hidden" name="ledger_type" value="{{ ledger_filters.type }}">{% endif %}
+          {% if account_branch_options|length > 1 %}
+          <label class="visually-hidden" for="rms-account-branch">Branch</label>
+          <select id="rms-account-branch" name="branch" class="form-select form-select-sm no-global-select2" aria-label="Branch">
+            <option value="">All branches</option>
+            {% for b in account_branch_options %}
+            <option value="{{ b.pk }}" {% if account_filters.branch == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="rms-account-period"
+              class="form-control js-datepicker-range"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="Period"
+              autocomplete="off"
+              aria-label="Date period"
+              value="{% if account_filters.date_from and account_filters.date_to %}{{ account_filters.date_from }} to {{ account_filters.date_to }}{% elif account_filters.date_from %}{{ account_filters.date_from }}{% elif account_filters.date_to %}{{ account_filters.date_to }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ account_filters.date_from }}">
+          <input type="hidden" name="date_to" value="{{ account_filters.date_to }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+          {% if account_filters.period_active %}
+          <a href="{% url 'raw-milk-supplier-account' supplier.pk %}{% if ledger_filters.period_active %}?{% if ledger_filters.date_from %}ledger_from={{ ledger_filters.date_from }}&amp;{% endif %}{% if ledger_filters.date_to %}ledger_to={{ ledger_filters.date_to }}&amp;{% endif %}{% if ledger_filters.type %}ledger_type={{ ledger_filters.type }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Clear filters">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+
+      <table
+        class="table table-hover datatable datatable-smart rms-account-table rms-account-pay-table smart-dt-table mb-0 w-100"
+        data-page-length="25"
+        data-empty-table="No outstanding collections{% if account_filters.period_active %} matching these filters{% endif %}."
+        data-smart-order="1,asc"
+        data-footer-sum-cols="4,5,6"
+        data-filters-target="rmsAccountPayDtFilters"
+      >
+        <thead>
+          <tr>
+            <th class="all no-export" style="width:2.5rem">
+              <input type="checkbox" id="rmsSelectAll" class="form-check-input" title="Select all">
+            </th>
+            <th class="all text-start dt-date">Date</th>
+            <th class="all text-start dt-collection">Collection</th>
+            <th class="min-tablet-l">Branch</th>
+            <th class="min-desktop text-end">Total</th>
+            <th class="min-desktop text-end">Paid</th>
+            <th class="all text-end">Outstanding</th>
+            <th class="min-desktop text-end no-export">Allocate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in outstanding_collections %}
+          <tr data-branch-id="{{ c.branch_id|default:'' }}">
+            <td class="all">
+              <input
+                type="checkbox"
+                class="form-check-input js-rms-coll-check"
+                form="rmsPaymentForm"
+                name="collection_ids"
+                value="{{ c.pk }}"
+                data-outstanding="{{ c.outstanding_amount }}"
+              >
+            </td>
+            <td class="all text-start dt-date" data-order="{{ c.date|date:'Y-m-d' }}">{{ c.date|date:"Y-m-d" }}</td>
+            <td class="all text-start dt-collection">{{ c.dispatch_no }}</td>
+            <td class="min-tablet-l">{% if c.branch %}{{ c.branch.name }}{% else %}—{% endif %}</td>
+            <td class="min-desktop text-end dt-num" data-order="{{ c.total_amount|default:'0' }}">{{ c.total_amount|money }}</td>
+            <td class="min-desktop text-end dt-num" data-order="{{ c.paid_amount|default:'0' }}">{{ c.paid_amount|money }}</td>
+            <td class="all text-end dt-num fw-semibold" data-order="{{ c.outstanding_amount }}">{{ c.outstanding_amount|money }}</td>
+            <td class="min-desktop text-end">
+              <input
+                type="text"
+                inputmode="decimal"
+                form="rmsPaymentForm"
+                name="alloc_{{ c.pk }}"
+                class="form-control form-control-sm rms-alloc-input ms-auto js-rms-alloc js-money-input"
+                placeholder="—"
+                disabled
+                autocomplete="off"
+              >
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if outstanding_collections %}
+        <tfoot>
+          <tr>
+            <th class="all"></th>
+            <th class="all"></th>
+            <th class="all text-end">Totals</th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="all text-end dt-foot-total"></th>
+            <th class="min-desktop"></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card card-table rms-account-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div class="rms-account-section-title">Recent payments</div>
+      <table
+        class="table table-hover datatable datatable-smart rms-account-table smart-dt-table mb-0 w-100"
+        data-page-length="10"
+        data-empty-table="No payments recorded yet."
+        data-smart-order="0,desc"
+        data-footer-sum-cols="1"
+      >
+        <thead>
+          <tr>
+            <th class="all">Date</th>
+            <th class="all text-end">Amount</th>
+            <th class="min-tablet-l">Reference</th>
+            <th class="min-desktop">Note</th>
+            <th class="min-tablet-l">Allocated to</th>
+            <th class="min-desktop">By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payment_rows %}
+          <tr>
+            <td class="all" data-order="{{ p.date|date:'Y-m-d' }}">{{ p.date|date:"Y-m-d" }}</td>
+            <td class="all text-end dt-num" data-order="{{ p.amount }}">{{ p.amount|money }}</td>
+            <td class="min-tablet-l">{{ p.reference|default:"—" }}</td>
+            <td class="min-desktop">{{ p.note|default:"—" }}</td>
+            <td class="min-tablet-l">
+              {% for a in p.allocations.all %}
+                {{ a.collection.dispatch_no }} ({{ a.amount|money }}){% if not forloop.last %}, {% endif %}
+              {% empty %}—{% endfor %}
+            </td>
+            <td class="min-desktop">{% if p.created_by %}{{ p.created_by.get_username }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if payment_rows %}
+        <tfoot>
+          <tr>
+            <th class="all text-end">Totals</th>
+            <th class="all text-end dt-foot-total"></th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop"></th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop"></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+  <div class="card card-table rms-account-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div class="rms-account-section-title">Ledger</div>
+
+      <div id="rmsAccountLedgerDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter ledger">
+        <a
+          class="smart-dt-chip {% if not ledger_filters.type %}is-active{% endif %}"
+          href="?{% if account_filters.date_from %}date_from={{ account_filters.date_from }}&amp;{% endif %}{% if account_filters.date_to %}date_to={{ account_filters.date_to }}&amp;{% endif %}{% if account_filters.branch %}branch={{ account_filters.branch }}&amp;{% endif %}{% if ledger_filters.date_from %}ledger_from={{ ledger_filters.date_from }}&amp;{% endif %}{% if ledger_filters.date_to %}ledger_to={{ ledger_filters.date_to }}{% endif %}"
+        >All<span class="smart-dt-chip-count">{{ ledger_filters.period_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if ledger_filters.type == 'credit' %}is-active{% endif %}"
+          href="?ledger_type=credit{% if account_filters.date_from %}&amp;date_from={{ account_filters.date_from }}{% endif %}{% if account_filters.date_to %}&amp;date_to={{ account_filters.date_to }}{% endif %}{% if account_filters.branch %}&amp;branch={{ account_filters.branch }}{% endif %}{% if ledger_filters.date_from %}&amp;ledger_from={{ ledger_filters.date_from }}{% endif %}{% if ledger_filters.date_to %}&amp;ledger_to={{ ledger_filters.date_to }}{% endif %}"
+        >Credit<span class="smart-dt-chip-count">{{ ledger_filters.credit_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if ledger_filters.type == 'debit' %}is-active{% endif %}"
+          href="?ledger_type=debit{% if account_filters.date_from %}&amp;date_from={{ account_filters.date_from }}{% endif %}{% if account_filters.date_to %}&amp;date_to={{ account_filters.date_to }}{% endif %}{% if account_filters.branch %}&amp;branch={{ account_filters.branch }}{% endif %}{% if ledger_filters.date_from %}&amp;ledger_from={{ ledger_filters.date_from }}{% endif %}{% if ledger_filters.date_to %}&amp;ledger_to={{ ledger_filters.date_to }}{% endif %}"
+        >Debit<span class="smart-dt-chip-count">{{ ledger_filters.debit_count }}</span></a>
+        <form method="get" class="rms-account-period-filter" id="rmsAccountLedgerFilterForm">
+          {% if account_filters.date_from %}<input type="hidden" name="date_from" value="{{ account_filters.date_from }}">{% endif %}
+          {% if account_filters.date_to %}<input type="hidden" name="date_to" value="{{ account_filters.date_to }}">{% endif %}
+          {% if account_filters.branch %}<input type="hidden" name="branch" value="{{ account_filters.branch }}">{% endif %}
+          {% if ledger_filters.type %}<input type="hidden" name="ledger_type" value="{{ ledger_filters.type }}">{% endif %}
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="rms-account-ledger-period"
+              class="form-control js-datepicker-range"
+              data-range-start="ledger_from"
+              data-range-end="ledger_to"
+              placeholder="Period"
+              autocomplete="off"
+              aria-label="Ledger date period"
+              value="{% if ledger_filters.date_from and ledger_filters.date_to %}{{ ledger_filters.date_from }} to {{ ledger_filters.date_to }}{% elif ledger_filters.date_from %}{{ ledger_filters.date_from }}{% elif ledger_filters.date_to %}{{ ledger_filters.date_to }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="ledger_from" value="{{ ledger_filters.date_from }}">
+          <input type="hidden" name="ledger_to" value="{{ ledger_filters.date_to }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+          {% if ledger_filters.period_active %}
+          <a href="{% url 'raw-milk-supplier-account' supplier.pk %}{% if account_filters.period_active %}?{% if account_filters.date_from %}date_from={{ account_filters.date_from }}&amp;{% endif %}{% if account_filters.date_to %}date_to={{ account_filters.date_to }}&amp;{% endif %}{% if account_filters.branch %}branch={{ account_filters.branch }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Clear ledger filters">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+
+      <table
+        class="table table-hover datatable datatable-smart rms-account-table rms-account-ledger-table smart-dt-table mb-0 w-100"
+        data-page-length="25"
+        data-empty-table="No ledger entries{% if ledger_filters.period_active %} matching these filters{% else %}. Set a supplier rate and create bulk collections to open payables{% endif %}."
+        data-smart-order="0,asc"
+        data-filters-target="rmsAccountLedgerDtFilters"
+      >
+        <thead>
+          <tr>
+            <th class="all text-start dt-date">When</th>
+            <th class="all">Type</th>
+            <th class="all text-end">Amount</th>
+            <th class="all text-end">Balance</th>
+            <th class="min-tablet-l text-start dt-ref">Reference</th>
+            <th class="min-desktop">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in ledger_rows %}
+          <tr data-tx-type="{{ t.transaction_type }}">
+            <td class="all text-start dt-date" data-order="{{ t.date|date:'Y-m-d H:i:s' }}-{{ t.pk|stringformat:'08d' }}">{{ t.date|date:"Y-m-d H:i" }}</td>
+            <td class="all" data-order="{{ t.date|date:'Y-m-d H:i:s' }}-{{ t.pk|stringformat:'08d' }}">
+              {% if t.transaction_type == "credit" %}
+              <span class="text-danger fw-semibold">CREDIT</span>
+              {% else %}
+              <span class="text-success fw-semibold">DEBIT</span>
+              {% endif %}
+            </td>
+            <td
+              class="all text-end dt-num {% if t.transaction_type == 'credit' %}dt-amount-credit{% else %}dt-amount-debit{% endif %}"
+              data-order="{{ t.signed_amount }}"
+            >{{ t.amount|money }}</td>
+            <td class="all text-end dt-num fw-semibold" data-order="{{ t.running_balance }}">{{ t.running_balance|money }}</td>
+            <td class="min-tablet-l text-start dt-ref">{{ t.reference|default:"—" }}</td>
+            <td class="min-desktop">{{ t.description|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if ledger_rows %}
+        <tfoot>
+          <tr>
+            <th class="all text-start">
+              {% if ledger_totals.has_opening %}
+              <span class="text-muted" style="font-size:0.72rem;font-weight:600">Opening {{ ledger_totals.opening|money }}</span>
+              {% endif %}
+            </th>
+            <th class="all text-end">Totals</th>
+            <th class="all text-end">
+              <div class="rms-ledger-foot-stack">
+                <span><span class="ledger-foot-label">Credit</span> <span class="ledger-foot-credit">{{ ledger_totals.credit|money }}</span></span>
+                <span><span class="ledger-foot-label">Debit</span> <span class="ledger-foot-debit">{{ ledger_totals.debit|money }}</span></span>
+              </div>
+            </th>
+            <th class="all text-end ledger-foot-balance">
+              <div class="rms-ledger-foot-stack">
+                <span class="ledger-foot-label">Balance</span>
+                <span>{{ ledger_totals.closing|money }}</span>
+              </div>
+            </th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop"></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  var form = document.getElementById("rmsPaymentForm");
+  if (!form) return;
+  var root = document.getElementById("rmsReceivePaymentCard") || form.closest(".rms-account-card") || document;
+  var mode = document.getElementById("id_allocation_mode");
+  var selectAll = document.getElementById("rmsSelectAll");
+  var amountInput = form.querySelector('[name="amount"]');
+  var checks = function () { return Array.prototype.slice.call(root.querySelectorAll(".js-rms-coll-check")); };
+  var moneyInputs = function () { return Array.prototype.slice.call(root.querySelectorAll(".js-money-input")); };
+
+  function parseMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, "").trim());
+    return isFinite(n) ? n : NaN;
+  }
+
+  function formatMoney(value) {
+    var n = typeof value === "number" ? value : parseMoney(value);
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function isMoneyField(el) {
+    return el && el.classList && el.classList.contains("js-money-input");
+  }
+
+  function focusNextField(current) {
+    var fields = Array.prototype.slice.call(
+      root.querySelectorAll(".js-focus-next, .js-rms-alloc:not([disabled])")
+    ).filter(function (el) {
+      return el.offsetParent !== null && !el.disabled && el.type !== "hidden";
+    });
+    var idx = fields.indexOf(current);
+    if (idx < 0) return;
+    var next = fields[idx + 1];
+    if (!next) return;
+    next.focus();
+    if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+  }
+
+  moneyInputs().forEach(function (el) {
+    el.setAttribute("type", "text");
+    el.setAttribute("inputmode", "decimal");
+    el.setAttribute("autocomplete", "off");
+    if (String(el.value || "").trim()) el.value = formatMoney(el.value);
+  });
+
+  root.addEventListener("focusin", function (ev) {
+    var t = ev.target;
+    if (!isMoneyField(t)) return;
+    t.value = String(t.value || "").replace(/,/g, "");
+    if (typeof t.select === "function") t.select();
+  });
+
+  root.addEventListener("focusout", function (ev) {
+    var t = ev.target;
+    if (!isMoneyField(t)) return;
+    if (!String(t.value || "").trim()) return;
+    t.value = formatMoney(t.value);
+  });
+
+  root.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter") return;
+    var t = ev.target;
+    if (!t || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
+    if (t.closest("#rmsAccountFilterForm")) return;
+    if (t.tagName === "SELECT" || t.classList.contains("js-focus-next") || t.classList.contains("js-rms-alloc") || isMoneyField(t)) {
+      ev.preventDefault();
+      if (isMoneyField(t) && String(t.value || "").trim()) {
+        t.value = formatMoney(t.value);
+      }
+      focusNextField(t);
+    }
+  });
+
+  form.addEventListener("submit", function () {
+    moneyInputs().forEach(function (el) {
+      el.value = String(el.value || "").replace(/,/g, "");
+    });
+  });
+
+  var summaryEl = document.getElementById("rmsSelectedSummary");
+  var selectedCountEl = document.getElementById("rmsSelectedCount");
+  var selectedOutstandingEl = document.getElementById("rmsSelectedOutstanding");
+  var selectedAllocatingEl = document.getElementById("rmsSelectedAllocating");
+  var selectedRemainingEl = document.getElementById("rmsSelectedRemaining");
+  var suppressAutoAlloc = false;
+
+  function selectedChecks() {
+    return checks().filter(function (cb) { return cb.checked; });
+  }
+
+  function roundMoney(n) {
+    return Math.round((n + Number.EPSILON) * 100) / 100;
+  }
+
+  function updateSelectedSummary() {
+    var selected = selectedChecks();
+    var outstanding = 0;
+    var allocating = 0;
+    selected.forEach(function (cb) {
+      outstanding += parseMoney(cb.getAttribute("data-outstanding") || "0") || 0;
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-rms-alloc") : null;
+      if (input && !input.disabled) {
+        allocating += parseMoney(input.value) || 0;
+      }
+    });
+    outstanding = roundMoney(outstanding);
+    allocating = roundMoney(allocating);
+    var payAmount = parseMoney(amountInput && amountInput.value);
+    var remaining = isFinite(payAmount) ? roundMoney(Math.max(0, payAmount - allocating)) : 0;
+    if (selectedCountEl) selectedCountEl.textContent = String(selected.length);
+    if (selectedOutstandingEl) selectedOutstandingEl.textContent = formatMoney(outstanding);
+    if (selectedAllocatingEl) selectedAllocatingEl.textContent = formatMoney(allocating);
+    if (selectedRemainingEl) selectedRemainingEl.textContent = formatMoney(remaining);
+    if (summaryEl) summaryEl.classList.toggle("is-visible", selected.length > 0);
+  }
+
+  /** Waterfill payment amount across selected collections (DOM order = oldest first). */
+  function autoFillAllocatesFromAmount() {
+    var payAmount = parseMoney(amountInput && amountInput.value);
+    var selected = selectedChecks();
+    if (!selected.length) {
+      syncAllocInputs(false);
+      return;
+    }
+    if (!isFinite(payAmount) || payAmount <= 0) {
+      selected.forEach(function (cb) {
+        var row = cb.closest("tr");
+        var input = row ? row.querySelector(".js-rms-alloc") : null;
+        if (input) input.value = "";
+      });
+      syncAllocInputs(false);
+      return;
+    }
+    if (mode) mode.value = "explicit";
+    var remaining = payAmount;
+    selected.forEach(function (cb) {
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-rms-alloc") : null;
+      if (!input) return;
+      var outstanding = parseMoney(cb.getAttribute("data-outstanding") || "0") || 0;
+      var alloc = Math.min(outstanding, remaining);
+      alloc = roundMoney(alloc);
+      input.disabled = false;
+      input.value = alloc > 0 ? formatMoney(alloc) : "";
+      remaining = roundMoney(Math.max(0, remaining - alloc));
+    });
+    checks().forEach(function (cb) {
+      if (cb.checked) return;
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-rms-alloc") : null;
+      if (!input) return;
+      input.disabled = true;
+      input.value = "";
+    });
+    updateSelectedSummary();
+  }
+
+  function syncAllocInputs(redistribute) {
+    var explicit = mode && mode.value === "explicit";
+    var payAmount = parseMoney(amountInput && amountInput.value);
+    var shouldAuto = redistribute !== false && isFinite(payAmount) && payAmount > 0 && selectedChecks().length > 0;
+    if (shouldAuto) {
+      autoFillAllocatesFromAmount();
+      return;
+    }
+    checks().forEach(function (cb) {
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-rms-alloc") : null;
+      if (!input) return;
+      input.disabled = !explicit || !cb.checked;
+      if (!cb.checked) input.value = "";
+      else if (explicit && String(input.value || "").trim()) input.value = formatMoney(input.value);
+    });
+    updateSelectedSummary();
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener("change", function () {
+      checks().forEach(function (cb) { cb.checked = selectAll.checked; });
+      syncAllocInputs(true);
+    });
+  }
+  root.addEventListener("change", function (e) {
+    if (!e.target) return;
+    if (e.target.classList.contains("js-rms-coll-check")) {
+      syncAllocInputs(true);
+      return;
+    }
+    if (e.target === mode) {
+      if (mode.value === "auto") {
+        checks().forEach(function (cb) {
+          var row = cb.closest("tr");
+          var input = row ? row.querySelector(".js-rms-alloc") : null;
+          if (!input) return;
+          input.disabled = true;
+          input.value = "";
+        });
+        updateSelectedSummary();
+      } else {
+        syncAllocInputs(true);
+      }
+    }
+  });
+  root.addEventListener("input", function (e) {
+    if (!e.target) return;
+    if (e.target === amountInput) {
+      if (suppressAutoAlloc) return;
+      syncAllocInputs(true);
+      return;
+    }
+    if (e.target.classList.contains("js-rms-alloc")) {
+      updateSelectedSummary();
+    }
+  });
+  if (amountInput) {
+    amountInput.addEventListener("focusout", function () {
+      if (suppressAutoAlloc) return;
+      syncAllocInputs(true);
+    });
+  }
+  var fillBtn = document.getElementById("rmsFillSelectedFull");
+  if (fillBtn && amountInput) {
+    fillBtn.addEventListener("click", function () {
+      var total = 0;
+      selectedChecks().forEach(function (cb) {
+        total += parseMoney(cb.getAttribute("data-outstanding") || "0") || 0;
+      });
+      suppressAutoAlloc = true;
+      amountInput.value = formatMoney(total);
+      suppressAutoAlloc = false;
+      if (mode) mode.value = "explicit";
+      selectedChecks().forEach(function (cb) {
+        var row = cb.closest("tr");
+        var input = row ? row.querySelector(".js-rms-alloc") : null;
+        if (input) {
+          input.disabled = false;
+          input.value = formatMoney(cb.getAttribute("data-outstanding") || "0");
+        }
+      });
+      checks().forEach(function (cb) {
+        if (cb.checked) return;
+        var row = cb.closest("tr");
+        var input = row ? row.querySelector(".js-rms-alloc") : null;
+        if (input) {
+          input.disabled = true;
+          input.value = "";
+        }
+      });
+      updateSelectedSummary();
+      amountInput.focus();
+    });
+  }
+  syncAllocInputs(false);
+})();
+</script>
+{% endblock %}

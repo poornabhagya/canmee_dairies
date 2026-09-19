@@ -1,0 +1,1152 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}{{ buyer.name }} account · Canmee Dairies{% endblock %}
+{% block body_class %}buyer-page{% endblock %}
+{% block page_heading %}{{ buyer.name }}{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "includes/_detail_page_list_styles.html" %}
+{% include "collection_point_loans/_cp_loan_page_styles.html" %}
+{% include "masters/_buyer_page_compact_styles.html" %}
+<style>
+  .buyer-account-shell.cp-loan-screen {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .buyer-account-shell > .buyer-detail-card,
+  .buyer-account-shell > .buyer-account-card {
+    margin-bottom: 0;
+  }
+  .buyer-account-card .farmer-milk-actions-bar {
+    margin-bottom: 0.75rem;
+  }
+  .buyer-account-card .buyer-account-hint {
+    max-width: 46rem;
+  }
+  .buyer-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    max-width: 100%;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+  .buyer-detail-card .cp-loan-statement__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .buyer-detail-card .cp-loan-statement__grid dl:first-child {
+    border-right: 1px solid #eef2f7;
+    border-bottom: 0;
+  }
+  .buyer-detail-card .cp-loan-statement__footer {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  @media (min-width: 1200px) {
+    .buyer-detail-card .cp-loan-statement__footer {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-short .cp-loan-statement__figure-value {
+    color: #b91c1c;
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-over .cp-loan-statement__figure-value {
+    color: #047857;
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-dspd .cp-loan-statement__figure-value {
+    color: #1d4ed8;
+  }
+  .buyer-detail-card .cp-loan-statement__figure.is-del .cp-loan-statement__figure-value {
+    color: #b45309;
+  }
+  .buyer-detail-card .cp-loan-statement__figure {
+    min-width: 0;
+    overflow: hidden;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+  .buyer-detail-card .cp-loan-statement__figure-value {
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-size: clamp(0.7rem, 1.05vw, 1.12rem);
+  }
+  .buyer-figure-sub {
+    display: block;
+    margin-top: 0.12rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.02em;
+  }
+  .buyer-receivable {
+    color: #047857;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+  .buyer-account-card .farmer-milk-actions-bar {
+    margin-bottom: 0.75rem;
+  }
+  .buyer-account-card .buyer-account-hint {
+    max-width: 46rem;
+  }
+  .buyer-account-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+    background: #fff;
+  }
+  .buyer-account-card > .card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem 0.85rem;
+    background: #fff;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .buyer-account-card > .card-body.table-wrap,
+  .buyer-account-card .dataTables_wrapper,
+  .buyer-account-card div.dt-container,
+  .buyer-account-card .dt-scroll,
+  .buyer-account-card .dt-scroll-head,
+  .buyer-account-card .dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .buyer-account-card > .card-body.table-wrap {
+    padding: 1rem 1.1rem 1.1rem;
+    background: #fff;
+  }
+  .buyer-account-section-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+  .buyer-account-hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.35;
+    max-width: 42rem;
+  }
+  .buyer-account-form-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.65rem;
+    align-items: end;
+    margin-bottom: 0.85rem;
+  }
+  .buyer-account-form-row .form-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+  }
+  .buyer-account-form-row .form-control,
+  .buyer-account-form-row .form-select {
+    border-radius: 10px;
+    border-color: #dbe3ef;
+  }
+  .buyer-account-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .buyer-account-selected-summary {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    align-items: center;
+    margin: 0 0 0.85rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+    color: #475569;
+  }
+  .buyer-account-selected-summary.is-visible {
+    display: flex;
+  }
+  .buyer-account-selected-summary strong {
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+  .buyer-account-selected-summary .buyer-sel-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-right: 0.3rem;
+  }
+  .buyer-alloc-input {
+    max-width: 7.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .buyer-account-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .buyer-account-pay-table th.dt-date,
+  .buyer-account-pay-table td.dt-date,
+  .buyer-account-pay-table th.text-start,
+  .buyer-account-pay-table td.text-start,
+  .buyer-account-pay-table th.dt-dispatch,
+  .buyer-account-pay-table td.dt-dispatch,
+  .buyer-account-ledger-table th.dt-date,
+  .buyer-account-ledger-table td.dt-date,
+  .buyer-account-ledger-table th.text-start,
+  .buyer-account-ledger-table td.text-start,
+  .buyer-account-ledger-table th.dt-ref,
+  .buyer-account-ledger-table td.dt-ref {
+    text-align: left !important;
+  }
+  .buyer-account-period-filter {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .buyer-account-period-filter .form-control,
+  .buyer-account-period-filter .form-select,
+  .buyer-account-card .smart-dt-filters .form-control,
+  .buyer-account-card .smart-dt-filters .form-select {
+    width: auto !important;
+    min-width: 8.5rem;
+    max-width: 14rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .buyer-account-period-filter .form-select,
+  .buyer-account-card .smart-dt-filters .form-select {
+    min-width: 7.5rem;
+    padding-right: 1.75rem;
+  }
+  .buyer-account-period-filter .btn,
+  .buyer-account-card .smart-dt-filters .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .buyer-account-period-filter .input-group,
+  .buyer-account-card .smart-dt-filters .input-group {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .buyer-account-period-filter .input-group-text,
+  .buyer-account-card .smart-dt-filters .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .buyer-account-period-filter .input-group .form-control,
+  .buyer-account-card .smart-dt-filters .input-group .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 10.5rem;
+  }
+  .buyer-account-card a.smart-dt-chip {
+    text-decoration: none;
+  }
+  .buyer-ledger-foot-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+    line-height: 1.25;
+  }
+  .buyer-ledger-foot-stack .ledger-foot-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .buyer-ledger-foot-stack .ledger-foot-credit {
+    color: #b91c1c;
+    font-variant-numeric: tabular-nums;
+  }
+  .buyer-ledger-foot-stack .ledger-foot-debit {
+    color: #047857;
+    font-variant-numeric: tabular-nums;
+  }
+  .buyer-account-ledger-table tfoot th.ledger-foot-balance {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    white-space: nowrap;
+  }
+  .buyer-account-ledger-table tbody td.dt-amount-credit {
+    color: #b91c1c;
+  }
+  .buyer-account-ledger-table tbody td.dt-amount-debit {
+    color: #047857;
+  }
+  .buyer-account-card .smart-dt-filters {
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+  .buyer-account-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap;
+  }
+  .buyer-account-card div.dt-smart-toolbar .dt-smart-filters-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+  }
+  .buyer-account-card div.dt-smart-toolbar .dt-smart-actions {
+    flex: 0 0 auto;
+    margin-left: 0.5rem;
+  }
+  @media (max-width: 991.98px) {
+    .buyer-account-card .smart-dt-filters,
+    .buyer-account-period-filter,
+    .buyer-account-card div.dt-smart-toolbar > [class*="col-"] {
+      flex-wrap: wrap;
+    }
+  }
+  .js-money-input {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  @media (max-width: 991.98px) {
+    .buyer-account-form-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 575.98px) {
+    .buyer-account-form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 767.98px) {
+    .buyer-detail-card .cp-loan-statement__grid {
+      grid-template-columns: 1fr;
+    }
+    .buyer-detail-card .cp-loan-statement__grid dl:first-child {
+      border-right: 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions cp-loan-page-actions">
+  <a class="btn btn-outline-secondary" href="{% url 'buyer-detail' buyer.pk %}"><i class="bi bi-arrow-left me-1"></i>Buyer details</a>
+  <a class="btn btn-outline-secondary" href="{% url 'buyer-list' %}"><i class="bi bi-people me-1"></i>All buyers</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="buyer-account-shell cp-loan-screen">
+<div class="smart-stat-grid cp-loan-kpi-grid">
+  <a class="smart-stat-card{% if account_summary.balance %} smart-stat-card--warn cp-loan-kpi--balance{% else %} cp-loan-kpi--paid{% endif %}" href="#buyer-receive-payment" title="Receivable balance">
+    <span class="smart-stat-card__icon {% if account_summary.balance %}smart-stat-card__icon--amber{% else %}smart-stat-card__icon--teal{% endif %}"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Receivable</span>
+      <span class="smart-stat-card__value">{{ account_summary.balance|money }}</span>
+      <span class="smart-stat-card__hint">Open ledger (billed − payments posted)</span>
+    </span>
+  </a>
+  <a class="smart-stat-card{% if account_summary.outstanding %} smart-stat-card--warn cp-loan-kpi--balance{% else %} cp-loan-kpi--paid{% endif %}" href="#buyer-receive-payment" title="Outstanding dispatches">
+    <span class="smart-stat-card__icon {% if account_summary.outstanding %}smart-stat-card__icon--orange{% else %}smart-stat-card__icon--teal{% endif %}"><i class="bi bi-truck" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Outstanding</span>
+      <span class="smart-stat-card__value">{{ account_summary.outstanding|money }}</span>
+      <span class="smart-stat-card__hint">Unpaid billed dispatches</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--amount" href="#buyer-ledger" title="Billed total">
+    <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Billed</span>
+      <span class="smart-stat-card__value">{{ account_summary.billed|money }}</span>
+      <span class="smart-stat-card__hint">Invoiced dispatches</span>
+    </span>
+  </a>
+  <a class="smart-stat-card cp-loan-kpi--paid" href="#buyer-recent-payments" title="Collected total">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Collected</span>
+      <span class="smart-stat-card__value">{{ account_summary.paid|money }}</span>
+      <span class="smart-stat-card__hint">Payments received</span>
+    </span>
+  </a>
+</div>
+
+<div class="card farmer-detail-card buyer-detail-card cp-loan-page-card smart-list-card">
+  <div class="card-body">
+    <article class="cp-loan-statement" id="buyer-account-statement">
+      <header class="cp-loan-statement__head">
+        <div>
+          <span class="cp-loan-statement__kicker">Accounts receivable</span>
+          <h2 class="cp-loan-statement__title">Buyer account</h2>
+          <p class="cp-loan-statement__meta">{% for b in buyer.branches.all %}{{ b.name }}{% if not forloop.last %} · {% endif %}{% empty %}Receivable ledger{% endfor %}</p>
+        </div>
+        <div class="cp-loan-statement__head-actions">
+          <span class="cp-loan-statement__account">{{ buyer.name }}</span>
+          {% if buyer.rate %}
+          <span class="cp-loan-statement__account">{{ buyer.rate|money }} {{ buyer.get_rate_unit_display|lower }}</span>
+          {% endif %}
+        </div>
+      </header>
+      <div class="cp-loan-statement__grid">
+        <dl>
+          <div class="cp-loan-statement__row">
+            <dt>Name</dt>
+            <dd>{{ buyer.name }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Contact person</dt>
+            <dd>{{ buyer.contact_person|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Phone</dt>
+            <dd>{{ buyer.phone|default:"—" }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Email</dt>
+            <dd>{{ buyer.email|default:"—" }}</dd>
+          </div>
+        </dl>
+        <dl>
+          <div class="cp-loan-statement__row">
+            <dt>Current rate</dt>
+            <dd>{% if buyer.rate %}{{ buyer.rate|money }} <span class="text-muted">{{ buyer.get_rate_unit_display }}</span>{% else %}—{% endif %}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Billed</dt>
+            <dd>{{ account_summary.billed|money }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Collected</dt>
+            <dd>{{ account_summary.paid|money }}</dd>
+          </div>
+          <div class="cp-loan-statement__row">
+            <dt>Receivable</dt>
+            <dd><span class="buyer-receivable">{{ account_summary.balance|money }}</span></dd>
+          </div>
+        </dl>
+      </div>
+      <div class="cp-loan-statement__footer" aria-label="Buyer account figures">
+        <div class="cp-loan-statement__figure is-dspd">
+          <span class="cp-loan-statement__figure-label">Dispatched</span>
+          {% if buyer.rate_unit == 'kg' %}
+          <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.total_kg|money }}</span>
+          <span class="buyer-figure-sub">{{ buyer_dispatch_totals.total_liters|money }} L</span>
+          {% else %}
+          <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.total_liters|money }}</span>
+          <span class="buyer-figure-sub">{{ buyer_dispatch_totals.total_kg|money }} kg</span>
+          {% endif %}
+        </div>
+        <div class="cp-loan-statement__figure is-del">
+          <span class="cp-loan-statement__figure-label">Delivered</span>
+          {% if buyer_dispatch_totals.has_delivered %}
+            {% if buyer.rate_unit == 'kg' %}
+            <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.delivered_kg|money }}</span>
+            <span class="buyer-figure-sub">{{ buyer_dispatch_totals.delivered_liters|money }} L</span>
+            {% else %}
+            <span class="cp-loan-statement__figure-value">{{ buyer_dispatch_totals.delivered_liters|money }}</span>
+            <span class="buyer-figure-sub">{{ buyer_dispatch_totals.delivered_kg|money }} kg</span>
+            {% endif %}
+          {% else %}
+          <span class="cp-loan-statement__figure-value">—</span>
+          <span class="buyer-figure-sub">Buyer results</span>
+          {% endif %}
+        </div>
+        <div class="cp-loan-statement__figure{% if not buyer_dispatch_totals.has_delivered %}{% elif buyer.rate_unit == 'kg' and buyer_dispatch_totals.variation_kg < 0 %} is-short{% elif buyer.rate_unit != 'kg' and buyer_dispatch_totals.variation_liters < 0 %} is-short{% elif buyer.rate_unit == 'kg' and buyer_dispatch_totals.variation_kg > 0 %} is-over{% elif buyer.rate_unit != 'kg' and buyer_dispatch_totals.variation_liters > 0 %} is-over{% endif %}">
+          <span class="cp-loan-statement__figure-label">Variation</span>
+          {% if buyer_dispatch_totals.has_delivered %}
+            {% if buyer.rate_unit == 'kg' %}
+            <span class="cp-loan-statement__figure-value">{% if buyer_dispatch_totals.variation_kg > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_kg|money }}</span>
+            <span class="buyer-figure-sub">{% if buyer_dispatch_totals.variation_liters > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_liters|money }} L</span>
+            {% else %}
+            <span class="cp-loan-statement__figure-value">{% if buyer_dispatch_totals.variation_liters > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_liters|money }}</span>
+            <span class="buyer-figure-sub">{% if buyer_dispatch_totals.variation_kg > 0 %}+{% endif %}{{ buyer_dispatch_totals.variation_kg|money }} kg</span>
+            {% endif %}
+          {% else %}
+          <span class="cp-loan-statement__figure-value">—</span>
+          <span class="buyer-figure-sub">Delivered − dispatched</span>
+          {% endif %}
+        </div>
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Billed</span>
+          <span class="cp-loan-statement__figure-value">{{ account_summary.billed|money }}</span>
+          <span class="buyer-figure-sub">Invoiced dispatches</span>
+        </div>
+        <div class="cp-loan-statement__figure">
+          <span class="cp-loan-statement__figure-label">Collected</span>
+          <span class="cp-loan-statement__figure-value">{{ account_summary.paid|money }}</span>
+          <span class="buyer-figure-sub">Payments received</span>
+        </div>
+        <div class="cp-loan-statement__figure{% if account_summary.outstanding %} is-balance{% endif %}">
+          <span class="cp-loan-statement__figure-label">Outstanding</span>
+          <span class="cp-loan-statement__figure-value">{{ account_summary.outstanding|money }}</span>
+          <span class="buyer-figure-sub">Open dispatches</span>
+        </div>
+        <div class="cp-loan-statement__figure{% if account_summary.balance %} is-balance{% endif %}">
+          <span class="cp-loan-statement__figure-label">Receivable</span>
+          <span class="cp-loan-statement__figure-value">{{ account_summary.balance|money }}</span>
+          <span class="buyer-figure-sub">Open ledger balance</span>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>
+
+  {% if can_receive_payment %}
+  <div class="card card-table buyer-account-card farmer-milk-list-card smart-list-card" id="buyerReceivePaymentCard">
+    <div class="card-body table-wrap">
+      <div class="farmer-milk-actions-bar" id="buyer-receive-payment" aria-label="Receive payment">
+        <p class="farmer-milk-actions-bar__label">Receive payment</p>
+        <div class="farmer-milk-actions-bar__groups">
+          <div class="farmer-milk-actions-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="buyerFillSelectedFull" form="buyerPaymentForm">Fill amount = selected outstanding</button>
+            <button type="submit" class="btn btn-sm btn-primary" form="buyerPaymentForm" {% if not has_allocatable_dispatches %}disabled{% endif %} title="Select dispatches to see the selected outstanding total. With an amount entered, Allocate fills automatically (oldest first).">Record payment</button>
+          </div>
+        </div>
+      </div>
+      <form method="post" action="{% url 'buyer-payment-receive' buyer.pk %}" id="buyerPaymentForm">
+        {% csrf_token %}
+        <div class="buyer-account-form-row">
+          <div>
+            <label class="form-label" for="{{ payment_form.date.id_for_label }}">Date</label>
+            {{ payment_form.date }}
+          </div>
+          <div>
+            <label class="form-label" for="{{ payment_form.amount.id_for_label }}">Amount</label>
+            {{ payment_form.amount }}
+          </div>
+          <div>
+            <label class="form-label" for="{{ payment_form.reference.id_for_label }}">Reference</label>
+            {{ payment_form.reference }}
+          </div>
+          <div>
+            <label class="form-label" for="{{ payment_form.note.id_for_label }}">Note</label>
+            {{ payment_form.note }}
+          </div>
+          <div>
+            <label class="form-label" for="id_allocation_mode">Mode</label>
+            <select name="allocation_mode" id="id_allocation_mode" class="form-select js-focus-next">
+              <option value="auto" selected>Auto (full/partial)</option>
+              <option value="explicit">Explicit amounts</option>
+            </select>
+          </div>
+        </div>
+        <div id="buyerSelectedSummary" class="buyer-account-selected-summary" aria-live="polite">
+          <span><span class="buyer-sel-label">Selected</span><strong id="buyerSelectedCount">0</strong></span>
+          <span><span class="buyer-sel-label">Outstanding</span><strong id="buyerSelectedOutstanding">0.00</strong></span>
+          <span><span class="buyer-sel-label">Allocating</span><strong id="buyerSelectedAllocating">0.00</strong></span>
+          <span><span class="buyer-sel-label">Remaining</span><strong id="buyerSelectedRemaining">0.00</strong></span>
+        </div>
+      </form>
+
+      {# Filters outside POST form; DataTables moves this into the table toolbar inside this card. #}
+      <div id="buyerAccountPayDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter dispatches">
+        <a
+          class="smart-dt-chip {% if account_filters.pay_status == 'outstanding' %}is-active{% endif %}"
+          href="{% url 'buyer-account' buyer.pk %}{% if account_filters.chip_urls.outstanding %}?{{ account_filters.chip_urls.outstanding }}{% endif %}"
+        >Outstanding<span class="smart-dt-chip-count">{{ account_filters.outstanding_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if account_filters.pay_status == 'partial' %}is-active{% endif %}"
+          href="{% url 'buyer-account' buyer.pk %}?{{ account_filters.chip_urls.partial }}"
+        >Partial<span class="smart-dt-chip-count">{{ account_filters.partial_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if account_filters.pay_status == 'paid' %}is-active{% endif %}"
+          href="{% url 'buyer-account' buyer.pk %}?{{ account_filters.chip_urls.paid }}"
+        >Paid<span class="smart-dt-chip-count">{{ account_filters.paid_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if account_filters.pay_status == 'all' %}is-active{% endif %}"
+          href="{% url 'buyer-account' buyer.pk %}?{{ account_filters.chip_urls.all }}"
+        >All<span class="smart-dt-chip-count">{{ account_filters.all_count }}</span></a>
+        {% if account_filters.period_active %}
+        <span class="smart-dt-chip is-active">
+          Filtered<span class="smart-dt-chip-count">{{ account_filters.count }}</span>
+        </span>
+        {% endif %}
+        <form method="get" class="buyer-account-period-filter" id="buyerAccountFilterForm">
+          {% if ledger_filters.date_from %}<input type="hidden" name="ledger_from" value="{{ ledger_filters.date_from }}">{% endif %}
+          {% if ledger_filters.date_to %}<input type="hidden" name="ledger_to" value="{{ ledger_filters.date_to }}">{% endif %}
+          {% if ledger_filters.type %}<input type="hidden" name="ledger_type" value="{{ ledger_filters.type }}">{% endif %}
+          {% if account_filters.pay_status and account_filters.pay_status != 'outstanding' %}
+          <input type="hidden" name="pay_status" value="{{ account_filters.pay_status }}">
+          {% endif %}
+          {% if account_branch_options|length > 1 %}
+          <label class="visually-hidden" for="buyer-account-branch">Branch</label>
+          <select id="buyer-account-branch" name="branch" class="form-select form-select-sm no-global-select2" aria-label="Branch">
+            <option value="">All branches</option>
+            {% for b in account_branch_options %}
+            <option value="{{ b.pk }}" {% if account_filters.branch == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="buyer-account-period"
+              class="form-control js-datepicker-range"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="Period"
+              autocomplete="off"
+              aria-label="Date period"
+              value="{% if account_filters.date_from and account_filters.date_to %}{{ account_filters.date_from }} to {{ account_filters.date_to }}{% elif account_filters.date_from %}{{ account_filters.date_from }}{% elif account_filters.date_to %}{{ account_filters.date_to }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ account_filters.date_from }}">
+          <input type="hidden" name="date_to" value="{{ account_filters.date_to }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+          {% if account_filters.period_active %}
+          <a href="{% url 'buyer-account' buyer.pk %}{% if account_filters.pay_status and account_filters.pay_status != 'outstanding' %}?pay_status={{ account_filters.pay_status }}{% if ledger_filters.period_active %}&amp;{% endif %}{% elif ledger_filters.period_active %}?{% endif %}{% if ledger_filters.period_active %}{% if ledger_filters.date_from %}ledger_from={{ ledger_filters.date_from }}&amp;{% endif %}{% if ledger_filters.date_to %}ledger_to={{ ledger_filters.date_to }}&amp;{% endif %}{% if ledger_filters.type %}ledger_type={{ ledger_filters.type }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Clear filters">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+
+      <table
+        class="table table-hover datatable datatable-smart buyer-account-table buyer-account-pay-table smart-dt-table mb-0 w-100"
+        data-export-accounting="1"
+        data-print-title="{{ buyer.name }} — outstanding dispatches"
+        data-page-length="25"
+        data-empty-table="{% if account_filters.pay_status == 'paid' %}No paid dispatches{% elif account_filters.pay_status == 'partial' %}No partial dispatches{% elif account_filters.pay_status == 'all' %}No billed dispatches{% else %}No outstanding dispatches{% endif %}{% if account_filters.period_active %} matching these filters{% endif %}."
+        data-smart-order="1,asc"
+        data-footer-sum-cols="4,5,6"
+        data-filters-target="buyerAccountPayDtFilters"
+      >
+        <thead>
+          <tr>
+            <th class="all no-export" style="width:2.5rem">
+              <input type="checkbox" id="buyerSelectAll" class="form-check-input" title="Select all">
+            </th>
+            <th class="all text-start dt-date">Date</th>
+            <th class="all text-start dt-dispatch">Dispatch</th>
+            <th class="min-tablet-l">Branch</th>
+            <th class="min-desktop text-end">Total</th>
+            <th class="min-desktop text-end">Paid</th>
+            <th class="all text-end">Outstanding</th>
+            <th class="min-desktop text-end no-export">Allocate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in outstanding_dispatches %}
+          {% with can_alloc=d.outstanding_amount %}
+          <tr data-branch-id="{{ d.branch_id|default:'' }}" {% if not can_alloc %}class="is-paid-dispatch"{% endif %}>
+            <td class="all">
+              {% if can_alloc %}
+              <input
+                type="checkbox"
+                class="form-check-input js-buyer-dist-check"
+                form="buyerPaymentForm"
+                name="distribution_ids"
+                value="{{ d.pk }}"
+                data-outstanding="{{ d.outstanding_amount }}"
+              >
+              {% else %}
+              <span class="text-muted" title="Fully paid">—</span>
+              {% endif %}
+            </td>
+            <td class="all text-start dt-date" data-order="{{ d.date|date:'Y-m-d' }}">{{ d.date|date:"Y-m-d" }}</td>
+            <td class="all text-start dt-dispatch">{{ d.dispatch_no }}</td>
+            <td class="min-tablet-l">{% if d.branch %}{{ d.branch.name }}{% else %}—{% endif %}</td>
+            <td class="min-desktop text-end dt-num" data-order="{{ d.total_amount|default:'0' }}">{{ d.total_amount|money }}</td>
+            <td class="min-desktop text-end dt-num" data-order="{{ d.paid_amount|default:'0' }}">{{ d.paid_amount|money }}</td>
+            <td class="all text-end dt-num fw-semibold" data-order="{{ d.outstanding_amount }}">{{ d.outstanding_amount|money }}</td>
+            <td class="min-desktop text-end">
+              {% if can_alloc %}
+              <input
+                type="text"
+                inputmode="decimal"
+                form="buyerPaymentForm"
+                name="alloc_{{ d.pk }}"
+                class="form-control form-control-sm buyer-alloc-input ms-auto js-buyer-alloc js-money-input"
+                placeholder="—"
+                disabled
+                autocomplete="off"
+              >
+              {% else %}
+              <span class="text-muted small">Paid</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+        {% if outstanding_dispatches %}
+        <tfoot>
+          <tr>
+            <th class="all"></th>
+            <th class="all"></th>
+            <th class="all text-end">Totals</th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="all text-end dt-foot-total"></th>
+            <th class="min-desktop"></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card card-table buyer-account-card farmer-milk-list-card smart-list-card" id="buyer-recent-payments">
+    <div class="card-body table-wrap">
+      <div class="farmer-milk-actions-bar" aria-label="Recent payments">
+        <p class="farmer-milk-actions-bar__label">Recent payments</p>
+      </div>
+      <table
+        class="table table-hover datatable datatable-smart buyer-account-table smart-dt-table mb-0 w-100"
+        data-export-accounting="1"
+        data-print-title="{{ buyer.name }} — payments"
+        data-page-length="10"
+        data-empty-table="No payments recorded yet."
+        data-smart-order="0,desc"
+        data-footer-sum-cols="1"
+      >
+        <thead>
+          <tr>
+            <th class="all">Date</th>
+            <th class="all text-end">Amount</th>
+            <th class="min-tablet-l">Reference</th>
+            <th class="min-desktop">Note</th>
+            <th class="min-tablet-l">Allocated to</th>
+            <th class="min-desktop">By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payment_rows %}
+          <tr>
+            <td class="all" data-order="{{ p.date|date:'Y-m-d' }}">{{ p.date|date:"Y-m-d" }}</td>
+            <td class="all text-end dt-num" data-order="{{ p.amount }}">{{ p.amount|money }}</td>
+            <td class="min-tablet-l">{{ p.reference|default:"—" }}</td>
+            <td class="min-desktop">{{ p.note|default:"—" }}</td>
+            <td class="min-tablet-l">
+              {% for a in p.allocations.all %}
+                {{ a.distribution.dispatch_no }} ({{ a.amount|money }}){% if not forloop.last %}, {% endif %}
+              {% empty %}—{% endfor %}
+            </td>
+            <td class="min-desktop">{% if p.created_by %}{{ p.created_by.get_username }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if payment_rows %}
+        <tfoot>
+          <tr>
+            <th class="all text-end">Totals</th>
+            <th class="all text-end dt-foot-total"></th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop"></th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop"></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+  <div class="card card-table buyer-account-card farmer-milk-list-card smart-list-card" id="buyer-ledger">
+    <div class="card-body table-wrap">
+      <div class="farmer-milk-actions-bar" aria-label="Buyer ledger">
+        <p class="farmer-milk-actions-bar__label">Ledger</p>
+      </div>
+
+      <div id="buyerAccountLedgerDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter ledger">
+        <a
+          class="smart-dt-chip {% if not ledger_filters.type %}is-active{% endif %}"
+          href="?{% if account_filters.date_from %}date_from={{ account_filters.date_from }}&amp;{% endif %}{% if account_filters.date_to %}date_to={{ account_filters.date_to }}&amp;{% endif %}{% if account_filters.branch %}branch={{ account_filters.branch }}&amp;{% endif %}{% if ledger_filters.date_from %}ledger_from={{ ledger_filters.date_from }}&amp;{% endif %}{% if ledger_filters.date_to %}ledger_to={{ ledger_filters.date_to }}{% endif %}"
+        >All<span class="smart-dt-chip-count">{{ ledger_filters.period_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if ledger_filters.type == 'credit' %}is-active{% endif %}"
+          href="?ledger_type=credit{% if account_filters.date_from %}&amp;date_from={{ account_filters.date_from }}{% endif %}{% if account_filters.date_to %}&amp;date_to={{ account_filters.date_to }}{% endif %}{% if account_filters.branch %}&amp;branch={{ account_filters.branch }}{% endif %}{% if ledger_filters.date_from %}&amp;ledger_from={{ ledger_filters.date_from }}{% endif %}{% if ledger_filters.date_to %}&amp;ledger_to={{ ledger_filters.date_to }}{% endif %}"
+        >Credit<span class="smart-dt-chip-count">{{ ledger_filters.credit_count }}</span></a>
+        <a
+          class="smart-dt-chip {% if ledger_filters.type == 'debit' %}is-active{% endif %}"
+          href="?ledger_type=debit{% if account_filters.date_from %}&amp;date_from={{ account_filters.date_from }}{% endif %}{% if account_filters.date_to %}&amp;date_to={{ account_filters.date_to }}{% endif %}{% if account_filters.branch %}&amp;branch={{ account_filters.branch }}{% endif %}{% if ledger_filters.date_from %}&amp;ledger_from={{ ledger_filters.date_from }}{% endif %}{% if ledger_filters.date_to %}&amp;ledger_to={{ ledger_filters.date_to }}{% endif %}"
+        >Debit<span class="smart-dt-chip-count">{{ ledger_filters.debit_count }}</span></a>
+        <form method="get" class="buyer-account-period-filter" id="buyerAccountLedgerFilterForm">
+          {% if account_filters.date_from %}<input type="hidden" name="date_from" value="{{ account_filters.date_from }}">{% endif %}
+          {% if account_filters.date_to %}<input type="hidden" name="date_to" value="{{ account_filters.date_to }}">{% endif %}
+          {% if account_filters.branch %}<input type="hidden" name="branch" value="{{ account_filters.branch }}">{% endif %}
+          {% if account_filters.pay_status and account_filters.pay_status != "outstanding" %}<input type="hidden" name="pay_status" value="{{ account_filters.pay_status }}">{% endif %}
+          {% if ledger_filters.type %}<input type="hidden" name="ledger_type" value="{{ ledger_filters.type }}">{% endif %}
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="buyer-account-ledger-period"
+              class="form-control js-datepicker-range"
+              data-range-start="ledger_from"
+              data-range-end="ledger_to"
+              placeholder="Period"
+              autocomplete="off"
+              aria-label="Ledger date period"
+              value="{% if ledger_filters.date_from and ledger_filters.date_to %}{{ ledger_filters.date_from }} to {{ ledger_filters.date_to }}{% elif ledger_filters.date_from %}{{ ledger_filters.date_from }}{% elif ledger_filters.date_to %}{{ ledger_filters.date_to }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="ledger_from" value="{{ ledger_filters.date_from }}">
+          <input type="hidden" name="ledger_to" value="{{ ledger_filters.date_to }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+          {% if ledger_filters.period_active %}
+          <a href="{% url 'buyer-account' buyer.pk %}{% if account_filters.period_active %}?{% if account_filters.date_from %}date_from={{ account_filters.date_from }}&amp;{% endif %}{% if account_filters.date_to %}date_to={{ account_filters.date_to }}&amp;{% endif %}{% if account_filters.branch %}branch={{ account_filters.branch }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Clear ledger filters">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+
+      <table
+        class="table table-hover datatable datatable-smart buyer-account-table buyer-account-ledger-table smart-dt-table mb-0 w-100"
+        data-export-accounting="1"
+        data-print-title="{{ buyer.name }} — ledger"
+        data-page-length="25"
+        data-empty-table="No ledger entries{% if ledger_filters.period_active %} matching these filters{% else %}. Set a buyer rate and create dispatches to open receivables{% endif %}."
+        data-smart-order="0,asc"
+        data-filters-target="buyerAccountLedgerDtFilters"
+      >
+        <thead>
+          <tr>
+            <th class="all text-start dt-date">When</th>
+            <th class="all">Type</th>
+            <th class="all text-end">Amount</th>
+            <th class="all text-end">Balance</th>
+            <th class="min-tablet-l text-start dt-ref">Reference</th>
+            <th class="min-desktop">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in ledger_rows %}
+          <tr data-tx-type="{{ t.transaction_type }}">
+            <td class="all text-start dt-date" data-order="{{ t.date|date:'Y-m-d H:i:s' }}-{{ t.pk|stringformat:'08d' }}">{{ t.date|date:"Y-m-d H:i" }}</td>
+            <td class="all" data-order="{{ t.date|date:'Y-m-d H:i:s' }}-{{ t.pk|stringformat:'08d' }}">
+              {% if t.transaction_type == "credit" %}
+              <span class="text-danger fw-semibold">CREDIT</span>
+              {% else %}
+              <span class="text-success fw-semibold">DEBIT</span>
+              {% endif %}
+            </td>
+            <td
+              class="all text-end dt-num {% if t.transaction_type == 'credit' %}dt-amount-credit{% else %}dt-amount-debit{% endif %}"
+              data-order="{{ t.signed_amount }}"
+            >{{ t.amount|money }}</td>
+            <td class="all text-end dt-num fw-semibold" data-order="{{ t.running_balance }}">{{ t.running_balance|money }}</td>
+            <td class="min-tablet-l text-start dt-ref">{{ t.reference|default:"—" }}</td>
+            <td class="min-desktop">{{ t.description|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% if ledger_rows %}
+        <tfoot>
+          <tr>
+            <th class="all text-start">
+              {% if ledger_totals.has_opening %}
+              <span class="text-muted" style="font-size:0.72rem;font-weight:600">Opening {{ ledger_totals.opening|money }}</span>
+              {% endif %}
+            </th>
+            <th class="all text-end">Totals</th>
+            <th class="all text-end">
+              <div class="buyer-ledger-foot-stack">
+                <span><span class="ledger-foot-label">Credit</span> <span class="ledger-foot-credit">{{ ledger_totals.credit|money }}</span></span>
+                <span><span class="ledger-foot-label">Debit</span> <span class="ledger-foot-debit">{{ ledger_totals.debit|money }}</span></span>
+              </div>
+            </th>
+            <th class="all text-end ledger-foot-balance">
+              <div class="buyer-ledger-foot-stack">
+                <span class="ledger-foot-label">Balance</span>
+                <span>{{ ledger_totals.closing|money }}</span>
+              </div>
+            </th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop"></th>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% include "masters/_buyer_statement_amount_fit.html" %}
+<script>
+(function () {
+  var form = document.getElementById("buyerPaymentForm");
+  if (!form) return;
+  var root = document.getElementById("buyerReceivePaymentCard") || form.closest(".buyer-account-card") || document;
+  var mode = document.getElementById("id_allocation_mode");
+  var selectAll = document.getElementById("buyerSelectAll");
+  var amountInput = form.querySelector('[name="amount"]');
+  var checks = function () { return Array.prototype.slice.call(root.querySelectorAll(".js-buyer-dist-check")); };
+  var moneyInputs = function () { return Array.prototype.slice.call(root.querySelectorAll(".js-money-input")); };
+
+  function parseMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, "").trim());
+    return isFinite(n) ? n : NaN;
+  }
+
+  function formatMoney(value) {
+    var n = typeof value === "number" ? value : parseMoney(value);
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function isMoneyField(el) {
+    return el && el.classList && el.classList.contains("js-money-input");
+  }
+
+  function focusNextField(current) {
+    var fields = Array.prototype.slice.call(
+      root.querySelectorAll(".js-focus-next, .js-buyer-alloc:not([disabled])")
+    ).filter(function (el) {
+      return el.offsetParent !== null && !el.disabled && el.type !== "hidden";
+    });
+    var idx = fields.indexOf(current);
+    if (idx < 0) return;
+    var next = fields[idx + 1];
+    if (!next) return;
+    next.focus();
+    if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+  }
+
+  moneyInputs().forEach(function (el) {
+    el.setAttribute("type", "text");
+    el.setAttribute("inputmode", "decimal");
+    el.setAttribute("autocomplete", "off");
+    if (String(el.value || "").trim()) el.value = formatMoney(el.value);
+  });
+
+  root.addEventListener("focusin", function (ev) {
+    var t = ev.target;
+    if (!isMoneyField(t)) return;
+    t.value = String(t.value || "").replace(/,/g, "");
+    if (typeof t.select === "function") t.select();
+  });
+
+  root.addEventListener("focusout", function (ev) {
+    var t = ev.target;
+    if (!isMoneyField(t)) return;
+    if (!String(t.value || "").trim()) return;
+    t.value = formatMoney(t.value);
+  });
+
+  root.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter") return;
+    var t = ev.target;
+    if (!t || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
+    if (t.closest("#buyerAccountFilterForm")) return;
+    if (t.tagName === "SELECT" || t.classList.contains("js-focus-next") || t.classList.contains("js-buyer-alloc") || isMoneyField(t)) {
+      ev.preventDefault();
+      if (isMoneyField(t) && String(t.value || "").trim()) {
+        t.value = formatMoney(t.value);
+      }
+      focusNextField(t);
+    }
+  });
+
+  form.addEventListener("submit", function () {
+    moneyInputs().forEach(function (el) {
+      el.value = String(el.value || "").replace(/,/g, "");
+    });
+  });
+
+  var summaryEl = document.getElementById("buyerSelectedSummary");
+  var selectedCountEl = document.getElementById("buyerSelectedCount");
+  var selectedOutstandingEl = document.getElementById("buyerSelectedOutstanding");
+  var selectedAllocatingEl = document.getElementById("buyerSelectedAllocating");
+  var selectedRemainingEl = document.getElementById("buyerSelectedRemaining");
+  var suppressAutoAlloc = false;
+
+  function selectedChecks() {
+    return checks().filter(function (cb) { return cb.checked; });
+  }
+
+  function roundMoney(n) {
+    return Math.round((n + Number.EPSILON) * 100) / 100;
+  }
+
+  function updateSelectedSummary() {
+    var selected = selectedChecks();
+    var outstanding = 0;
+    var allocating = 0;
+    selected.forEach(function (cb) {
+      outstanding += parseMoney(cb.getAttribute("data-outstanding") || "0") || 0;
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-buyer-alloc") : null;
+      if (input && !input.disabled) {
+        allocating += parseMoney(input.value) || 0;
+      }
+    });
+    outstanding = roundMoney(outstanding);
+    allocating = roundMoney(allocating);
+    var payAmount = parseMoney(amountInput && amountInput.value);
+    var remaining = isFinite(payAmount) ? roundMoney(Math.max(0, payAmount - allocating)) : 0;
+    if (selectedCountEl) selectedCountEl.textContent = String(selected.length);
+    if (selectedOutstandingEl) selectedOutstandingEl.textContent = formatMoney(outstanding);
+    if (selectedAllocatingEl) selectedAllocatingEl.textContent = formatMoney(allocating);
+    if (selectedRemainingEl) selectedRemainingEl.textContent = formatMoney(remaining);
+    if (summaryEl) summaryEl.classList.toggle("is-visible", selected.length > 0);
+  }
+
+  /** Waterfill payment amount across selected dispatches (DOM order = oldest first). */
+  function autoFillAllocatesFromAmount() {
+    var payAmount = parseMoney(amountInput && amountInput.value);
+    var selected = selectedChecks();
+    if (!selected.length) {
+      syncAllocInputs(false);
+      return;
+    }
+    if (!isFinite(payAmount) || payAmount <= 0) {
+      selected.forEach(function (cb) {
+        var row = cb.closest("tr");
+        var input = row ? row.querySelector(".js-buyer-alloc") : null;
+        if (input) input.value = "";
+      });
+      syncAllocInputs(false);
+      return;
+    }
+    if (mode) mode.value = "explicit";
+    var remaining = payAmount;
+    selected.forEach(function (cb) {
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-buyer-alloc") : null;
+      if (!input) return;
+      var outstanding = parseMoney(cb.getAttribute("data-outstanding") || "0") || 0;
+      var alloc = Math.min(outstanding, remaining);
+      alloc = roundMoney(alloc);
+      input.disabled = false;
+      input.value = alloc > 0 ? formatMoney(alloc) : "";
+      remaining = roundMoney(Math.max(0, remaining - alloc));
+    });
+    checks().forEach(function (cb) {
+      if (cb.checked) return;
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-buyer-alloc") : null;
+      if (!input) return;
+      input.disabled = true;
+      input.value = "";
+    });
+    updateSelectedSummary();
+  }
+
+  function syncAllocInputs(redistribute) {
+    var explicit = mode && mode.value === "explicit";
+    var payAmount = parseMoney(amountInput && amountInput.value);
+    var shouldAuto = redistribute !== false && isFinite(payAmount) && payAmount > 0 && selectedChecks().length > 0;
+    if (shouldAuto) {
+      autoFillAllocatesFromAmount();
+      return;
+    }
+    checks().forEach(function (cb) {
+      var row = cb.closest("tr");
+      var input = row ? row.querySelector(".js-buyer-alloc") : null;
+      if (!input) return;
+      input.disabled = !explicit || !cb.checked;
+      if (!cb.checked) input.value = "";
+      else if (explicit && String(input.value || "").trim()) input.value = formatMoney(input.value);
+    });
+    updateSelectedSummary();
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener("change", function () {
+      checks().forEach(function (cb) { cb.checked = selectAll.checked; });
+      syncAllocInputs(true);
+    });
+  }
+  root.addEventListener("change", function (e) {
+    if (!e.target) return;
+    if (e.target.classList.contains("js-buyer-dist-check")) {
+      syncAllocInputs(true);
+      return;
+    }
+    if (e.target === mode) {
+      if (mode.value === "auto") {
+        checks().forEach(function (cb) {
+          var row = cb.closest("tr");
+          var input = row ? row.querySelector(".js-buyer-alloc") : null;
+          if (!input) return;
+          input.disabled = true;
+          input.value = "";
+        });
+        updateSelectedSummary();
+      } else {
+        syncAllocInputs(true);
+      }
+    }
+  });
+  root.addEventListener("input", function (e) {
+    if (!e.target) return;
+    if (e.target === amountInput) {
+      if (suppressAutoAlloc) return;
+      syncAllocInputs(true);
+      return;
+    }
+    if (e.target.classList.contains("js-buyer-alloc")) {
+      updateSelectedSummary();
+    }
+  });
+  if (amountInput) {
+    amountInput.addEventListener("focusout", function () {
+      if (suppressAutoAlloc) return;
+      syncAllocInputs(true);
+    });
+  }
+  var fillBtn = document.getElementById("buyerFillSelectedFull");
+  if (fillBtn && amountInput) {
+    fillBtn.addEventListener("click", function () {
+      var total = 0;
+      selectedChecks().forEach(function (cb) {
+        total += parseMoney(cb.getAttribute("data-outstanding") || "0") || 0;
+      });
+      suppressAutoAlloc = true;
+      amountInput.value = formatMoney(total);
+      suppressAutoAlloc = false;
+      if (mode) mode.value = "explicit";
+      selectedChecks().forEach(function (cb) {
+        var row = cb.closest("tr");
+        var input = row ? row.querySelector(".js-buyer-alloc") : null;
+        if (input) {
+          input.disabled = false;
+          input.value = formatMoney(cb.getAttribute("data-outstanding") || "0");
+        }
+      });
+      checks().forEach(function (cb) {
+        if (cb.checked) return;
+        var row = cb.closest("tr");
+        var input = row ? row.querySelector(".js-buyer-alloc") : null;
+        if (input) {
+          input.disabled = true;
+          input.value = "";
+        }
+      });
+      updateSelectedSummary();
+      amountInput.focus();
+    });
+  }
+  syncAllocInputs(false);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% load static %}
+<header class="cp-loan-bank-doc">
+  <div class="cp-loan-bank-doc__brand">
+    <img src="{% static 'img/logo.png' %}" alt="" class="cp-loan-bank-doc__logo" width="48" height="48">
+    <div>
+      <div class="cp-loan-bank-doc__company">CANMEE DAIRIES (PVT) LTD</div>
+      <div class="cp-loan-bank-doc__line">Phone: 071 543 5019</div>
+    </div>
+    <div class="cp-loan-bank-doc__issued">
+      <span>Generated</span>
+      <strong>{% now "d M Y, H:i" %}</strong>
+    </div>
+  </div>
+  <div class="cp-loan-bank-doc__titleblock">
+    <h1 class="cp-loan-bank-doc__title js-print-doc-name">{{ print_doc_name|default:"Loan account statement" }}</h1>
+    <p class="cp-loan-bank-doc__subtitle">Account No. {{ loan.pk }} · {{ loan.collection_point }} · {{ loan.branch.name }}</p>
+  </div>
+  <table class="cp-loan-bank-doc__id">
+    <tbody>
+      <tr>
+        <th>Account</th>
+        <td>#{{ loan.pk }}</td>
+        <th>Status</th>
+        <td>{% if loan.status == "approved" and account_summary.balance_total <= 0 %}Settled{% else %}{{ loan.get_status_display }}{% endif %}</td>
+        <th>Branch</th>
+        <td>{{ loan.branch.name }}</td>
+      </tr>
+      <tr>
+        <th>Collection point</th>
+        <td colspan="3">{{ loan.collection_point }}</td>
+        <th>Loan date</th>
+        <td>{{ loan.loan_date|date:"d M Y" }}</td>
+      </tr>
+      <tr>
+        <th>First repayment</th>
+        <td>{{ loan.first_repayment_date|date:"d M Y" }}</td>
+        <th>Instalment method</th>
+        <td>{{ loan.get_installment_method_display }}</td>
+        <th>Instalments</th>
+        <td>{% if account_summary.schedule_count %}{{ account_summary.paid_instalments }}/{{ account_summary.schedule_count }} paid{% else %}{{ loan.installment_count }}{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+</header>

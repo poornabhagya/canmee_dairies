@@ -1,0 +1,36 @@
+{% if farmer.collection_point or perms.collections.view_milkcollectionadjustment or perms.collections.change_milkcollection %}
+<div class="dropdown d-inline-block">
+  <button
+    class="btn btn-sm btn-outline-secondary dropdown-toggle milk-collection-actions-trigger"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+  >
+    <i class="bi bi-three-dots-vertical"></i><span class="visually-hidden">Actions</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end milk-collection-actions-menu">
+    {% if farmer.collection_point %}
+    <li>
+      <a
+        class="dropdown-item"
+        href="{% url 'farmer-receipt-period' farmer.collection_point.pk farmer.pk %}?from={{ collection.date|date:'Y-m-d' }}&amp;to={{ collection.date|date:'Y-m-d' }}"
+        target="_blank"
+        rel="noopener"
+      ><i class="bi bi-receipt me-2"></i>Receipt</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.view_milkcollectionadjustment %}
+    <li>
+      <a class="dropdown-item" href="{% url 'milk-collection-adjustments' collection.pk %}"><i class="bi bi-clock-history me-2"></i>History</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.change_milkcollection %}
+    <li>
+      <a class="dropdown-item" href="{% url 'milk-collection-edit' collection.pk %}"><i class="bi bi-pencil-square me-2"></i>Edit</a>
+    </li>
+    {% endif %}
+  </ul>
+</div>
+{% else %}
+—
+{% endif %}

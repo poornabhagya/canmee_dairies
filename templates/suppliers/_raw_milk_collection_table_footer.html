@@ -1,0 +1,11 @@
+{% load format_extras %}
+{% if totals.count %}
+<tfoot>
+  <tr class="raw-milk-totals-row">
+    <th colspan="8" class="text-end fw-semibold">Total</th>
+    <th class="fw-semibold text-end">{{ totals.total_kg|money }}</th>
+    <th class="fw-semibold text-end">{{ totals.total_liters|money }}</th>
+    <th class="all"></th>
+  </tr>
+</tfoot>
+{% endif %}

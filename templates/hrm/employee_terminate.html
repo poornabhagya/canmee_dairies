@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Record termination · Canmee Dairies{% endblock %}
+{% block page_heading %}Record termination{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Record termination</h1>
+    <p class="page-subtitle">{{ employee.get_full_name|default:employee.first_name }} · {{ employee.employee_number|default:"—" }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'hrm:employee_detail' employee.pk %}">Back</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label" for="id_termination_date">{{ form.termination_date.label }}</label>
+          {{ form.termination_date.errors }}
+          {{ form.termination_date }}
+        </div>
+        <div class="col-md-8">
+          <label class="form-label" for="id_termination_reason">{{ form.termination_reason.label }}</label>
+          {{ form.termination_reason.errors }}
+          {{ form.termination_reason }}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="id_termination_notes">{{ form.termination_notes.label }}</label>
+          {{ form.termination_notes.errors }}
+          {{ form.termination_notes }}
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            {{ form.deactivate_user }}
+            <label class="form-check-label" for="id_terminate_deactivate_user">{{ form.deactivate_user.label }}</label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-danger mt-4"><i class="bi bi-person-x me-1"></i>Save termination</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ form_title }} · Canmee Dairies{% endblock %}
+{% block page_heading %}{{ form_title }}{% endblock %}
+{% block extra_css %}
+<style>
+  .password-match-text {
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ form_title }}</h1>
+    <p class="page-subtitle">Account details and role membership.</p>
+  </div>
+  {% if object and perms.auth.change_user %}
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'user_management:user-set-password' object.pk %}"><i class="bi bi-key me-1"></i>Set password</a>
+  </div>
+  {% endif %}
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card" style="max-width: 40rem;">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field.errors }}
+        {{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% if field.name == "password2" %}
+        <div class="password-match-text" id="password-match-text"></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
+      <a href="{% url 'user_management:user-list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const password1 = document.getElementById("id_password1");
+  const password2 = document.getElementById("id_password2");
+  const message = document.getElementById("password-match-text");
+  if (!password1 || !password2 || !message) return;
+
+  function validatePasswordMatch() {
+    const p1 = password1.value || "";
+    const p2 = password2.value || "";
+    if (!p1 && !p2) {
+      password2.setCustomValidity("");
+      message.textContent = "";
+      message.className = "password-match-text";
+      return;
+    }
+    if (p1 === p2) {
+      password2.setCustomValidity("");
+      message.textContent = "Password confirmation matches.";
+      message.className = "password-match-text text-success";
+      return;
+    }
+    password2.setCustomValidity("The two password fields do not match.");
+    message.textContent = "Password confirmation does not match.";
+    message.className = "password-match-text text-danger";
+  }
+
+  password1.addEventListener("input", validatePasswordMatch);
+  password2.addEventListener("input", validatePasswordMatch);
+  validatePasswordMatch();
+});
+</script>
+{% endblock %}

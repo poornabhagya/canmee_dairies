@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+{% block title %}Correct negative stock · Canmee Dairies{% endblock %}
+{% block page_heading %}Correct negative stock{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-secondary" href="{% url 'stock-overview' %}">Back to overview</a>
+{% if has_work and selected_supplier %}
+<form method="post" class="d-inline js-swal-submit-guard">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="apply">
+  <input type="hidden" name="branch" value="{{ filters.branch }}">
+  <input type="hidden" name="product" value="{{ filters.product }}">
+  <input type="hidden" name="supplier" value="{{ filters.supplier }}">
+  <input type="hidden" name="grn_type" value="{{ filters.grn_type }}">
+  <button
+    type="submit"
+    class="btn btn-primary js-swal-submit-trigger"
+    data-swal-title="Apply stock corrections?"
+    data-swal-text="This will create and confirm adjustment GRNs and update BranchStock."
+  ><i class="bi bi-check2-circle me-1"></i>Apply corrections</button>
+</form>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .stock-fix-card {
+    --fix-avail: #be123c;
+    --fix-avail-bg: #fff1f2;
+    --fix-onhand: #c2410c;
+    --fix-onhand-bg: #fff7ed;
+    --fix-grn: #0f766e;
+    --fix-grn-bg: #f0fdfa;
+    --fix-ok: #047857;
+    --fix-ok-bg: #ecfdf5;
+    --fix-muted: #64748b;
+    --fix-delta-down: #b91c1c;
+    --fix-delta-up: #15803d;
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .stock-fix-card + .stock-fix-card {
+    margin-top: 0.85rem;
+  }
+  .stock-fix-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .stock-fix-card .table-wrap,
+  .stock-fix-card .dataTables_wrapper,
+  .stock-fix-card div.dt-container,
+  .stock-fix-card div.dt-scroll,
+  .stock-fix-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .stock-fix-card .fix-table {
+    width: 100% !important;
+  }
+  .stock-fix-card .fix-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .stock-fix-card .fix-table tbody td {
+    white-space: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .stock-fix-card .fix-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .stock-fix-card .fix-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .stock-fix-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.15rem;
+  }
+  .stock-fix-section-sub {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0 0 0.75rem;
+  }
+  .stock-fix-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: end;
+    margin: 0 0 0.85rem;
+  }
+  .stock-fix-filters .form-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+  }
+  .stock-fix-filters .form-control,
+  .stock-fix-filters .form-select,
+  .stock-fix-filters .btn {
+    min-height: 34px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .stock-fix-filters .form-select {
+    min-width: 9.5rem;
+  }
+  .stock-fix-action-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
+  }
+  .stock-fix-action-pill.is-grn {
+    background: var(--fix-onhand-bg);
+    border-color: #fdba74;
+    color: var(--fix-onhand);
+  }
+  .stock-fix-action-pill.is-sync {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+  }
+  .stock-fix-action-pill.is-dup {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #b45309;
+  }
+  .stock-fix-action-pill.is-orphan {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: var(--fix-muted);
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-avail {
+    color: var(--fix-muted);
+    font-weight: 600;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-avail.is-neg {
+    color: var(--fix-avail);
+    background: var(--fix-avail-bg);
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-onhand {
+    color: var(--fix-muted);
+    font-weight: 600;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-onhand.is-neg,
+  .stock-fix-card .fix-table tbody td.stock-fix-col-onhand.is-stale {
+    color: var(--fix-onhand);
+    background: var(--fix-onhand-bg);
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-grn {
+    color: var(--fix-grn);
+    background: var(--fix-grn-bg);
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-grn.is-empty {
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-target {
+    color: var(--fix-ok);
+    background: var(--fix-ok-bg);
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-current.is-off {
+    color: #a16207;
+    background: #fefce8;
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-delta.is-down {
+    color: var(--fix-delta-down);
+    font-weight: 700;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-delta.is-up {
+    color: var(--fix-delta-up);
+    font-weight: 700;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-delta.is-flat {
+    color: var(--fix-muted);
+    font-weight: 600;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-keep {
+    color: var(--fix-ok);
+    font-weight: 600;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-delete {
+    color: var(--fix-avail);
+    background: var(--fix-avail-bg);
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  .stock-fix-card .fix-table tbody td.stock-fix-col-logs {
+    color: #334155;
+    font-weight: 600;
+  }
+  .stock-fix-hint {
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 12px;
+    padding: 0.65rem 0.8rem;
+    font-size: 0.8rem;
+    color: #475569;
+    margin: 0 0 0.85rem;
+  }
+  .stock-fix-hint .hint-grn { color: var(--fix-onhand); font-weight: 700; }
+  .stock-fix-hint .hint-sync { color: #1d4ed8; font-weight: 700; }
+  @media (max-width: 768px) {
+    .smart-dt-stats {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% if supplier_error %}
+<div class="alert alert-danger swal-flash">{{ supplier_error }}</div>
+{% endif %}
+
+<div class="card card-table stock-fix-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats" aria-label="Correction summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Rows to fix</span>
+        <span class="smart-dt-stat-value">{{ rows|length }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Create GRN</span>
+        <span class="smart-dt-stat-value">{{ grn_line_count }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Sync on-hand</span>
+        <span class="smart-dt-stat-value">{{ sync_count }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">Pool / log cleanup</span>
+        <span class="smart-dt-stat-value">{{ pool_sync_rows|length|default:0 }} / {{ dup_grn_groups|length|default:0 }}</span>
+      </div>
+    </div>
+
+    <form method="get" class="stock-fix-filters" role="search">
+      <div>
+        <label class="form-label" for="branch">Branch</label>
+        <select id="branch" name="branch" class="form-select">
+          <option value="">All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if filters.branch == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="product">Product</label>
+        <select id="product" name="product" class="form-select">
+          <option value="">All products</option>
+          {% for p in products %}
+          <option value="{{ p.id }}" {% if filters.product == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="supplier">Adjustment supplier</label>
+        <select id="supplier" name="supplier" class="form-select" required>
+          {% for s in suppliers %}
+          <option value="{{ s.id }}" {% if filters.supplier == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% empty %}
+          <option value="">No active supplier</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="grn_type">Supplier channel</label>
+        <select id="grn_type" name="grn_type" class="form-select">
+          <option value="farmer_goods" {% if filters.grn_type == "farmer_goods" %}selected{% endif %}>Farmer goods supplier</option>
+          <option value="corporate" {% if filters.grn_type == "corporate" %}selected{% endif %}>Corporate supplier</option>
+        </select>
+      </div>
+      <div class="d-flex gap-1">
+        <button type="submit" class="btn btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i></button>
+        <a href="{% url 'stock-correct-negative' %}" class="btn btn-outline-secondary" title="Clear filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+      </div>
+    </form>
+
+    <div class="stock-fix-hint">
+      <span class="hint-grn">Create GRN</span> — Available negative; top-up needed.
+      · <span class="hint-sync">Sync on-hand</span> — Available OK; ledger stale.
+      · Created docs are typed <strong>STOCK CORRECTION</strong> (rate &amp; issue price from last purchase GRN).
+      {% if selected_supplier %} · Supplier: <strong>{{ selected_supplier.name }}</strong>{% endif %}
+    </div>
+
+    <div id="fixNegDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Correction filters">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ rows|length }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="grn">
+        Create GRN<span class="smart-dt-chip-count">{{ grn_line_count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="sync">
+        Sync on-hand<span class="smart-dt-chip-count">{{ sync_count }}</span>
+      </button>
+    </div>
+
+    {% if not has_work %}
+    <div class="empty-state p-3 text-muted">No negative branch stock found for the current filters.</div>
+    {% else %}
+    <table
+      class="table table-hover datatable datatable-smart fix-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No negative branch stock found."
+      data-filters-target="fixNegDtFilters"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Branch</th>
+          <th class="all">Product</th>
+          <th class="min-tablet-l text-end">Available</th>
+          <th class="min-tablet-l text-end">On-hand</th>
+          <th class="min-desktop text-end">GRN qty</th>
+          <th class="all">Action</th>
+          <th class="min-desktop">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{% if row.action == 'grn' %}smart-row--grn{% else %}smart-row--sync{% endif %}" data-smart-row-filter="{{ row.action }}">
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">{{ row.branch.name }}</td>
+          <td class="all">
+            <span class="smart-dt-name-text">{{ row.product.name }}</span>
+          </td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-avail {% if row.available < 0 %}is-neg{% endif %}" data-order="{{ row.available }}">{{ row.available }}</td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-onhand {% if row.on_hand < 0 %}is-neg{% elif row.action == 'sync' %}is-stale{% endif %}" data-order="{{ row.on_hand }}">{{ row.on_hand }}</td>
+          <td class="min-desktop dt-num text-end stock-fix-col-grn {% if row.action != 'grn' %}is-empty{% endif %}" data-order="{% if row.action == 'grn' %}{{ row.shortfall }}{% else %}0{% endif %}">
+            {% if row.action == "grn" %}+{{ row.shortfall }}{% else %}—{% endif %}
+          </td>
+          <td class="all" data-order="{{ row.action }}">
+            {% if row.action == "grn" %}
+            <span class="stock-fix-action-pill is-grn">Create GRN</span>
+            {% else %}
+            <span class="stock-fix-action-pill is-sync">Sync on-hand</span>
+            {% endif %}
+          </td>
+          <td class="min-desktop text-muted small">
+            {% if row.action == "grn" %}
+            Top-up Available from {{ row.available }} to 0.
+            {% else %}
+            {{ row.note|default:"Set on-hand equal to Available (no GRN)." }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-table stock-fix-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h2 class="stock-fix-section-title">Sync farmer goods pool</h2>
+        <p class="stock-fix-section-sub">
+          Sets the live farmer-goods pool to confirmed <strong>FG GRN + stock corrections − applied issues</strong>
+          (pending/rejected excluded). Use this in production for Calup Gel-type mismatches.
+          Product filter applies; branch does not.
+        </p>
+      </div>
+      {% if has_pool_sync_work %}
+      <form method="post" class="js-swal-submit-guard">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="sync_fg_pool">
+        <input type="hidden" name="branch" value="{{ filters.branch }}">
+        <input type="hidden" name="product" value="{{ filters.product }}">
+        <input type="hidden" name="supplier" value="{{ filters.supplier }}">
+        <input type="hidden" name="grn_type" value="{{ filters.grn_type }}">
+        <button
+          type="submit"
+          class="btn btn-outline-primary js-swal-submit-trigger"
+          data-swal-title="Sync farmer goods pool?"
+          data-swal-text="This overwrites FarmerGoodsStock from FG GRNs + stock corrections minus applied issues."
+        ><i class="bi bi-arrow-repeat me-1"></i>Sync pool</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if not has_pool_sync_work %}
+    <div class="empty-state p-3 text-muted mb-0">Farmer goods pool already matches FG GRN + stock corrections − applied issues.</div>
+    {% else %}
+    <table
+      class="table table-hover datatable datatable-smart fix-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="Pool already in sync."
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Product</th>
+          <th class="min-tablet-l text-end">Current</th>
+          <th class="min-desktop text-end">FG GRN</th>
+          <th class="min-desktop text-end">Corrections</th>
+          <th class="min-desktop text-end">Issued</th>
+          <th class="all text-end">Target</th>
+          <th class="min-tablet-l text-end">Delta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in pool_sync_rows %}
+        <tr>
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all"><span class="smart-dt-name-text">{{ row.product_name }}</span></td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-current is-off" data-order="{{ row.current }}">{{ row.current }}</td>
+          <td class="min-desktop dt-num text-end stock-fix-col-logs" data-order="{{ row.received_fg }}">{{ row.received_fg }}</td>
+          <td class="min-desktop dt-num text-end stock-fix-col-logs" data-order="{{ row.received_correction }}">{{ row.received_correction }}</td>
+          <td class="min-desktop dt-num text-end stock-fix-col-logs" data-order="{{ row.issued }}">{{ row.issued }}</td>
+          <td class="all dt-num text-end stock-fix-col-target" data-order="{{ row.target }}">{{ row.target }}</td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-delta {% if row.delta < 0 %}is-down{% elif row.delta > 0 %}is-up{% else %}is-flat{% endif %}" data-order="{{ row.delta }}">{{ row.delta }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-table stock-fix-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h2 class="stock-fix-section-title">Backfill missing GRN stock logs</h2>
+        <p class="stock-fix-section-sub">
+          Confirmed GRNs that never got a Stock History row (history balance wrong vs GRNs modal / FARMER GOODS).
+        </p>
+      </div>
+      {% if has_missing_grn_logs %}
+      <form method="post" class="js-swal-submit-guard">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="backfill_grn_logs">
+        <input type="hidden" name="branch" value="{{ filters.branch }}">
+        <input type="hidden" name="product" value="{{ filters.product }}">
+        <input type="hidden" name="supplier" value="{{ filters.supplier }}">
+        <input type="hidden" name="grn_type" value="{{ filters.grn_type }}">
+        <button
+          type="submit"
+          name="action"
+          value="backfill_grn_logs"
+          class="btn btn-outline-primary js-swal-submit-trigger"
+          data-swal-title="Backfill missing GRN stock logs?"
+          data-swal-text="Creates Stock History GRN rows for confirmed GRNs that have no log. Does not change BranchStock or the farmer goods pool."
+        ><i class="bi bi-journal-plus me-1"></i>Backfill missing logs</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if not has_missing_grn_logs %}
+    <div class="empty-state p-3 text-muted mb-0">No missing GRN stock logs for the current filters.</div>
+    {% else %}
+    <table
+      class="table table-hover datatable datatable-smart fix-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No missing GRN stock logs."
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">GRN</th>
+          <th class="all">Product</th>
+          <th class="min-tablet-l">Branch</th>
+          <th class="min-tablet-l text-end">Qty</th>
+          <th class="min-desktop">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in missing_grn_logs %}
+        <tr>
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all"><span class="smart-dt-name-text">{{ g.grn_number }}</span></td>
+          <td class="all">{{ g.product_name }}</td>
+          <td class="min-tablet-l">{{ g.branch_name }}</td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-grn" data-order="{{ g.quantity }}">+{{ g.quantity }}</td>
+          <td class="min-desktop">{{ g.grn_date }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card card-table stock-fix-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+      <div>
+        <h2 class="stock-fix-section-title">Cleanup duplicate GRN stock logs</h2>
+        <p class="stock-fix-section-sub">
+          Keep one Stock History GRN row per confirmed GRN line and set <code>grn:{id}</code> references.
+        </p>
+      </div>
+      {% if has_dup_grn_work %}
+      <form method="post" class="js-swal-submit-guard">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cleanup_grn_logs">
+        <input type="hidden" name="branch" value="{{ filters.branch }}">
+        <input type="hidden" name="product" value="{{ filters.product }}">
+        <input type="hidden" name="supplier" value="{{ filters.supplier }}">
+        <input type="hidden" name="grn_type" value="{{ filters.grn_type }}">
+        <button
+          type="submit"
+          name="action"
+          value="cleanup_grn_logs"
+          class="btn btn-outline-danger js-swal-submit-trigger"
+          data-swal-title="Delete duplicate GRN stock logs?"
+          data-swal-text="Permanently removes duplicate Stock History GRN rows. Branch Received is unchanged."
+        ><i class="bi bi-trash3 me-1"></i>Cleanup duplicates</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if not has_dup_grn_work %}
+    <div class="empty-state p-3 text-muted mb-0">No duplicate GRN stock logs for the current filters.</div>
+    {% else %}
+    <table
+      class="table table-hover datatable datatable-smart fix-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No duplicate GRN stock logs."
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Product</th>
+          <th class="min-tablet-l text-end">Qty</th>
+          <th class="min-desktop">Source → Destination</th>
+          <th class="min-tablet-l text-end">Logs</th>
+          <th class="min-tablet-l text-end">Keep</th>
+          <th class="all text-end">Delete</th>
+          <th class="min-desktop">Kind</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in dup_grn_groups %}
+        <tr>
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all"><span class="smart-dt-name-text">{{ g.product_name }}</span></td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ g.quantity }}">{{ g.quantity }}</td>
+          <td class="min-desktop small">{{ g.source }} → {{ g.destination }}</td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-logs" data-order="{{ g.actual }}">{{ g.actual }}</td>
+          <td class="min-tablet-l dt-num text-end stock-fix-col-keep" data-order="{{ g.keep_count }}">{{ g.keep_count }}</td>
+          <td class="all dt-num text-end stock-fix-col-delete" data-order="{{ g.delete_count }}">{{ g.delete_count }}</td>
+          <td class="min-desktop">
+            {% if g.kind == "orphan" %}
+            <span class="stock-fix-action-pill is-orphan">Orphan</span>
+            {% else %}
+            <span class="stock-fix-action-pill is-dup">Duplicate</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

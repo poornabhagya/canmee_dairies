@@ -1,0 +1,44 @@
+<table class="payment-sheet-print-table payment-sheet-print-table--details">
+  <thead>
+    <tr>
+      <th class="ps-print-col-point">Collection point</th>
+      <th class="text-end ps-print-col-rate">Rate</th>
+      {% for d in date_cols %}
+      <th class="text-end ps-print-col-day">{{ d|date:"m-d" }}</th>
+      {% endfor %}
+      <th class="text-end ps-print-col-qty">Total Qty</th>
+      <th class="text-end ps-print-col-gross">Gross</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in print_rows %}
+    <tr{% if forloop.counter|divisibleby:2 %} class="payment-sheet-print-row--alt"{% endif %}>
+      <td class="ps-print-col-point">{{ r.point.number }} — {{ r.point.name }}</td>
+      <td class="text-end">{{ r.rate|money }}</td>
+      {% for day in r.day_cols %}
+      <td class="text-end">{% if day.quantity %}{{ day.quantity|money }}{% else %}—{% endif %}</td>
+      {% endfor %}
+      <td class="text-end">{% if print_totals.mixed_units or not r.total_quantity %}—{% else %}{{ r.total_quantity|money }}{% endif %}</td>
+      <td class="text-end">{% if r.gross_amount %}{{ r.gross_amount|money }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="payment-sheet-print-total-row">
+      <th class="ps-print-col-point">Total</th>
+      <td class="text-end">—</td>
+      {% if print_totals.mixed_units %}
+      {% for d in date_cols %}
+      <td class="text-end">—</td>
+      {% endfor %}
+      <td class="text-end">—</td>
+      {% else %}
+      {% for v in print_totals.day_vals %}
+      <td class="text-end">{{ v|money }}</td>
+      {% endfor %}
+      <td class="text-end">{{ print_totals.total_quantity|money }}</td>
+      {% endif %}
+      <td class="text-end">{{ print_totals.gross_amount|money }}</td>
+    </tr>
+  </tfoot>
+</table>

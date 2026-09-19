@@ -1,0 +1,47 @@
+<div class="dropdown d-inline-block">
+  <button
+    class="btn btn-sm btn-outline-secondary dropdown-toggle point-farmer-actions-trigger"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    aria-label="Farmer actions"
+  >
+    <i class="bi bi-three-dots-vertical"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li>
+      <a class="dropdown-item" href="{% url 'farmer-detail' farmer.pk %}"><i class="bi bi-person me-2"></i>View</a>
+    </li>
+    {% if perms.masters.change_farmer %}
+    <li>
+      <a
+        class="dropdown-item js-point-farmer-edit"
+        href="#"
+        data-farmer-id="{{ farmer.pk }}"
+        data-farmer-full-name="{{ farmer.full_name }}"
+        data-farmer-initial="{{ farmer.initial|default:'' }}"
+        data-farmer-common-name="{{ farmer.common_name|default:'' }}"
+        data-farmer-rate="{{ farmer.rate|default:'' }}"
+        data-farmer-apply-rate-paid="{{ farmer.apply_rate_paid|default:'' }}"
+        data-farmer-nic="{{ farmer.nic|default:'' }}"
+        data-farmer-dob="{% if farmer.date_of_birth %}{{ farmer.date_of_birth|date:'Y-m-d' }}{% endif %}"
+        data-farmer-mobile="{{ farmer.mobile|default:'' }}"
+        data-farmer-whatsapp="{{ farmer.whatsapp|default:'' }}"
+        data-farmer-email="{{ farmer.email|default:'' }}"
+        data-farmer-address="{{ farmer.address|default:'' }}"
+      ><i class="bi bi-pencil-square me-2"></i>Edit</a>
+    </li>
+    {% endif %}
+    {% if perms.masters.delete_farmer %}
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <a
+        href="{% url 'farmer-quick-delete' farmer.pk %}"
+        class="dropdown-item text-danger js-swal-delete-post"
+        data-swal-title="Delete farmer {{ farmer.common_name|default:farmer.full_name }}?"
+        data-swal-text="This cannot be undone."
+      ><i class="bi bi-trash3 me-2"></i>Delete</a>
+    </li>
+    {% endif %}
+  </ul>
+</div>

@@ -1,0 +1,52 @@
+<div class="modal fade" id="pointDeductionPickerModal" tabindex="-1" aria-labelledby="pointDeductionPickerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pointDeductionPickerModalLabel">Deductions for <span id="deduction-picker-point-name"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-3" id="deduction-picker-hint">Checked items are deducted from this collection point payment. For collection-point advances and loans, enter a deduct amount; skipped or remaining balances are carried to the next payment.</p>
+        <ul class="nav nav-tabs mb-3" id="deduction-picker-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="deduction-tab-advance" data-bs-toggle="tab" data-bs-target="#deduction-pane-advance" type="button" role="tab">Advances</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="deduction-tab-goods" data-bs-toggle="tab" data-bs-target="#deduction-pane-goods" type="button" role="tab">Products</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="deduction-tab-loan" data-bs-toggle="tab" data-bs-target="#deduction-pane-loan" type="button" role="tab">Loans</button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="deduction-pane-advance" role="tabpanel">
+            <div id="deduction-picker-advances" class="deduction-picker-list"></div>
+          </div>
+          <div class="tab-pane fade" id="deduction-pane-goods" role="tabpanel">
+            <div id="deduction-picker-goods" class="deduction-picker-list"></div>
+          </div>
+          <div class="tab-pane fade" id="deduction-pane-loan" role="tabpanel">
+            <div class="deduction-picker-loan-all mb-2" id="deduction-picker-cp-loan-all-wrap" hidden>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="deduction-picker-cp-loan-all">
+                <label class="form-check-label" for="deduction-picker-cp-loan-all">Deduct all collection point loan instalments</label>
+              </div>
+            </div>
+            <div id="deduction-picker-loans" class="deduction-picker-list"></div>
+            <div id="deduction-picker-loan-add-wrap" class="mt-3" hidden>
+              <label class="form-label small mb-1" for="deduction-picker-loan-add">Add previous or future unpaid instalment</label>
+              <div class="d-flex flex-wrap gap-2">
+                <select id="deduction-picker-loan-add" class="form-select form-select-sm"></select>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="deduction-picker-loan-add-btn">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="border-top pt-3 mt-3 small" id="deduction-picker-totals"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Respond to dispatch · Canmee Dairies{% endblock %}
+{% block page_heading %}Branch dispatch response{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form method="post" class="branch-dispatch-respond-form">
+      {% csrf_token %}
+      <input type="hidden" name="redirect_query" value="{{ redirect_query|default:request.GET.urlencode }}">
+      {% include "dispatch/_branch_dispatch_respond_fields.html" %}
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">Submit response</button>
+        <a href="{% url 'distribution-list' %}?{{ request.GET.urlencode }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  var root = document.querySelector(".branch-dispatch-respond-form");
+  if (!root) return;
+
+  function formatQty2(n) {
+    return (Math.round(n * 100) / 100).toFixed(2);
+  }
+
+  function sync() {
+    var value = root.querySelector('input[name="response_action"]:checked');
+    var action = value ? value.value : "collect";
+    root.querySelectorAll(".branch-respond-field--quantity").forEach(function (el) {
+      el.style.display = "";
+    });
+    root.querySelectorAll(".branch-respond-field--divert-branch").forEach(function (el) {
+      el.style.display = action === "divert_branch" ? "" : "none";
+    });
+    root.querySelectorAll(".branch-respond-field--divert-buyer").forEach(function (el) {
+      el.style.display = action === "divert_buyer" ? "" : "none";
+    });
+    var labelEl = root.querySelector("#branch-return-qty-label");
+    var unitEl = root.querySelector("#id_return_quantity_unit");
+    var unit = (unitEl && unitEl.value) || "liters";
+    if (labelEl) {
+      var unitWord = unit === "liters" ? "liters" : "kg";
+      var prefix = "Quantity";
+      if (action === "return") prefix = "Return quantity";
+      else if (action === "collect") prefix = "Collected quantity";
+      else if (action === "divert_branch" || action === "divert_buyer") prefix = "Divert quantity";
+      labelEl.textContent = prefix + " (" + unitWord + ")";
+    }
+  }
+
+  function initQtyToggle() {
+    var wrap = root.querySelector("#branch-return-qty-wrap");
+    if (!wrap) return;
+    var qtyEl = wrap.querySelector("#id_return_quantity");
+    var unitEl = wrap.querySelector("#id_return_quantity_unit");
+    var availableEl = wrap.querySelector("#branch-return-available-qty");
+    var kgToL = Number(wrap.dataset.kgToLiters || "0");
+    var availableKg = Number(wrap.dataset.kg || "0");
+    var availableLiters = Number(wrap.dataset.liters || "0");
+    var currentUnit = (unitEl && unitEl.value) || "liters";
+
+    function applyChrome(unit) {
+      currentUnit = unit;
+      if (unitEl) unitEl.value = unit;
+      wrap.querySelectorAll(".qty-segment__btn[data-qty-unit]").forEach(function (btn) {
+        var on = btn.getAttribute("data-qty-unit") === unit;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      sync();
+      if (qtyEl) {
+        if (unit === "liters" && availableLiters) qtyEl.max = formatQty2(availableLiters);
+        else if (unit === "kg" && availableKg) qtyEl.max = formatQty2(availableKg);
+        else qtyEl.removeAttribute("max");
+      }
+      if (availableEl) {
+        availableEl.textContent =
+          "Available: " +
+          formatQty2(availableLiters) +
+          " L (" +
+          formatQty2(availableKg) +
+          " kg)";
+      }
+    }
+
+    function switchUnit(next) {
+      if (!qtyEl || next === currentUnit) return;
+      var n = parseFloat(String(qtyEl.value || "").replace(",", "."));
+      if (!isNaN(n) && kgToL) {
+        if (currentUnit === "kg" && next === "liters") {
+          qtyEl.value = formatQty2(n * kgToL);
+        } else if (currentUnit === "liters" && next === "kg") {
+          qtyEl.value = formatQty2(n / kgToL);
+        }
+      }
+      applyChrome(next);
+    }
+
+    wrap.querySelectorAll(".qty-segment__btn[data-qty-unit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchUnit(btn.getAttribute("data-qty-unit"));
+      });
+    });
+    applyChrome(currentUnit);
+  }
+
+  root.querySelectorAll('input[name="response_action"]').forEach(function (el) {
+    el.addEventListener("change", sync);
+  });
+  initQtyToggle();
+  sync();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+<script>
+(function () {
+  var root = document.querySelector("[data-cp-loan-tabs]");
+  if (!root) return;
+  var tabs = Array.prototype.slice.call(root.querySelectorAll("[data-cp-loan-tab]"));
+  var panels = Array.prototype.slice.call(document.querySelectorAll("[data-cp-loan-panel]"));
+  var printSheetSections = Array.prototype.slice.call(document.querySelectorAll(".cp-loan-print-sheet__section"));
+  var originalTitle = document.title;
+  var valid = {};
+  tabs.forEach(function (tab) {
+    valid[tab.getAttribute("data-cp-loan-tab")] = true;
+  });
+  function activate(id, pushHash) {
+    if (!valid[id]) return;
+    tabs.forEach(function (tab) {
+      var on = tab.getAttribute("data-cp-loan-tab") === id;
+      tab.classList.toggle("is-active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    panels.forEach(function (panel) {
+      panel.classList.toggle("is-active", panel.getAttribute("data-cp-loan-panel") === id);
+    });
+    if (pushHash && history.replaceState) {
+      history.replaceState(null, "", "#" + id);
+    }
+  }
+  var initial = (location.hash || "").replace(/^#/, "");
+  if (!valid[initial]) {
+    initial = tabs[0] ? tabs[0].getAttribute("data-cp-loan-tab") : "";
+  }
+  if (initial) activate(initial, false);
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      activate(tab.getAttribute("data-cp-loan-tab"), true);
+    });
+  });
+  document.querySelectorAll(".js-cp-loan-tab-link").forEach(function (el) {
+    el.addEventListener("click", function (e) {
+      var id = el.getAttribute("data-cp-loan-tab") || (el.getAttribute("href") || "").replace(/^#/, "");
+      if (!valid[id]) return;
+      e.preventDefault();
+      activate(id, true);
+    });
+  });
+  var printTitles = {
+    details: "Loan details",
+    summary: "Account statement",
+    payments: "Payment history",
+    schedule: "Instalment schedule",
+    audit: "Audit log"
+  };
+  var originalPrintName = (document.querySelector(".js-print-doc-name") || {}).textContent || "Loan account statement";
+  function setPrintTitle(id) {
+    var el = document.querySelector(".js-print-doc-name");
+    if (!el) return;
+    el.textContent = printTitles[id] || originalPrintName;
+  }
+  function setDocumentPrintTitle(id) {
+    document.title = printTitles[id] || originalPrintName;
+  }
+  function markPrintTargets(id) {
+    panels.forEach(function (panel) {
+      var match = !id || panel.getAttribute("data-cp-loan-panel") === id;
+      panel.classList.toggle("is-print-target", match);
+    });
+    printSheetSections.forEach(function (section) {
+      var match = !id || section.getAttribute("data-print-section") === id;
+      section.classList.toggle("is-print-target", match);
+    });
+  }
+  document.querySelectorAll(".js-cp-loan-print-section").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-print-section") || "";
+      markPrintTargets(id);
+      document.body.classList.toggle("cp-loan-print-one", Boolean(id));
+      document.body.classList.remove("cp-loan-print-full");
+      setPrintTitle(id);
+      setDocumentPrintTitle(id);
+      window.print();
+    });
+  });
+  document.querySelectorAll(".js-cp-loan-print-full").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      markPrintTargets("");
+      document.body.classList.remove("cp-loan-print-one");
+      document.body.classList.add("cp-loan-print-full");
+      setPrintTitle("");
+      setDocumentPrintTitle("");
+      window.print();
+    });
+  });
+  window.addEventListener("afterprint", function () {
+    document.body.classList.remove("cp-loan-print-one", "cp-loan-print-full");
+    setPrintTitle("");
+    document.title = originalTitle;
+    markPrintTargets("");
+    panels.forEach(function (panel) {
+      panel.classList.remove("is-print-target");
+    });
+    printSheetSections.forEach(function (section) {
+      section.classList.remove("is-print-target");
+    });
+  });
+})();
+</script>

@@ -1,0 +1,54 @@
+<td class="money-col payment-sheet-paid-col payment-sheet-print-settlement-col{% if amount > 0 %} text-success{% endif %}">
+  {% if amount > 0 or cash > 0 %}
+  <span
+    class="payment-sheet-paid-popover"
+    tabindex="0"
+    role="button"
+    aria-label="Paid {{ amount|money }}, show details"
+  >{{ amount|money }}</span>
+  <template class="payment-sheet-paid-popover-content">
+    <div class="payment-sheet-paid-popover-body">
+      <div class="payment-sheet-paid-popover-body__hint">Settled toward period net</div>
+      <div class="payment-sheet-paid-popover-row payment-sheet-paid-popover-row--total">
+        <span>Paid</span>
+        <span>{{ amount|money }}</span>
+      </div>
+      {% if cash > 0 or advance > 0 or goods > 0 or loan > 0 or outstanding > 0 %}
+      <div class="payment-sheet-paid-popover-body__hint mt-2">Recorded payments &amp; settlements</div>
+      {% if cash > 0 %}
+      <div class="payment-sheet-paid-popover-row">
+        <span>{% if method %}{{ method }}{% else %}Cash / bank{% endif %}{% if bank_label %} · {{ bank_label }}{% endif %}</span>
+        <span>{{ cash|money }}</span>
+      </div>
+      {% endif %}
+      {% if advance > 0 %}
+      <div class="payment-sheet-paid-popover-row">
+        <span>Advance recovered</span>
+        <span>{{ advance|money }}</span>
+      </div>
+      {% endif %}
+      {% if goods > 0 %}
+      <div class="payment-sheet-paid-popover-row">
+        <span>Goods deducted</span>
+        <span>{{ goods|money }}</span>
+      </div>
+      {% endif %}
+      {% if loan > 0 %}
+      <div class="payment-sheet-paid-popover-row">
+        <span>Loan deducted</span>
+        <span>{{ loan|money }}</span>
+      </div>
+      {% endif %}
+      {% if outstanding > 0 %}
+      <div class="payment-sheet-paid-popover-row">
+        <span>Previous outstanding recovered</span>
+        <span>{{ outstanding|money }}</span>
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+  </template>
+  {% else %}
+  <span class="payment-sheet-paid-total">{{ amount|money }}</span>
+  {% endif %}
+</td>

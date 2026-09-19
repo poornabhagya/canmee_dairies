@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Edit Product{% else %}Add Product{% endif %}{% endblock %}
+{% block page_heading %}{% if is_edit %}Edit Product{% else %}Add Product{% endif %}{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="row g-3 align-items-start">
+    <div class="col-lg-8">
+      <div class="module-card form-shell">
+        <div class="module-card-header">
+          <div class="d-flex align-items-center gap-2">
+            <span class="form-header-icon"><i class="bi bi-box-seam"></i></span>
+            <h5 class="module-card-title mb-0">{% if is_edit %}Edit Product{% else %}Add Product{% endif %}</h5>
+          </div>
+        </div>
+        <div class="module-card-body">
+          <form method="post" class="product-modern-form">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger swal-flash py-2">
+              {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <p>
+              <label for="{{ form.name.id_for_label }}">{{ form.name.label }}:</label>
+              {{ form.name }}
+              {{ form.name.errors }}
+            </p>
+
+            <div class="row g-2">
+              <div class="col-md-7">
+                <p>
+                  <label for="{{ form.category.id_for_label }}">{{ form.category.label }}:</label>
+                  <div class="modern-select-wrap modern-select-wrap-category">
+                    <span class="modern-select-icon"><i class="bi bi-tags"></i></span>
+                    {{ form.category }}
+                  </div>
+                  {{ form.category.errors }}
+                </p>
+              </div>
+              <div class="col-md-5">
+                <p>
+                  <label for="{{ form.unit.id_for_label }}">{{ form.unit.label }}:</label>
+                  <div class="modern-select-wrap modern-select-wrap-unit">
+                    <span class="modern-select-icon"><i class="bi bi-speedometer2"></i></span>
+                    {{ form.unit }}
+                  </div>
+                  {{ form.unit.errors }}
+                </p>
+              </div>
+            </div>
+
+            <p>
+              <label for="{{ form.description.id_for_label }}">{{ form.description.label }}:</label>
+              {{ form.description }}
+              {{ form.description.errors }}
+            </p>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Update Product{% else %}Save Product{% endif %}
+              </button>
+              {% if is_edit %}
+              <a href="{% url 'stock-product-add' %}" class="btn btn-outline-secondary">Add New</a>
+              {% endif %}
+              <a href="{% url 'stock-overview' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="module-card category-card">
+        <div class="module-card-header">
+          <div>
+            <h5 class="module-card-title">Categories</h5>
+          </div>
+        </div>
+        <div class="module-card-body">
+          <form method="post" action="{% url 'stock-category-create' %}" class="mb-3 category-create-form">
+            {% csrf_token %}
+            <label for="{{ category_form.name.id_for_label }}" class="form-label small fw-semibold mb-0">{{ category_form.name.label }}</label>
+            <div class="category-create-input-wrap">
+              {{ category_form.name }}
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary icon-btn" title="Add category" aria-label="Add category">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </form>
+
+          <div class="category-list">
+            {% for category in categories %}
+            <div class="category-row">
+              <form method="post" action="{% url 'stock-category-edit' category.pk %}" class="category-row-form">
+                {% csrf_token %}
+                <input
+                  type="text"
+                  name="name"
+                  value="{{ category.name }}"
+                  class="form-control form-control-sm"
+                  maxlength="120"
+                  required
+                >
+                <button type="submit" class="btn btn-sm btn-outline-primary icon-btn" title="Save category" aria-label="Save category">
+                  <i class="bi bi-check2"></i>
+                </button>
+              </form>
+              <a
+                href="{% url 'stock-category-delete' category.pk %}"
+                class="btn btn-sm btn-outline-danger js-swal-delete-post icon-btn"
+                data-swal-title="Delete category?"
+                data-swal-text="This category will be removed if no products use it."
+                title="Delete category"
+                aria-label="Delete category"
+              >
+                <i class="bi bi-trash"></i>
+              </a>
+            </div>
+            {% empty %}
+            <div class="text-muted small">No categories yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="module-card">
+    <div class="module-card-header">
+      <div>
+        <h5 class="module-card-title">Products</h5>
+        <p class="module-card-subtitle">View and edit available products.</p>
+      </div>
+      <span class="pill pill-info">{{ products|length }} rows</span>
+    </div>
+    <div class="module-card-body products-table-card-body">
+      {% if not products %}
+      <div class="empty-state">No products available yet.</div>
+      {% endif %}
+      <div class="table-wrap">
+      <table class="table table-hover datatable mb-0 products-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th class="product-name-col">Name</th>
+            <th>Category</th>
+            <th>Unit</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="product-name-cell">{{ product.name }}</td>
+            <td>{{ product.get_category_display }}</td>
+            <td>{{ product.unit }}</td>
+            <td>
+              <div class="product-status-cell">
+                <form method="post" action="{% url 'stock-product-status-update' product.pk %}" class="d-inline-block">
+                  {% csrf_token %}
+                  <select
+                    name="status"
+                    class="form-select form-select-sm product-status-select status-pill-select {% if product.status == 'active' %}status-pill-select-active{% else %}status-pill-select-inactive{% endif %}"
+                    onchange="this.form.submit()"
+                  >
+                    {% for value, label in product_status_choices %}
+                    <option value="{{ value }}" {% if product.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </div>
+            </td>
+            <td>
+              <a href="{% url 'stock-product-edit' product.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+              <a
+                href="{% url 'stock-product-delete' product.pk %}"
+                class="btn btn-sm btn-outline-danger js-swal-delete-post"
+                data-swal-title="Delete product?"
+                data-swal-text="This product will be removed if no records are linked."
+              >
+                Delete
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

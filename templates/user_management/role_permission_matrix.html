@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% block title %}Manage Role Permissions · Canmee Dairies{% endblock %}
+{% block page_heading %}Manage role permissions{% endblock %}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<style>
+  .matrix-wrap {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    max-height: 62vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .matrix-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    margin-bottom: 0.75rem;
+  }
+
+  .matrix-search {
+    max-width: 18rem;
+    font-size: 0.82rem;
+  }
+
+  .matrix-toolbar-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .matrix-bulk {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    margin-bottom: 0.75rem;
+  }
+
+  .matrix-bulk-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 0.2rem;
+  }
+
+  .matrix-bulk-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .matrix-mini-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+  }
+
+  .matrix-bulk-roles {
+    min-width: 220px;
+    max-width: 320px;
+    font-size: 0.84rem;
+  }
+
+  .matrix-bulk .select2-container {
+    min-width: 220px !important;
+    max-width: 320px;
+  }
+
+  .matrix-bulk .select2-container--default .select2-selection--multiple {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    min-height: 38px;
+  }
+
+  .matrix-bulk .select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+  }
+
+  .matrix-table {
+    margin-bottom: 0;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .matrix-table thead th {
+    background: #f8fafc;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    padding: 0.55rem 0.6rem;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+
+  .matrix-table thead th:first-child,
+  .matrix-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+  }
+
+  .matrix-table thead th:first-child {
+    z-index: 6;
+    background: #f8fafc;
+  }
+
+  .matrix-table tbody td:first-child {
+    z-index: 4;
+    background: #fff;
+  }
+
+  .matrix-table tbody td {
+    padding: 0.42rem 0.6rem;
+    font-size: 0.83rem;
+  }
+
+  .matrix-role-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .matrix-role-col {
+    min-width: 135px;
+    max-width: 150px;
+  }
+
+  .matrix-master-label {
+    color: #0f766e;
+    font-weight: 600;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .matrix-app-row td {
+    background: #fbfdff;
+    border-top: 1px solid #eef2f7;
+    border-bottom: 1px solid #eef2f7;
+  }
+
+  .matrix-app-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+
+  .matrix-app-count {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+
+  .matrix-perm-label {
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .matrix-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.8rem;
+    padding-top: 0.75rem;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: #fff;
+    border-top: 1px solid var(--color-border);
+    margin-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .matrix-counter {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+
+  .matrix-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid #94a3b8;
+    border-radius: 0.3rem;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+    box-shadow: inset 0 0 0 0 #059669;
+  }
+
+  .matrix-checkbox:hover {
+    border-color: #059669;
+  }
+
+  .matrix-checkbox:checked {
+    border-color: #059669;
+    background: #059669;
+  }
+
+  .matrix-checkbox:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.28rem;
+    top: 0.08rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .matrix-checkbox:indeterminate {
+    border-color: #059669;
+    background: #ecfdf5;
+  }
+
+  .matrix-checkbox:indeterminate::after {
+    content: "";
+    position: absolute;
+    left: 0.2rem;
+    top: 0.42rem;
+    width: 0.56rem;
+    height: 2px;
+    background: #059669;
+  }
+
+  .matrix-checkbox:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Manage Role Permissions</h1>
+    <p class="page-subtitle">Assign permissions to roles in one matrix view.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'user_management:group-list' %}">Back to roles</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" id="matrixForm">
+      {% csrf_token %}
+      <div class="matrix-toolbar">
+        <h5 class="matrix-toolbar-title">Permission Matrix</h5>
+        <input type="text" id="permissionSearch" class="form-control matrix-search" placeholder="Search permissions or app category...">
+      </div>
+      <div class="matrix-bulk">
+        <span class="matrix-bulk-label">Quick grant</span>
+        <div class="matrix-bulk-group">
+          <span class="small text-muted">Roles:</span>
+          <select id="bulkRoles" class="form-select matrix-bulk-roles" multiple>
+            {% for role in roles %}
+            <option value="{{ role.id }}">{{ role.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="matrix-bulk-group">
+          <span class="small text-muted">Permissions:</span>
+          <label class="matrix-mini-check"><input type="checkbox" class="form-check-input matrix-checkbox bulk-action" value="add"> <span>Add</span></label>
+          <label class="matrix-mini-check"><input type="checkbox" class="form-check-input matrix-checkbox bulk-action" value="change"> <span>Change</span></label>
+          <label class="matrix-mini-check"><input type="checkbox" class="form-check-input matrix-checkbox bulk-action" value="view"> <span>View</span></label>
+          <label class="matrix-mini-check"><input type="checkbox" class="form-check-input matrix-checkbox bulk-action" value="delete"> <span>Delete</span></label>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="bulkGrantBtn">
+          Grant selected
+        </button>
+      </div>
+      <div class="matrix-wrap table-responsive">
+        <table class="table table-bordered table-sm align-middle matrix-table">
+          <thead>
+            <tr>
+              <th style="min-width: 300px;">Permissions</th>
+              {% for role in roles %}
+              <th class="text-center matrix-role-col">
+                <div class="matrix-role-name" title="{{ role.name }}">{{ role.name }}</div>
+                <div class="small mt-1 d-flex justify-content-center align-items-center gap-2">
+                  <input
+                    type="checkbox"
+                    class="form-check-input role-master matrix-checkbox"
+                    id="role-master-{{ role.id }}"
+                    data-role-id="{{ role.id }}"
+                    aria-label="Toggle all permissions for {{ role.name }}"
+                  >
+                  <label class="mb-0 matrix-master-label" for="role-master-{{ role.id }}" id="role-master-label-{{ role.id }}">Check all</label>
+                </div>
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for app_label, perms in permissions_by_app.items %}
+            <tr class="matrix-app-row" data-app-row="{{ app_label }}">
+              <td>
+                <span class="matrix-app-title">{{ app_label|title }}</span>
+                <span class="matrix-app-count">({{ perms|length }} permissions)</span>
+              </td>
+              {% for role in roles %}
+              <td class="text-center">
+                <input
+                  type="checkbox"
+                  class="form-check-input app-role-master matrix-checkbox"
+                  data-app="{{ app_label }}"
+                  data-role-id="{{ role.id }}"
+                  aria-label="toggle app permissions for {{ role.name }}"
+                >
+              </td>
+              {% endfor %}
+            </tr>
+            {% for permission in perms %}
+            <tr data-permission-row="{{ app_label }}" data-search="{{ permission.name|lower }} {{ permission.codename|lower }} {{ app_label|lower }}">
+              <td><span class="matrix-perm-label">{{ permission.name }}</span></td>
+              {% for role in roles %}
+              <td class="text-center">
+                <input
+                  type="checkbox"
+                  class="form-check-input perm-cell role-{{ role.id }} app-{{ app_label }} matrix-checkbox"
+                  data-role-id="{{ role.id }}"
+                  data-app="{{ app_label }}"
+                  data-codename="{{ permission.codename }}"
+                  name="role_{{ role.id }}_permissions"
+                  value="{{ permission.id }}"
+                  {% if permission in role.permissions.all %}checked{% endif %}
+                >
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="matrix-footer">
+        <div class="matrix-counter"><span id="matrixSelectedCount">0</span> permissions selected across roles</div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Apply Permissions</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+(function () {
+  const form = document.getElementById("matrixForm");
+  if (!form) return;
+  const roleSelect = document.getElementById("bulkRoles");
+
+  function toggleRole(roleId, checked) {
+    form.querySelectorAll('.perm-cell[data-role-id="' + roleId + '"]').forEach(function (cb) {
+      cb.checked = checked;
+    });
+    syncRoleMaster(roleId);
+    syncAppMastersForRole(roleId);
+  }
+
+  function toggleAppRole(appLabel, roleId, checked) {
+    form.querySelectorAll('.perm-cell[data-app="' + appLabel + '"][data-role-id="' + roleId + '"]').forEach(function (cb) {
+      cb.checked = checked;
+    });
+    syncRoleMaster(roleId);
+    syncAppMaster(appLabel, roleId);
+  }
+
+  function syncRoleMaster(roleId) {
+    const master = form.querySelector('.role-master[data-role-id="' + roleId + '"]');
+    const label = document.getElementById("role-master-label-" + roleId);
+    if (!master) return;
+    const cells = form.querySelectorAll('.perm-cell[data-role-id="' + roleId + '"]');
+    let total = 0;
+    let checked = 0;
+    cells.forEach(function (cb) {
+      total += 1;
+      if (cb.checked) checked += 1;
+    });
+    master.checked = total > 0 && checked === total;
+    master.indeterminate = checked > 0 && checked < total;
+    if (label) {
+      label.textContent = master.checked ? "Uncheck all" : "Check all";
+    }
+  }
+
+  function syncAppMaster(appLabel, roleId) {
+    const master = form.querySelector('.app-role-master[data-app="' + appLabel + '"][data-role-id="' + roleId + '"]');
+    if (!master) return;
+    const cells = form.querySelectorAll('.perm-cell[data-app="' + appLabel + '"][data-role-id="' + roleId + '"]');
+    let total = 0;
+    let checked = 0;
+    cells.forEach(function (cb) {
+      total += 1;
+      if (cb.checked) checked += 1;
+    });
+    master.checked = total > 0 && checked === total;
+    master.indeterminate = checked > 0 && checked < total;
+  }
+
+  function syncAppMastersForRole(roleId) {
+    form.querySelectorAll('.app-role-master[data-role-id="' + roleId + '"]').forEach(function (master) {
+      syncAppMaster(master.dataset.app, roleId);
+    });
+  }
+
+  function syncAllMasters() {
+    form.querySelectorAll(".role-master").forEach(function (master) {
+      syncRoleMaster(master.dataset.roleId);
+    });
+    form.querySelectorAll(".app-role-master").forEach(function (master) {
+      syncAppMaster(master.dataset.app, master.dataset.roleId);
+    });
+  }
+
+  function updateSelectedCount() {
+    const selected = form.querySelectorAll(".perm-cell:checked").length;
+    const counter = document.getElementById("matrixSelectedCount");
+    if (counter) counter.textContent = selected;
+  }
+
+  function applySearchFilter() {
+    const input = document.getElementById("permissionSearch");
+    if (!input) return;
+    const q = (input.value || "").trim().toLowerCase();
+    const rows = form.querySelectorAll("tr[data-permission-row]");
+    const appRows = form.querySelectorAll("tr[data-app-row]");
+
+    rows.forEach(function (row) {
+      const hay = row.getAttribute("data-search") || "";
+      row.style.display = !q || hay.indexOf(q) !== -1 ? "" : "none";
+    });
+
+    appRows.forEach(function (appRow) {
+      const app = appRow.getAttribute("data-app-row");
+      const appPermRows = form.querySelectorAll('tr[data-permission-row="' + app + '"]');
+      let anyVisible = false;
+      appPermRows.forEach(function (r) {
+        if (r.style.display !== "none") anyVisible = true;
+      });
+      appRow.style.display = anyVisible ? "" : "none";
+    });
+  }
+
+  form.querySelectorAll(".role-master").forEach(function (master) {
+    master.addEventListener("change", function () {
+      toggleRole(master.dataset.roleId, master.checked);
+      master.indeterminate = false;
+    });
+  });
+
+  form.querySelectorAll(".app-role-master").forEach(function (master) {
+    master.addEventListener("change", function () {
+      toggleAppRole(master.dataset.app, master.dataset.roleId, master.checked);
+      master.indeterminate = false;
+      updateSelectedCount();
+    });
+  });
+
+  form.querySelectorAll(".perm-cell").forEach(function (cell) {
+    cell.addEventListener("change", function () {
+      syncRoleMaster(cell.dataset.roleId);
+      syncAppMaster(cell.dataset.app, cell.dataset.roleId);
+      updateSelectedCount();
+    });
+  });
+
+  const permissionSearch = document.getElementById("permissionSearch");
+  if (permissionSearch) {
+    permissionSearch.addEventListener("input", applySearchFilter);
+  }
+
+  if (window.jQuery && roleSelect && window.jQuery.fn && window.jQuery.fn.select2) {
+    window.jQuery(roleSelect).select2({
+      placeholder: "Select one or more roles",
+      width: "resolve",
+      closeOnSelect: false
+    });
+  }
+
+  const bulkGrantBtn = document.getElementById("bulkGrantBtn");
+  if (bulkGrantBtn) {
+    bulkGrantBtn.addEventListener("click", function () {
+      const selectedRoles = roleSelect
+        ? Array.from(roleSelect.selectedOptions).map(function (x) { return x.value; })
+        : [];
+      const selectedActions = Array.from(form.querySelectorAll(".bulk-action:checked")).map(function (x) {
+        return x.value;
+      });
+      if (!selectedRoles.length || !selectedActions.length) return;
+
+      form.querySelectorAll(".perm-cell").forEach(function (cell) {
+        const roleId = cell.dataset.roleId;
+        const codename = (cell.dataset.codename || "").toLowerCase();
+        if (selectedRoles.indexOf(roleId) === -1) return;
+        for (let i = 0; i < selectedActions.length; i += 1) {
+          const action = selectedActions[i].toLowerCase();
+          if (codename.indexOf(action + "_") === 0) {
+            cell.checked = true;
+            break;
+          }
+        }
+      });
+
+      syncAllMasters();
+      updateSelectedCount();
+      form.submit();
+    });
+  }
+
+  syncAllMasters();
+  updateSelectedCount();
+})();
+</script>
+{% endblock %}

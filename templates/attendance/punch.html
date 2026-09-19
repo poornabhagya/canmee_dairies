@@ -1,0 +1,166 @@
+{% extends "attendance/base_portal.html" %}
+{% block title %}Check in / out · Attendance{% endblock %}
+{% block content %}
+<div class="att-card">
+  <div class="att-hero">
+    <p class="att-eyebrow">Canmee attendance</p>
+    <div class="att-clock" id="attLiveClock">--:--:--</div>
+    <div class="att-clock-date" id="attLiveDate">{{ today|date:"l, d M Y" }}</div>
+
+    {% if is_checked_in %}
+    <div class="att-status">
+      <span class="att-status-dot" aria-hidden="true"></span>
+      On site · checked in
+    </div>
+    {% else %}
+    <div class="att-status is-out">
+      <span class="att-status-dot" aria-hidden="true"></span>
+      Away · not checked in
+    </div>
+    {% endif %}
+
+    <form method="post" id="attendance-punch-form" action="{% url 'attendance:punch' %}">
+      {% csrf_token %}
+      <input type="hidden" name="punch_type" value="{{ suggested_punch_type }}">
+      <input type="hidden" name="latitude" id="punchLat" value="">
+      <input type="hidden" name="longitude" id="punchLng" value="">
+      <input type="hidden" name="accuracy_m" id="punchAccuracy" value="">
+      <input type="hidden" name="location_label" id="punchLocationLabel" value="">
+      <input type="hidden" name="device_label" id="punchDevice" value="">
+      <input type="hidden" name="app_label" value="Web">
+
+      <div class="att-punch-wrap">
+        <span class="att-punch-ring" aria-hidden="true"></span>
+        <span class="att-punch-ring" aria-hidden="true"></span>
+        <button type="submit" class="att-punch-btn {% if suggested_punch_type == 'check_out' %}is-out{% endif %}" id="punchSubmit" disabled>
+          {% if suggested_punch_type == "check_in" %}
+          <i class="bi bi-box-arrow-in-right"></i>
+          <strong>Check in</strong>
+          <small>Tap to start</small>
+          {% else %}
+          <i class="bi bi-box-arrow-right"></i>
+          <strong>Check out</strong>
+          <small>Tap to finish</small>
+          {% endif %}
+        </button>
+      </div>
+
+      <p class="att-geo" id="punchGeoStatus">
+        <i class="bi bi-geo-alt"></i>
+        <span>Getting location…</span>
+      </p>
+    </form>
+  </div>
+
+  <div class="att-panel">
+    <div class="att-panel-label">Last punch</div>
+    <div class="att-panel-row">
+      {% if last_punch %}
+      <strong>{{ last_punch.get_punch_type_display }}</strong>
+      <span class="text-muted">{{ last_punch.punched_at|date:"d M · H:i" }}</span>
+      {% else %}
+      <strong class="text-muted">No punches yet</strong>
+      <span class="text-muted">—</span>
+      {% endif %}
+    </div>
+    <div class="att-panel-row mt-2">
+      <span class="text-muted">Next action</span>
+      <strong>{{ suggested_label }}</strong>
+    </div>
+  </div>
+
+  {% if today_records %}
+  <div class="att-panel-label mt-4 mb-1">Today’s timeline</div>
+  <ul class="att-list att-timeline">
+    {% for r in today_records %}
+    <li class="{% if r.punch_type == 'check_out' %}is-out{% endif %}">
+      <span>
+        <span class="att-badge {% if r.punch_type == 'check_out' %}att-badge--out{% endif %}">{{ r.get_punch_type_display }}</span>
+      </span>
+      <span class="fw-semibold">{{ r.punched_at|date:"H:i" }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <div class="att-panel mt-3">
+    <div class="d-flex align-items-center gap-2">
+      <div class="att-avatar att-avatar--sm">{{ employee_initials }}</div>
+      <div class="text-start" style="min-width:0">
+        <div class="fw-semibold text-truncate">{{ employee.get_full_name }}</div>
+        <div class="small text-muted text-truncate">
+          {{ employee.employee_number }}{% if employee.department %} · {{ employee.department.name }}{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var clockEl = document.getElementById("attLiveClock");
+  var dateEl = document.getElementById("attLiveDate");
+  function tick() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, "0");
+    var m = String(now.getMinutes()).padStart(2, "0");
+    var s = String(now.getSeconds()).padStart(2, "0");
+    if (clockEl) clockEl.textContent = h + ":" + m + ":" + s;
+    if (dateEl) {
+      dateEl.textContent = now.toLocaleDateString(undefined, {
+        weekday: "long", day: "numeric", month: "short", year: "numeric"
+      });
+    }
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  var form = document.getElementById("attendance-punch-form");
+  var statusEl = document.getElementById("punchGeoStatus");
+  var submitBtn = document.getElementById("punchSubmit");
+  if (!form) return;
+
+  function setStatus(text, kind) {
+    var icon = kind === "ok" ? "bi-geo-alt-fill" : (kind === "warn" ? "bi-exclamation-circle" : "bi-geo-alt");
+    statusEl.className = "att-geo" + (kind ? " is-" + kind : "");
+    statusEl.innerHTML = '<i class="bi ' + icon + '"></i><span>' + (text || "") + "</span>";
+  }
+
+  document.getElementById("punchDevice").value = [
+    navigator.platform || "",
+    (navigator.userAgent || "").slice(0, 120)
+  ].filter(Boolean).join(" · ").slice(0, 250);
+
+  function enableWithoutGeo(msg) {
+    setStatus(msg || "Location unavailable — you can still punch.", "warn");
+    submitBtn.disabled = false;
+  }
+
+  if (!navigator.geolocation) {
+    enableWithoutGeo("Geolocation not supported on this device.");
+  } else {
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        document.getElementById("punchLat").value = pos.coords.latitude.toFixed(6);
+        document.getElementById("punchLng").value = pos.coords.longitude.toFixed(6);
+        if (pos.coords.accuracy != null) {
+          document.getElementById("punchAccuracy").value = Number(pos.coords.accuracy).toFixed(2);
+        }
+        setStatus("Location ready · ±" + Math.round(pos.coords.accuracy || 0) + " m", "ok");
+        submitBtn.disabled = false;
+      },
+      function () {
+        enableWithoutGeo("GPS unavailable — you can still punch.");
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+    );
+  }
+
+  form.addEventListener("submit", function () {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = "<strong>Saving…</strong><small>Please wait</small>";
+  });
+})();
+</script>
+{% endblock %}

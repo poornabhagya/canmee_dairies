@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Point summary · {{ route.code }} · {{ from_date }} to {{ to_date }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+  {% include 'collections/_receipt_common_styles.html' %}
+  <style>
+    .point-summary-sheet {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.7rem;
+      width: 100%;
+      max-width: 100mm;
+      margin: 0 auto 1.25rem;
+      page-break-after: always;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .point-summary-sheet:last-of-type { page-break-after: auto; }
+    .point-summary-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      padding: 0.45rem 0.55rem;
+    }
+    .point-summary-card .receipt-copy-actions {
+      justify-content: flex-end;
+      margin-bottom: 0.25rem;
+    }
+    .point-summary-card .receipt-copy-actions button {
+      font-size: 11px;
+      padding: 0.2rem 0.5rem;
+    }
+    .point-summary-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.3rem;
+      border-bottom: 1px dashed #94a3b8;
+      padding-bottom: 0.25rem;
+    }
+    .point-summary-meta { font-size: 12px; color: #334155; }
+    .point-summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .point-summary-table th,
+    .point-summary-table td {
+      border: 1px solid #334155;
+      padding: 0.2rem 0.25rem;
+    }
+    .point-summary-table th {
+      background: #f1f5f9;
+      text-align: center;
+    }
+    .point-summary-table td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .point-summary-table tfoot td {
+      font-weight: 700;
+      background: #f8fafc;
+    }
+    .top-dashboard-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 0.55rem;
+    }
+    .dashboard-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 0;
+      border-radius: 10px;
+      padding: 0.45rem 0.8rem;
+      background: linear-gradient(135deg, #0f766e, #0d9488);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      box-shadow: 0 6px 14px rgba(13, 148, 136, 0.28);
+    }
+    .mobile-action-bar {
+      display: none;
+    }
+    @media print {
+      @page { size: A4 portrait; margin: 10mm 14mm; }
+      body.receipt-body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .receipt-shell {
+        width: 100%;
+        max-width: none !important;
+      }
+      .point-summary-sheet {
+        min-height: 277mm;
+        max-width: 100mm;
+        margin: 0 auto;
+        gap: 1.5mm;
+      }
+      .point-summary-card {
+        height: calc((277mm - 1.5mm) / 2);
+        max-height: calc((277mm - 1.5mm) / 2);
+        overflow: hidden;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 1.5mm 2mm;
+      }
+      .point-summary-table th,
+      .point-summary-table td {
+        padding: 0.45mm 0.8mm;
+        line-height: 1.1;
+      }
+    }
+    @media (max-width: 768px) {
+      body.receipt-body {
+        padding: 1.15rem 0.85rem 5.75rem;
+        padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+      }
+      .receipt-shell {
+        max-width: 100%;
+        padding-top: 0.25rem;
+        padding-bottom: 0.5rem;
+      }
+      .point-summary-sheet {
+        max-width: 100%;
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+      }
+      .point-summary-card {
+        padding: 0.85rem 0.75rem;
+      }
+      .point-summary-head {
+        flex-direction: column;
+      }
+      .point-summary-card .receipt-copy-actions {
+        justify-content: stretch;
+      }
+      .point-summary-card .receipt-copy-actions button {
+        width: 100%;
+      }
+      .actions.no-print .btn {
+        flex: 1 1 100%;
+        justify-content: center;
+      }
+      .top-dashboard-bar {
+        display: none;
+      }
+      .mobile-action-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        position: fixed;
+        left: 0.6rem;
+        right: 0.6rem;
+        bottom: 0.6rem;
+        z-index: 30;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 0.55rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+      }
+      .mobile-action-bar .m-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 0.62rem 0.72rem;
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+      }
+      .mobile-action-bar .m-btn--back {
+        background: linear-gradient(135deg, #0f766e, #0d9488);
+        color: #fff;
+      }
+      .mobile-action-bar .m-btn--print {
+        background: #f1f5f9;
+        color: #0f172a;
+      }
+    }
+  </style>
+</head>
+<body class="receipt-body">
+  <div class="receipt-shell" data-copy-filename="point-summary-{{ route.code }}">
+    {% if back_url %}
+    <div class="no-print top-dashboard-bar">
+      <a class="dashboard-btn" href="{{ back_url }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+    </div>
+    {% endif %}
+    <p class="no-print section-label" style="text-align:center;margin-bottom:0.7rem;font-weight:400;color:#64748b;">
+      මධ්‍යස්ථාන සාරාංශය (කාල පරාසය + මාර්ගය) — මුද්‍රණයේ එක් පිටුවකට මධ්‍යස්ථාන 2යි.
+    </p>
+    <p class="no-print footer-note" style="margin-top:0;margin-bottom:0.9rem;">
+      මාර්ගය: {{ route.code }} — {{ route.name }} |
+      කාලය: {{ from_date|date:"Y-m-d" }} සිට {{ to_date|date:"Y-m-d" }} දක්වා |
+      Entries: {{ total_entries }} |
+      Kg: {{ total_kg }} |
+      Liters: {{ total_liters }}
+    </p>
+
+    {% for point in grouped_points %}
+      {% if forloop.first or forloop.counter0|divisibleby:2 %}<div class="point-summary-sheet">{% endif %}
+      <section class="point-summary-card" data-copy-filename="point-summary-{{ route.code }}-{{ point.point_number }}">
+        <div class="no-print receipt-copy-actions">
+          <button
+            type="button"
+            onclick="copyElementAsImage(this.closest('.point-summary-card'), this)"
+            data-copying-label="පිටපත් කරමින්…"
+            data-copied-label="පිටපත් විය!"
+            data-downloaded-label="බාගත විය"
+            data-failed-label="පිටපත් කිරීම අසාර්ථකයි"
+          >පිංතූරය ලෙස පිටපත් කරන්න</button>
+          <button
+            type="button"
+            onclick="downloadElementAsImage(this.closest('.point-summary-card'), this)"
+            data-downloading-label="බාගත කරමින්…"
+            data-downloaded-label="බාගත විය"
+            data-failed-label="බාගත කිරීම අසාර්ථකයි"
+          >පිංතූරය ලෙස බාගත කරන්න</button>
+        </div>
+        <div class="point-summary-head">
+          <div class="point-summary-meta">
+            <strong>මාර්ගය:</strong> {{ route.code }} — {{ route.name }}<br>
+            <strong>අංකය:</strong> {{ point.point_number }}
+          </div>
+          <div class="point-summary-meta" style="text-align:right;">
+            <strong>මධ්‍යස්ථානය:</strong><br>
+            {{ point.point_name|default:"—" }}
+          </div>
+        </div>
+        <table class="point-summary-table">
+          <thead>
+            <tr>
+              <th>දිනය</th>
+              <th>L</th>
+              <th>Kg</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in point.rows %}
+            <tr>
+              <td>{{ row.date|date:"Y-m-d" }}</td>
+              <td class="num">{{ row.liters }}</td>
+              <td class="num">{{ row.kg }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>එකතුව</td>
+              <td class="num">{{ point.total_liters }}</td>
+              <td class="num">{{ point.total_kg }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+      {% if forloop.counter|divisibleby:2 or forloop.last %}</div>{% endif %}
+    {% empty %}
+      <p class="text-center text-muted p-4">මෙම කාලය සහ මාර්ගය සඳහා මධ්‍යස්ථාන එකතු කිරීම් නැත.</p>
+    {% endfor %}
+
+    <p class="footer-note no-print">මුද්‍රණය: {{ printed_at|date:"Y-m-d H:i" }}</p>
+    <div class="actions no-print">
+      <button type="button" class="btn btn-print" onclick="window.print()">මුද්‍රණය</button>
+      <button
+        type="button"
+        class="btn btn-print"
+        onclick="copyElementAsImage(document.querySelector('.receipt-shell'), this)"
+        data-copying-label="පිටපත් කරමින්…"
+        data-copied-label="පිටපත් විය!"
+        data-downloaded-label="බාගත විය"
+        data-failed-label="පිටපත් කිරීම අසාර්ථකයි"
+      >සියල්ල පිංතූරය ලෙස</button>
+      <button
+        type="button"
+        class="btn btn-print"
+        onclick="downloadElementAsImage(document.querySelector('.receipt-shell'), this)"
+        data-downloading-label="බාගත කරමින්…"
+        data-downloaded-label="බාගත විය"
+        data-failed-label="බාගත කිරීම අසාර්ථකයි"
+      >සියල්ල බාගත කරන්න</button>
+      {% if back_url %}
+      <a class="btn btn-back" href="{{ back_url }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+      {% else %}
+      <a class="btn btn-back" href="{% url 'milk-collection-list' %}?tab=route">ආපසු</a>
+      {% endif %}
+    </div>
+  </div>
+  {% if back_url %}
+  <div class="no-print mobile-action-bar">
+    <a class="m-btn m-btn--back" href="{{ back_url }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+    <button type="button" class="m-btn m-btn--print" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+  </div>
+  {% endif %}
+  {% include 'collections/_receipt_copy_image.html' %}
+</body>
+</html>

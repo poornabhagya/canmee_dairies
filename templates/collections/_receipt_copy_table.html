@@ -1,0 +1,85 @@
+<script>
+(function () {
+  function cellText(td) {
+    return (td.innerText || td.textContent || "").trim().replace(/\s+/g, " ");
+  }
+
+  function fallbackCopyText(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch (e) {
+      ok = false;
+    }
+    ta.remove();
+    return ok;
+  }
+
+  async function copyTableAsTsv(tableOrSelector, button) {
+    var table =
+      typeof tableOrSelector === "string"
+        ? document.querySelector(tableOrSelector)
+        : tableOrSelector;
+    if (!table) return;
+
+    var lines = [];
+    table.querySelectorAll("tr").forEach(function (tr) {
+      if (tr.classList.contains("section-gap")) return;
+      var cells = [];
+      tr.querySelectorAll("th, td").forEach(function (td) {
+        cells.push(cellText(td));
+      });
+      if (cells.length) lines.push(cells.join("\t"));
+    });
+
+    if (!lines.length) {
+      if (typeof window.appAlert === "function") {
+        window.appAlert("No table data to copy.", { icon: "info", title: "Nothing to copy" });
+      } else {
+        window.alert("No table data to copy.");
+      }
+      return;
+    }
+
+    var tsv = lines.join("\n");
+    var btn = button || null;
+    var label = btn ? btn.innerHTML : "";
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = btn.getAttribute("data-copying-label") || "Copying…";
+      }
+      var copied = false;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(tsv);
+        copied = true;
+      } else {
+        copied = fallbackCopyText(tsv);
+      }
+      if (!copied) throw new Error("Clipboard unavailable");
+      if (btn) {
+        btn.textContent = btn.getAttribute("data-copied-label") || "Copied!";
+      }
+    } catch (err) {
+      console.error(err);
+      if (btn) btn.textContent = btn.getAttribute("data-failed-label") || "Copy failed";
+    } finally {
+      if (btn) {
+        window.setTimeout(function () {
+          btn.disabled = false;
+          btn.innerHTML = label;
+        }, 2000);
+      }
+    }
+  }
+
+  window.copyTableAsTsv = copyTableAsTsv;
+})();
+</script>

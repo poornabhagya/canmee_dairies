@@ -1,0 +1,14 @@
+{# Print-only payment sheet summary (settlement columns). Flat list matching Excel sample. #}
+<div class="payment-sheet-print-section payment-sheet-print-summary-sheet payment-sheet-print-all-pack" aria-label="Payment sheet summary">
+  <h2 class="payment-sheet-print-heading">
+    Payment Sheet for the period of
+    {% if start.month == end.month and start.year == end.year %}
+      {{ start.day }}-{{ end.day }} {{ end|date:"F Y" }}
+    {% else %}
+      {{ start|date:"j M Y" }} – {{ end|date:"j M Y" }}
+    {% endif %}
+    : {{ branch_summary_label }}
+  </h2>
+  {% include "reports/_collection_point_payment_sheet_print_summary_table.html" with print_rows=rows print_totals=sheet_totals %}
+  {% include "reports/_collection_point_payment_sheet_print_signatures.html" %}
+</div>

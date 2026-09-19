@@ -1,0 +1,20 @@
+<div class="modal-header">
+  <h5 class="modal-title" id="branchDispatchRespondModalLabel">Dispatch already handled</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+  <p class="mb-2">
+    Dispatch <strong>#{{ dispatch.dispatch_no }}</strong> no longer needs a response from your branch.
+  </p>
+  <p class="text-muted small mb-0">
+  {% if dispatch.branch_destination_response %}
+    Current status: <strong>{{ dispatch.get_branch_destination_response_display }}</strong>.
+  {% else %}
+    This dispatch is no longer pending at your branch.
+  {% endif %}
+  </p>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+  <a href="{{ list_url }}" class="btn btn-primary">Go to incoming dispatches</a>
+</div>

@@ -1,0 +1,133 @@
+{% load format_extras %}
+{% if can_view_farmer_payments %}
+{% if statement_print or aside %}
+<div class="farmer-financial-block{% if aside %} farmer-financial-block--aside{% endif %}{% if point_previous_outstanding_open %} farmer-financial-block--outstanding-open{% endif %}">
+  <div class="farmer-financial-block__title">Previous outstanding</div>
+  {% if aside %}
+  <p class="small mb-2">
+    Open:
+    <span class="{% if point_previous_outstanding_open %}farmer-outstanding-open-amount{% else %}fw-semibold text-muted{% endif %}">{{ point_previous_outstanding_open|default:0|money }}</span>
+    {% if point_previous_outstanding_open %}
+    <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1">Pending</span>
+    {% endif %}
+    <span class="{% if point_previous_outstanding_open %}text-warning-emphasis{% else %}text-muted{% endif %}"> · deducted on the Collection Point Payment Sheet, not as an advance.</span>
+  </p>
+  {% elif point_previous_outstanding_open %}
+  <p class="small mb-2">Open: <span class="farmer-outstanding-open-amount">{{ point_previous_outstanding_open|money }}</span></p>
+  {% endif %}
+  {% if statement_print %}
+  <div>
+    <table class="table table-sm table-bordered farmer-statement-table mb-0 farmer-financial-table">
+      <thead class="table-light">
+        <tr>
+          <th>From period</th>
+          <th>Available</th>
+          <th class="text-end">Amount</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in point_previous_outstanding %}
+        <tr class="{% if item.is_recovered %}farmer-financial-row--settled{% else %}farmer-financial-row--outstanding{% endif %}">
+          <td class="text-nowrap">{{ item.originated_period_start|date:"Y-m-d" }} → {{ item.originated_period_end|date:"Y-m-d" }}</td>
+          <td class="text-nowrap">{{ item.available_on|date:"Y-m-d" }}</td>
+          <td class="text-end">{{ item.amount|money }}</td>
+          {% include "reports/_payslip_recovery_status.html" with is_recovered=item.is_recovered recovered_at=item.recovered_at %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" class="text-center text-muted py-3">No previous outstanding recorded.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <table
+    class="table table-hover datatable datatable-smart smart-dt-table mb-0 farmer-financial-table w-100"
+    data-empty-table="No previous outstanding recorded."
+    data-page-length="10"
+    data-smart-order="1,desc"
+    data-print-title="Previous outstanding"
+  >
+    <thead>
+      <tr>
+        <th class="all">From period</th>
+        <th class="all">Available</th>
+        <th class="all text-end">Amount</th>
+        <th class="all">Status</th>
+        {% if not aside %}<th class="min-desktop">Recovered period</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in point_previous_outstanding %}
+      <tr class="{% if item.is_recovered %}farmer-financial-row--settled{% else %}farmer-financial-row--outstanding{% endif %}">
+        <td class="all text-nowrap" data-order="{{ item.originated_period_start|date:'Y-m-d' }}">{{ item.originated_period_start|date:"Y-m-d" }} → {{ item.originated_period_end|date:"Y-m-d" }}</td>
+        <td class="all text-nowrap" data-order="{{ item.available_on|date:'Y-m-d' }}">{{ item.available_on|date:"Y-m-d" }}</td>
+        <td class="all text-end" data-order="{{ item.amount }}">{{ item.amount|money }}</td>
+        {% include "reports/_payslip_recovery_status.html" with is_recovered=item.is_recovered recovered_at=item.recovered_at %}
+        {% if not aside %}
+        <td class="min-desktop">
+          {% if item.is_recovered and item.recovered_period_start %}
+          {{ item.recovered_period_start|date:"Y-m-d" }} → {{ item.recovered_period_end|date:"Y-m-d" }}
+          {% else %}
+          —
+          {% endif %}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% else %}
+<div class="point-finance-pane{% if point_previous_outstanding_open %} farmer-financial-block--outstanding-open{% endif %}">
+  <div class="point-finance-pane__title">Previous outstanding</div>
+  <p class="small mb-2">
+    Open:
+    <span class="{% if point_previous_outstanding_open %}farmer-outstanding-open-amount{% else %}fw-semibold text-muted{% endif %}">{{ point_previous_outstanding_open|default:0|money }}</span>
+    {% if point_previous_outstanding_open %}
+    <span class="badge text-bg-warning-subtle text-warning-emphasis ms-1">Pending</span>
+    {% endif %}
+    <span class="{% if point_previous_outstanding_open %}text-warning-emphasis{% else %}text-muted{% endif %}"> · deducted on the Collection Point Payment Sheet, not as an advance.</span>
+  </p>
+  <div class="point-finance-pane__table">
+  <table
+    class="table table-hover datatable datatable-smart datatable-no-responsive smart-dt-table mb-0 farmer-financial-table point-finance-fit-table w-100"
+    data-empty-table="No previous outstanding recorded."
+    data-page-length="10"
+    data-smart-order="1,desc"
+    data-print-title="Previous outstanding"
+  >
+    <thead>
+      <tr>
+        <th class="all">From period</th>
+        <th class="all">Available</th>
+        <th class="all text-end">Amount</th>
+        <th class="all">Status</th>
+        <th class="min-desktop">Recovered period</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in point_previous_outstanding %}
+      <tr class="{% if item.is_recovered %}farmer-financial-row--settled{% else %}farmer-financial-row--outstanding{% endif %}">
+        <td class="all text-nowrap" data-order="{{ item.originated_period_start|date:'Y-m-d' }}">{{ item.originated_period_start|date:"Y-m-d" }} → {{ item.originated_period_end|date:"Y-m-d" }}</td>
+        <td class="all text-nowrap" data-order="{{ item.available_on|date:'Y-m-d' }}">{{ item.available_on|date:"Y-m-d" }}</td>
+        <td class="all text-end" data-order="{{ item.amount }}">{{ item.amount|money }}</td>
+        {% include "reports/_payslip_recovery_status.html" with is_recovered=item.is_recovered recovered_at=item.recovered_at %}
+        <td class="min-desktop">
+          {% if item.is_recovered and item.recovered_period_start %}
+          {{ item.recovered_period_start|date:"Y-m-d" }} → {{ item.recovered_period_end|date:"Y-m-d" }}
+          {% else %}
+          —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}

@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+{% load cp_loan_extras %}
+{% block title %}Loan #{{ loan.pk }} · Canmee Dairies{% endblock %}
+{% block page_heading %}
+Loan #{{ loan.pk }}
+{% include "collection_point_loans/_cp_loan_status_badge.html" with balance=account_summary.balance_total %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "collection_point_loans/_cp_loan_page_styles.html" %}
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions cp-loan-page-actions">
+  <a class="btn btn-outline-secondary" href="{% url 'cp-loan-list' %}"><i class="bi bi-arrow-left me-1"></i>Back to list</a>
+  <a class="btn btn-outline-dark" href="{% url 'cp-loan-account' loan.pk %}"><i class="bi bi-file-earmark-text me-1"></i>Loan account</a>
+  <button type="button" class="btn btn-outline-primary js-cp-loan-print-full"><i class="bi bi-printer me-1"></i>Print</button>
+  {% if loan.can_edit and perms.collection_point_loans.change_collectionpointloan %}
+  <a href="{% url 'cp-loan-edit' loan.pk %}" class="btn btn-outline-primary">Edit</a>
+  {% if loan.status == "draft" %}
+  <form method="post" action="{% url 'cp-loan-submit' loan.pk %}" class="d-inline">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Submit for approval</button>
+  </form>
+  {% endif %}
+  {% endif %}
+  {% if loan.status == "pending_approval" and perms.collection_point_loans.change_collectionpointloan %}
+  <form method="post" action="{% url 'cp-loan-approve' loan.pk %}" class="d-inline">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success">Approve</button>
+  </form>
+  <form method="post" action="{% url 'cp-loan-reject' loan.pk %}" class="cp-loan-reject-form">
+    {% csrf_token %}
+    <input type="text" name="rejection_reason" class="form-control" placeholder="Reject reason (optional)">
+    <button type="submit" class="btn btn-outline-danger">Reject</button>
+  </form>
+  {% endif %}
+  {% if loan.can_delete and perms.collection_point_loans.change_collectionpointloan %}
+  <a href="{% url 'cp-loan-delete' loan.pk %}" class="btn btn-outline-danger js-swal-delete-post" data-swal-title="Delete loan #{{ loan.pk }}?" data-swal-text="This cannot be undone. The deletion will be recorded in the audit log.">Delete</a>
+  {% elif user.is_superuser and loan.status == "approved" and perms.collection_point_loans.change_collectionpointloan %}
+  <a href="{% url 'cp-loan-delete' loan.pk %}" class="btn btn-outline-danger js-swal-delete-post" data-swal-title="Delete approved loan #{{ loan.pk }}?" data-swal-text="This approved loan and its repayment schedule will be permanently removed. This cannot be undone.">Delete</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+{% widthratio account_summary.paid_total account_summary.loan_amount 100 as recovery_pct %}
+<div class="cp-loan-screen">
+<div class="smart-stat-grid cp-loan-kpi-grid loan-account-no-print" aria-label="Loan summary">
+  <button type="button" class="smart-stat-card cp-loan-kpi--amount js-cp-loan-tab-link" data-cp-loan-tab="details" title="View loan details">
+    <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-cash-stack" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Loan amount</span>
+      <span class="smart-stat-card__value">{{ account_summary.loan_amount|money }}</span>
+      <span class="smart-stat-card__hint">{{ loan.collection_point }}</span>
+    </span>
+  </button>
+  <button type="button" class="smart-stat-card cp-loan-kpi--paid js-cp-loan-tab-link" data-cp-loan-tab="payments" title="View payment history">
+    <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Paid</span>
+      <span class="smart-stat-card__value{% if account_summary.paid_total %} cp-loan-kpi-paid{% endif %}">{{ account_summary.paid_total|money }}</span>
+      <span class="smart-stat-card__hint">{{ recovery_pct|default:0 }}% recovered{% if account_summary.schedule_count %} · {{ account_summary.paid_instalments }}/{{ account_summary.schedule_count }} instalments{% endif %}</span>
+      <span class="smart-stat-card__meter" aria-hidden="true"><span class="smart-stat-card__meter-fill" style="width: {{ recovery_pct|default:0 }}%;"></span></span>
+    </span>
+  </button>
+  <div class="smart-stat-card smart-stat-card--warn cp-loan-kpi--balance" title="Outstanding balance">
+    <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Balance</span>
+      <span class="smart-stat-card__value">{{ account_summary.balance_total|money }}</span>
+      <span class="smart-stat-card__hint">
+        {% if account_summary.balance_total %}
+          {% if account_summary.open_instalments %}{{ account_summary.open_instalments }} instalment{{ account_summary.open_instalments|pluralize }} remaining{% else %}Outstanding{% endif %}
+        {% else %}
+          Fully recovered
+        {% endif %}
+      </span>
+    </span>
+  </div>
+  <button type="button" class="smart-stat-card cp-loan-kpi--instalments js-cp-loan-tab-link" data-cp-loan-tab="schedule" title="View repayment schedule">
+    <span class="smart-stat-card__icon smart-stat-card__icon--blue"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+    <span class="smart-stat-card__body">
+      <span class="smart-stat-card__label">Instalments</span>
+      <span class="smart-stat-card__value">{% if account_summary.schedule_count %}{{ account_summary.paid_instalments }}/{{ account_summary.schedule_count }}{% else %}{{ loan.installment_count }}{% endif %}</span>
+      <span class="smart-stat-card__hint">
+        {% if account_summary.next_due_date %}Next due {{ account_summary.next_due_date|date:"M j, Y" }}{% elif account_summary.schedule_count and not account_summary.open_instalments %}All instalments paid{% else %}{{ loan.get_installment_method_display }}{% endif %}
+      </span>
+    </span>
+  </button>
+</div>
+
+<div class="cp-loan-recovery loan-account-no-print" aria-label="Loan recovery progress">
+  <div class="cp-loan-recovery__meta">
+    <span class="cp-loan-recovery__label">Recovered</span>
+    <span class="cp-loan-recovery__value">{{ recovery_pct|default:0 }}%</span>
+  </div>
+  <div class="cp-loan-recovery__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ recovery_pct|default:0 }}">
+    <span class="cp-loan-recovery__fill" style="width: {{ recovery_pct|default:0 }}%;"></span>
+  </div>
+</div>
+
+<div class="card cp-loan-page-card smart-list-card">
+  <div class="card-body">
+    <div class="cp-loan-tabs loan-account-no-print" data-cp-loan-tabs role="tablist" aria-label="Loan sections">
+      <button type="button" class="smart-dt-chip is-active" role="tab" aria-selected="true" data-cp-loan-tab="details">Details</button>
+      <button type="button" class="smart-dt-chip{% if not loan.repayment_schedules.all %} is-empty{% endif %}" role="tab" aria-selected="false" data-cp-loan-tab="schedule">
+        Schedule<span class="smart-dt-chip-count">{{ loan.repayment_schedules.all|length }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip{% if not loan.payment_transactions.all %} is-empty{% endif %}" role="tab" aria-selected="false" data-cp-loan-tab="payments">
+        Payments<span class="smart-dt-chip-count">{{ loan.payment_transactions.all|length }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip{% if not loan.action_logs.all %} is-empty{% endif %}" role="tab" aria-selected="false" data-cp-loan-tab="audit">
+        Audit<span class="smart-dt-chip-count">{{ loan.action_logs.all|length }}</span>
+      </button>
+    </div>
+
+    <div class="cp-loan-page-panel is-active" data-cp-loan-panel="details" id="details">
+      <article class="cp-loan-statement">
+        <header class="cp-loan-statement__head">
+          <div>
+            <span class="cp-loan-statement__kicker">Loan record</span>
+            <h2 class="cp-loan-statement__title">Loan details</h2>
+            <p class="cp-loan-statement__meta">{{ loan.collection_point }} · {{ loan.branch.name }}</p>
+          </div>
+          <div class="cp-loan-statement__head-actions">
+            <span class="cp-loan-statement__account">Loan #{{ loan.pk }}</span>
+            {% include "collection_point_loans/_cp_loan_statement_exports.html" with section="details" print_only=True %}
+          </div>
+        </header>
+        <div class="cp-loan-statement__grid">
+          <dl>
+            <div class="cp-loan-statement__row">
+              <dt>Branch</dt>
+              <dd>{{ loan.branch.name }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Collection point</dt>
+              <dd>{{ loan.collection_point }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Point no</dt>
+              <dd>{{ loan.point_reference|default:"—" }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Avg monthly production</dt>
+              <dd>{{ loan.average_monthly_milk_production|default:"—" }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Avg monthly income</dt>
+              <dd>{{ loan.average_monthly_milk_income|money }}</dd>
+            </div>
+          </dl>
+          <dl>
+            <div class="cp-loan-statement__row">
+              <dt>Loan number</dt>
+              <dd>#{{ loan.pk }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Loan date</dt>
+              <dd>{{ loan.loan_date }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>First repayment</dt>
+              <dd>{{ loan.first_repayment_date }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Instalment method</dt>
+              <dd>{{ loan.get_installment_method_display }}</dd>
+            </div>
+            <div class="cp-loan-statement__row">
+              <dt>Instalments</dt>
+              <dd>{{ loan.installment_count }}</dd>
+            </div>
+            {% if loan.requested_installment_amount %}
+            <div class="cp-loan-statement__row">
+              <dt>Request instalment</dt>
+              <dd>{{ loan.requested_installment_amount|money }}</dd>
+            </div>
+            {% endif %}
+            {% if loan.is_existing_loan %}
+            <div class="cp-loan-statement__row">
+              <dt>Existing loan</dt>
+              <dd>Yes · already paid {{ loan.recorded_paid_total|money }}</dd>
+            </div>
+            {% endif %}
+            {% if loan.submitted_at %}
+            <div class="cp-loan-statement__row">
+              <dt>Submitted</dt>
+              <dd>{{ loan.submitted_at }}</dd>
+            </div>
+            {% endif %}
+            {% if loan.status == "approved" %}
+            <div class="cp-loan-statement__row">
+              <dt>Approved</dt>
+              <dd>{{ loan.approved_at|default:"—" }} · {{ loan.approved_by|default:"—" }}</dd>
+            </div>
+            {% elif loan.status == "rejected" %}
+            <div class="cp-loan-statement__row">
+              <dt>Rejected</dt>
+              <dd>{{ loan.rejected_at|default:"—" }} · {{ loan.rejected_by|default:"—" }}</dd>
+            </div>
+            {% endif %}
+          </dl>
+        </div>
+        {% if loan.reason or loan.status == "rejected" and loan.rejection_reason %}
+        <div class="cp-loan-statement__note">
+          {% if loan.reason %}
+          <dl>
+            <dt>Reason</dt>
+            <dd>{{ loan.reason }}</dd>
+          </dl>
+          {% endif %}
+          {% if loan.status == "rejected" and loan.rejection_reason %}
+          <dl{% if loan.reason %} class="mt-3"{% endif %}>
+            <dt>Rejection reason</dt>
+            <dd>{{ loan.rejection_reason }}</dd>
+          </dl>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="cp-loan-statement__footer" aria-label="Account position">
+          <div class="cp-loan-statement__figure">
+            <span class="cp-loan-statement__figure-label">Loan amount</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.loan_amount|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-paid{% if not account_summary.paid_total %} is-zero{% endif %}">
+            <span class="cp-loan-statement__figure-label">Paid total</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.paid_total|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-balance">
+            <span class="cp-loan-statement__figure-label">Balance</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.balance_total|money }}</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="cp-loan-page-panel" data-cp-loan-panel="schedule" id="schedule">
+      <article class="cp-loan-statement">
+        <header class="cp-loan-statement__head">
+          <div>
+            <span class="cp-loan-statement__kicker">Repayment plan</span>
+            <h2 class="cp-loan-statement__title">Instalment schedule</h2>
+            <p class="cp-loan-statement__meta">
+              {% if loan.installment_method == "monthly" %}Monthly instalments{% else %}15th &amp; last day{% endif %}
+              · {{ loan.collection_point }}
+            </p>
+          </div>
+          <div class="cp-loan-statement__head-actions">
+            <span class="cp-loan-statement__account">Loan #{{ loan.pk }}</span>
+            {% include "collection_point_loans/_cp_loan_statement_exports.html" with section="schedule" %}
+          </div>
+        </header>
+        {% if loan.repayment_schedules.exists %}
+        {% if can_update_schedule_paid %}
+        <form method="post" action="{% url 'cp-loan-schedule-paid' loan.pk %}" id="loan-schedule-paid-form">
+          {% csrf_token %}
+          {{ schedule_paid_formset.management_form }}
+          <div class="table-responsive cp-loan-statement__body">
+            <table class="table table-hover smart-dt-table mb-0 w-100">
+              <thead>
+                <tr>
+                  <th>Instalment</th>
+                  <th>Due date</th>
+                  <th class="text-end">Amount</th>
+                  <th style="min-width: 9rem;">Paid</th>
+                  <th class="text-end">Balance</th>
+                  <th>Status</th>
+                  {% if perms.reports.record_manual_settlement %}<th class="text-end">Manual</th>{% endif %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for form in schedule_paid_formset %}
+                {% with row=form.instance %}
+                {% widthratio row.paid_amount row.installment_amount 100 as row_paid_pct %}
+                <tr class="{% if row.payment_status_label == 'Paid' %}smart-row--paid{% elif row.payment_status_label == 'Partial' %}smart-row--partial{% endif %}">
+                  <td>
+                    <span class="cp-loan-id">#{{ row.installment_number }}</span>{{ form.id }}
+                    <span class="cp-loan-progress{% if not row_paid_pct %} is-empty{% endif %}" title="{{ row_paid_pct|default:0 }}% paid">
+                      <span class="cp-loan-progress__fill" style="width: {{ row_paid_pct|default:0 }}%;"></span>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="smart-dt-name-text">{{ row.due_date|date:"M j, Y" }}</span>
+                    <span class="cp-loan-point-meta">{% if row.paid_on %}Paid {{ row.paid_on|date:"Y-m-d" }}{% if row.payment_method %} · {{ row.get_payment_method_display }}{% endif %}{% else %}Not paid yet{% endif %}</span>
+                  </td>
+                  <td class="text-end dt-num">{{ row.installment_amount|money }}</td>
+                  <td>{{ form.paid_amount }}{{ form.paid_amount.errors }}</td>
+                  <td class="text-end dt-num cp-loan-balance{% if not row.remaining_amount %} is-cleared{% endif %}">{{ row.remaining_amount|money }}</td>
+                  <td>
+                    {% if row.payment_status_label == "Paid" %}
+                    <span class="smart-badge smart-badge--success"{% if row.paid_on %} title="Paid {{ row.paid_on|date:'Y-m-d' }}{% if row.payment_note %} — {{ row.payment_note }}{% endif %}"{% endif %}>{{ row.payment_status_label }}</span>
+                    {% elif row.payment_status_label == "Partial" %}
+                    <span class="smart-badge smart-badge--primary"{% if row.paid_on %} title="Paid {{ row.paid_on|date:'Y-m-d' }}{% if row.payment_note %} — {{ row.payment_note }}{% endif %}"{% endif %}>{{ row.payment_status_label }}</span>
+                    {% else %}
+                    <span class="smart-badge smart-badge--secondary">{{ row.payment_status_label }}</span>
+                    {% endif %}
+                  </td>
+                  {% if perms.reports.record_manual_settlement %}
+                  <td class="text-end">{% include "reports/_cp_loan_instalment_manual_settle_action.html" with instalment=row %}</td>
+                  {% endif %}
+                </tr>
+                {% endwith %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if schedule_paid_formset.non_form_errors %}
+          <div class="alert alert-danger mb-0 mx-3 mt-3">{{ schedule_paid_formset.non_form_errors }}</div>
+          {% endif %}
+          <div class="cp-loan-statement__actions">
+            <span class="text-muted">Update paid amounts per instalment.</span>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Save paid instalments</button>
+          </div>
+        </form>
+        {% else %}
+        <div class="table-responsive cp-loan-statement__body">
+          <table class="table table-hover smart-dt-table mb-0 w-100">
+            <thead>
+              <tr>
+                <th>Instalment</th>
+                <th>Due date</th>
+                <th class="text-end">Amount</th>
+                <th class="text-end">Paid</th>
+                <th class="text-end">Balance</th>
+                <th>Status</th>
+                {% if perms.reports.record_manual_settlement %}<th class="text-end">Manual</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in loan.repayment_schedules.all %}
+              {% widthratio row.paid_amount row.installment_amount 100 as row_paid_pct %}
+              <tr class="{% if row.payment_status_label == 'Paid' %}smart-row--paid{% elif row.payment_status_label == 'Partial' %}smart-row--partial{% endif %}">
+                <td>
+                  <span class="cp-loan-id">#{{ row.installment_number }}</span>
+                  <span class="cp-loan-progress{% if not row_paid_pct %} is-empty{% endif %}" title="{{ row_paid_pct|default:0 }}% paid">
+                    <span class="cp-loan-progress__fill" style="width: {{ row_paid_pct|default:0 }}%;"></span>
+                  </span>
+                </td>
+                <td>
+                  <span class="smart-dt-name-text">{{ row.due_date|date:"M j, Y" }}</span>
+                  <span class="cp-loan-point-meta">{% if row.paid_on %}Paid {{ row.paid_on|date:"Y-m-d" }}{% if row.payment_method %} · {{ row.get_payment_method_display }}{% endif %}{% else %}Not paid yet{% endif %}</span>
+                </td>
+                <td class="text-end dt-num">{{ row.installment_amount|money }}</td>
+                <td class="text-end dt-num {% if row.paid_amount %}cp-loan-paid{% else %}cp-loan-paid is-zero{% endif %}">{{ row.paid_amount|money }}</td>
+                <td class="text-end dt-num cp-loan-balance{% if not row.remaining_amount %} is-cleared{% endif %}">{{ row.remaining_amount|money }}</td>
+                <td>
+                  {% if row.payment_status_label == "Paid" %}
+                  <span class="smart-badge smart-badge--success"{% if row.paid_on %} title="Paid {{ row.paid_on|date:'Y-m-d' }}{% if row.payment_note %} — {{ row.payment_note }}{% endif %}"{% endif %}>{{ row.payment_status_label }}</span>
+                  {% elif row.payment_status_label == "Partial" %}
+                  <span class="smart-badge smart-badge--primary"{% if row.paid_on %} title="Paid {{ row.paid_on|date:'Y-m-d' }}{% if row.payment_note %} — {{ row.payment_note }}{% endif %}"{% endif %}>{{ row.payment_status_label }}</span>
+                  {% else %}
+                  <span class="smart-badge smart-badge--secondary">{{ row.payment_status_label }}</span>
+                  {% endif %}
+                </td>
+                {% if perms.reports.record_manual_settlement %}
+                <td class="text-end">{% include "reports/_cp_loan_instalment_manual_settle_action.html" with instalment=row %}</td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+        <div class="cp-loan-statement__footer" aria-label="Schedule totals">
+          <div class="cp-loan-statement__figure">
+            <span class="cp-loan-statement__figure-label">Loan amount</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.loan_amount|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-paid{% if not account_summary.paid_total %} is-zero{% endif %}">
+            <span class="cp-loan-statement__figure-label">Paid total</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.paid_total|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-balance">
+            <span class="cp-loan-statement__figure-label">Balance</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.balance_total|money }}</span>
+          </div>
+        </div>
+        {% else %}
+        <p class="cp-loan-statement__empty">Schedule will be generated when the draft is submitted for approval.</p>
+        {% endif %}
+      </article>
+    </div>
+
+    <div class="cp-loan-page-panel" data-cp-loan-panel="payments" id="payments">
+      <article class="cp-loan-statement">
+        <header class="cp-loan-statement__head">
+          <div>
+            <span class="cp-loan-statement__kicker">Ledger</span>
+            <h2 class="cp-loan-statement__title">Payment history</h2>
+            <p class="cp-loan-statement__meta">{{ loan.collection_point }} · {{ loan.branch.name }}</p>
+          </div>
+          <div class="cp-loan-statement__head-actions">
+            <span class="cp-loan-statement__account">Loan #{{ loan.pk }}</span>
+            {% include "collection_point_loans/_cp_loan_statement_exports.html" with section="payments" %}
+          </div>
+        </header>
+        {% if loan.payment_transactions.all %}
+        <div class="table-responsive cp-loan-statement__body">
+          <table class="table table-hover smart-dt-table mb-0 w-100">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Method</th>
+                <th class="text-end">Amount</th>
+                <th>Allocations</th>
+                <th>Note</th>
+                <th>By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in loan.payment_transactions.all %}
+              <tr>
+                <td class="text-nowrap">{{ entry.payment_date|date:"Y-m-d" }}</td>
+                <td><span class="smart-badge smart-badge--secondary">{{ entry.get_method_display }}</span></td>
+                <td class="text-end dt-num cp-loan-paid">{{ entry.amount|money }}</td>
+                <td>
+                  {% for alloc in entry.allocations.all %}
+                  <span class="cp-loan-alloc">Inst. {{ alloc.schedule.installment_number }} · {{ alloc.amount|money }}</span>
+                  {% empty %}
+                  <span class="dt-muted">—</span>
+                  {% endfor %}
+                </td>
+                <td class="dt-muted">{{ entry.note|default:"—" }}</td>
+                <td class="dt-muted">{{ entry.created_by|default:"System" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="cp-loan-statement__footer" aria-label="Payment totals">
+          <div class="cp-loan-statement__figure">
+            <span class="cp-loan-statement__figure-label">Entries</span>
+            <span class="cp-loan-statement__figure-value">{{ loan.payment_transactions.all|length }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-paid{% if not account_summary.paid_total %} is-zero{% endif %}">
+            <span class="cp-loan-statement__figure-label">Paid total</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.paid_total|money }}</span>
+          </div>
+          <div class="cp-loan-statement__figure is-balance">
+            <span class="cp-loan-statement__figure-label">Balance</span>
+            <span class="cp-loan-statement__figure-value">{{ account_summary.balance_total|money }}</span>
+          </div>
+        </div>
+        {% else %}
+        <p class="cp-loan-statement__empty">No payment transactions recorded yet.</p>
+        {% endif %}
+      </article>
+    </div>
+
+    <div class="cp-loan-page-panel" data-cp-loan-panel="audit" id="audit">
+      <article class="cp-loan-statement">
+        <header class="cp-loan-statement__head">
+          <div>
+            <span class="cp-loan-statement__kicker">History</span>
+            <h2 class="cp-loan-statement__title">Audit log</h2>
+            <p class="cp-loan-statement__meta">{{ loan.collection_point }} · {{ loan.branch.name }}</p>
+          </div>
+          <div class="cp-loan-statement__head-actions">
+            <span class="cp-loan-statement__account">Loan #{{ loan.pk }}</span>
+            {% include "collection_point_loans/_cp_loan_statement_exports.html" with section="audit" print_only=True %}
+          </div>
+        </header>
+        {% if loan.action_logs.all %}
+        <div class="table-responsive cp-loan-statement__body">
+          <table class="table table-hover smart-dt-table mb-0 w-100">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Action</th>
+                <th>By</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in loan.action_logs.all %}
+              <tr>
+                <td class="text-nowrap dt-muted">{{ entry.performed_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ entry.get_action_display }}</td>
+                <td>{{ entry.performed_by }}</td>
+                <td class="dt-muted">{{ entry.notes|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="cp-loan-statement__empty">No actions recorded yet.</p>
+        {% endif %}
+      </article>
+    </div>
+  </div>
+</div>
+</div>
+{% include "collection_point_loans/_cp_loan_print_statement.html" with print_doc_name="Collection point loan" include_loan_details=True include_audit=True %}
+{% endblock %}
+{% block extra_js %}
+{% include "collection_point_loans/_cp_loan_tabs_script.html" %}
+{% endblock %}

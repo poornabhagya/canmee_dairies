@@ -1,0 +1,104 @@
+{% load static format_extras %}
+<div class="asset-print-sheet" aria-hidden="true">
+  <header class="asset-print-doc">
+    <div class="asset-print-doc__brand">
+      <img src="{% static 'img/logo.png' %}" alt="" class="asset-print-doc__logo" width="48" height="48">
+      <div>
+        <div class="asset-print-doc__company">CANMEE DAIRIES (PVT) LTD</div>
+        <div class="asset-print-doc__line">Phone: 071 543 5019</div>
+      </div>
+      <div class="asset-print-doc__issued">
+        <span>Generated</span>
+        <strong>{% now "d M Y, H:i" %}</strong>
+      </div>
+    </div>
+    <div class="asset-print-doc__titleblock">
+      <h1 class="asset-print-doc__title">Fixed asset register</h1>
+      <p class="asset-print-doc__subtitle">Classified register as at {% now "d M Y" %} · FAR-{% now "Y" %} · {{ stats.total }} asset{{ stats.total|pluralize }}</p>
+    </div>
+    <table class="asset-print-table asset-print-table--totals">
+      <thead>
+        <tr>
+          <th>Assets</th>
+          <th>Gross cost</th>
+          <th>Written down</th>
+          <th>Net book value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ stats.total }}</td>
+          <td>{{ stats.total_cost|money }}</td>
+          <td>{{ stats.written_down|money }}</td>
+          <td>{{ stats.total_value|money }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </header>
+
+  {% for group in classified_groups %}
+  <section class="asset-print-sheet__section">
+    <h2 class="asset-print-sheet__heading">{{ group.name }} · {{ group.count }} asset{{ group.count|pluralize }}</h2>
+    <table class="asset-print-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tag</th>
+          <th>Particulars</th>
+          <th>Category</th>
+          <th>Branch</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th class="is-num">Cost</th>
+          <th class="is-num">Written down</th>
+          <th class="is-num">NBV</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in group.assets %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ asset.asset_tag }}</td>
+          <td>{{ asset.name }}</td>
+          <td>{{ asset.category.name|default:"—" }}</td>
+          <td>{{ asset.branch_label }}</td>
+          <td>{% if asset.location %}{{ asset.location.name }}{% else %}—{% endif %}</td>
+          <td>{{ asset.get_status_display }}</td>
+          <td class="is-num">{{ asset.purchase_cost|money }}</td>
+          <td class="is-num">{{ asset.written_down|money }}</td>
+          <td class="is-num">{{ asset.current_value|money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="7">Subtotal — {{ group.name }} ({{ group.count }})</th>
+          <th class="is-num">{{ group.cost|money }}</th>
+          <th class="is-num">{{ group.written|money }}</th>
+          <th class="is-num">{{ group.book|money }}</th>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+  {% empty %}
+  <p class="asset-print-sheet__empty">No assets on the register.</p>
+  {% endfor %}
+
+  {% if classified_groups %}
+  <table class="asset-print-table asset-print-table--grand">
+    <tbody>
+      <tr>
+        <th>Grand total ({{ stats.total }})</th>
+        <th class="is-num">{{ stats.total_cost|money }}</th>
+        <th class="is-num">{{ stats.written_down|money }}</th>
+        <th class="is-num">{{ stats.total_value|money }}</th>
+      </tr>
+    </tbody>
+  </table>
+  {% endif %}
+
+  <footer class="asset-print-doc__footer">
+    <span>This is a computer-generated fixed asset register and does not require a signature.</span>
+    <span>Canmee Dairies (Pvt) Ltd · Confidential</span>
+  </footer>
+</div>

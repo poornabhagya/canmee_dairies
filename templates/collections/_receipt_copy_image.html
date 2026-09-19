@@ -1,0 +1,164 @@
+<style>
+  .receipt-copy-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .receipt-copy-actions button {
+    font: inherit;
+    font-size: 13px;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #0f172a;
+    cursor: pointer;
+  }
+  .receipt-copy-actions button:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+  .receipt-copy-actions button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+  .receipt-copy-actions button.is-primary {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #fff;
+  }
+  .receipt-copy-actions button.is-primary:hover:not(:disabled) {
+    background: #0d9488;
+    border-color: #0d9488;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+(function () {
+  async function renderElementAsCanvas(element) {
+    if (!element) return null;
+    if (!window.html2canvas) {
+      if (typeof window.appAlert === "function") {
+        window.appAlert(
+          "Image capture is not available. Please check your internet connection and reload.",
+          { icon: "warning", title: "Capture unavailable" }
+        );
+      } else {
+        window.alert("Image capture is not available. Please check your internet connection and reload.");
+      }
+      return null;
+    }
+    return window.html2canvas(element, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      onclone: function (clonedDoc, clonedElement) {
+        clonedDoc.querySelectorAll(".no-print").forEach(function (el) {
+          el.style.display = "none";
+        });
+        var root = clonedElement || element;
+        if (root) {
+          root.style.display = "inline-block";
+          var fixedW = root.getAttribute("data-copy-fixed-width");
+          root.style.width = fixedW ? fixedW + "px" : "fit-content";
+          root.style.maxWidth = "100%";
+          root.style.padding = "0";
+          root.style.boxSizing = "border-box";
+        }
+      },
+    });
+  }
+
+  async function canvasToPngBlob(canvas) {
+    return new Promise(function (resolve) {
+      canvas.toBlob(resolve, "image/png");
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = (filename || "summary") + ".png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function withBusyButton(button, busyLabel, doneLabel, work) {
+    var btn = button || null;
+    var label = btn ? btn.textContent : "";
+    return (async function () {
+      try {
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = busyLabel || "Working…";
+        }
+        var ok = await work();
+        if (btn) {
+          btn.textContent = ok
+            ? (doneLabel || "Done")
+            : (btn.getAttribute("data-failed-label") || "Failed");
+        }
+      } catch (err) {
+        console.error(err);
+        if (btn) btn.textContent = btn.getAttribute("data-failed-label") || "Failed";
+      } finally {
+        if (btn) {
+          window.setTimeout(function () {
+            btn.disabled = false;
+            btn.textContent = label;
+          }, 2000);
+        }
+      }
+    })();
+  }
+
+  async function copyElementAsImage(element, button) {
+    return withBusyButton(
+      button,
+      (button && button.getAttribute("data-copying-label")) || "Copying…",
+      (button && button.getAttribute("data-copied-label")) || "Copied!",
+      async function () {
+        var canvas = await renderElementAsCanvas(element);
+        if (!canvas) return false;
+        var blob = await canvasToPngBlob(canvas);
+        if (!blob) throw new Error("Could not create image");
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([new window.ClipboardItem({ "image/png": blob })]);
+          return true;
+        }
+        downloadBlob(blob, element.getAttribute("data-copy-filename") || "summary");
+        if (button) {
+          button.textContent = button.getAttribute("data-downloaded-label") || "Downloaded";
+        }
+        return true;
+      }
+    );
+  }
+
+  async function downloadElementAsImage(element, button) {
+    return withBusyButton(
+      button,
+      (button && button.getAttribute("data-downloading-label")) || "Downloading…",
+      (button && button.getAttribute("data-downloaded-label")) || "Downloaded",
+      async function () {
+        var canvas = await renderElementAsCanvas(element);
+        if (!canvas) return false;
+        var blob = await canvasToPngBlob(canvas);
+        if (!blob) throw new Error("Could not create image");
+        downloadBlob(blob, element.getAttribute("data-copy-filename") || "summary");
+        return true;
+      }
+    );
+  }
+
+  window.copyElementAsImage = copyElementAsImage;
+  window.downloadElementAsImage = downloadElementAsImage;
+})();
+</script>

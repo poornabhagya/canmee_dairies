@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}{% if is_branch_transfer %}Transfer Note{% else %}Issue Receipt{% endif %} {{ batch_ref }}{% endblock %}
+{% block page_heading %}Print Issue{% endblock %}
+{% block body_class %}{% if print_pos %}goods-issue-print-pos{% endif %}{% endblock %}
+{% block extra_css %}
+{% if print_pos %}
+{% include "suppliers/_farmer_goods_issue_pos_styles.html" %}
+{% else %}
+{% include "suppliers/_farmer_goods_issue_print_styles.html" %}
+<style>
+  .goods-issue-payment-card {
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  }
+  .goods-payment-lines-table th,
+  .goods-payment-lines-table td {
+    vertical-align: middle;
+  }
+  .goods-payment-select-col {
+    width: 2.5rem;
+  }
+</style>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="module-shell no-print mb-3{% if embed %} d-none{% endif %}">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'farmer-goods-issue-list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+      <a href="{% url 'farmer-goods-issue-list' %}" class="btn btn-outline-secondary btn-sm">All receipts</a>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'farmer-goods-issue' %}" class="btn btn-outline-secondary btn-sm">New issue</a>
+      {% if print_pos %}
+      <a href="{% url 'farmer-goods-issue-print' batch_ref %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark me-1"></i>Standard</a>
+      <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-receipt me-1"></i> Print POS</button>
+      {% else %}
+      <a href="{% url 'farmer-goods-issue-print' batch_ref %}?pos=1" class="btn btn-outline-secondary btn-sm"><i class="bi bi-receipt me-1"></i>POS view</a>
+      {% if perms.reports.record_manual_settlement and not is_branch_transfer and payment_eligible and payment_pending_amount > 0 %}
+      <a href="#record-payment" class="btn btn-outline-success btn-sm"><i class="bi bi-cash-coin me-1"></i>Record payment</a>
+      {% endif %}
+      <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Print</button>
+      {% endif %}
+    </div>
+  </div>
+  {% if print_pos %}
+  <p class="small text-muted mb-0 mt-2">80&nbsp;mm thermal layout — choose <strong>POS-80</strong> (or 80&nbsp;mm roll) in the print dialog.</p>
+  {% endif %}
+</div>
+
+{% if not print_pos %}
+{% include "suppliers/_farmer_goods_issue_payment_panel.html" %}
+{% endif %}
+
+{% if print_pos %}
+{% include "suppliers/_farmer_goods_issue_sheet_pos.html" %}
+{% else %}
+{% include "suppliers/_farmer_goods_issue_sheet.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if autoprint %}
+<script>
+  window.addEventListener("load", function () {
+    window.setTimeout(function () { window.print(); }, 150);
+  });
+</script>
+{% endif %}
+{% if not print_pos and perms.reports.record_manual_settlement and not is_branch_transfer %}
+<script>
+(function () {
+  function formatMoney(value) {
+    var n = Number(value);
+    if (!isFinite(n)) return "0.00";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  var form = document.getElementById("goods-partial-payment-form");
+  if (!form) return;
+
+  var selectAll = document.getElementById("goods-pay-select-all");
+  var lineChecks = Array.from(form.querySelectorAll(".js-goods-pay-line"));
+  var totalEl = document.getElementById("goods-selected-total");
+  var partialBtn = form.querySelector(".js-goods-partial-pay-btn");
+
+  function selectedTotal() {
+    return lineChecks.reduce(function (sum, el) {
+      if (!el.checked) return sum;
+      return sum + Number(el.getAttribute("data-amount") || 0);
+    }, 0);
+  }
+
+  function sync() {
+    var total = selectedTotal();
+    if (totalEl) totalEl.textContent = formatMoney(total);
+    var checked = lineChecks.filter(function (el) { return el.checked; });
+    if (selectAll) {
+      selectAll.checked = lineChecks.length > 0 && checked.length === lineChecks.length;
+      selectAll.indeterminate = checked.length > 0 && checked.length < lineChecks.length;
+    }
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener("change", function () {
+      lineChecks.forEach(function (el) { el.checked = selectAll.checked; });
+      sync();
+    });
+  }
+  lineChecks.forEach(function (el) {
+    el.addEventListener("change", sync);
+  });
+
+  sync();
+})();
+</script>
+{% endif %}
+{% endblock %}

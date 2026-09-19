@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+{% block title %}Milk factors · Canmee Dairies{% endblock %}
+{% block body_class %}milk-factor-lab{% endblock %}
+{% block page_heading %}
+<div class="milk-factor-lab-topbar-heading">
+  <span class="milk-factor-lab-kicker">Laboratory</span>
+  <span class="milk-factor-lab-title">Milk quality factors</span>
+  <span class="milk-factor-lab-meta">FAT · SNF · LR · Alcohol · Acidity · KQ readings by date, route, and collection point or farmer.</span>
+</div>
+{% endblock %}
+{% block extra_css %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  body.milk-factor-lab .topbar {
+    align-items: flex-start;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+  body.milk-factor-lab .topbar-title {
+    font-size: inherit;
+    font-weight: inherit;
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: min(46rem, 100%);
+  }
+  body.milk-factor-lab .milk-factor-lab-topbar-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+    min-width: 0;
+    line-height: 1.2;
+  }
+  body.milk-factor-lab .content-wrap {
+    font-size: 0.8125rem;
+  }
+  .milk-factor-lab-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .milk-factor-lab-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    overflow: hidden;
+    background: #fff;
+  }
+  .milk-factor-lab-card > .card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1.05rem;
+    background: #fff;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .milk-factor-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+  }
+  .milk-factor-filter-form .smart-dt-branch-filter-wrap {
+    margin: 0;
+  }
+  .milk-factor-filter-form .smart-dt-branch-filter,
+  .milk-factor-filter-form .form-select,
+  .milk-factor-filter-form .form-control {
+    width: auto !important;
+    min-width: 8.5rem;
+    max-width: 14rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .milk-factor-filter-form .form-select {
+    padding-right: 1.75rem;
+  }
+  .milk-factor-filter-form .milk-filter-date-wrap .input-group {
+    flex-wrap: nowrap;
+  }
+  .milk-factor-filter-form .milk-filter-date-wrap .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .milk-factor-filter-form .milk-filter-date-wrap .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 10.5rem;
+  }
+  .milk-factor-filter-form .btn {
+    font-size: 0.74rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+  }
+  body.milk-factor-lab .milk-factor-lab-kicker {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #0f766e;
+  }
+  body.milk-factor-lab .milk-factor-lab-title {
+    display: block;
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+  }
+  body.milk-factor-lab .milk-factor-lab-meta {
+    display: block;
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #64748b;
+    line-height: 1.35;
+  }
+  body.milk-factor-lab .topbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.15rem;
+  }
+  body.milk-factor-lab .topbar-actions .btn {
+    font-size: 0.75rem;
+    padding: 0.28rem 0.7rem;
+  }
+  body.milk-factor-lab .topbar-actions .smart-badge {
+    font-size: 0.68rem;
+  }
+  .milk-factor-lab-card > .card-body.table-wrap {
+    padding: 0.85rem 1.05rem 1.05rem;
+    background: #fff;
+    overflow-x: hidden;
+  }
+  .milk-factor-lab-card .smart-dt-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .milk-factor-lab-card .smart-dt-filters .btn {
+    font-size: 0.74rem;
+    padding: 0.28rem 0.7rem;
+  }
+  .delete-selected-btn[hidden] {
+    display: none !important;
+  }
+  .milk-factor-lab-card .smart-dt-table thead th {
+    font-size: 0.64rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  .milk-factor-lab-card .smart-dt-table tbody td {
+    font-size: 0.75rem;
+    vertical-align: middle;
+    border-color: #eef2f7;
+  }
+  .milk-factor-lab-card .smart-dt-table tbody tr:hover {
+    background: #f0fdfa;
+  }
+  .milk-factor-table {
+    width: 100% !important;
+  }
+  .milk-factor-table th.dt-check,
+  .milk-factor-table td.dt-check {
+    width: 2.25rem;
+  }
+  .milk-factor-table th.dt-date,
+  .milk-factor-table td.dt-date {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .milk-factor-table th.dt-num,
+  .milk-factor-table td.dt-num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+    font-size: 0.74rem;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .milk-factor-table thead th.dt-num {
+    font-family: inherit;
+    font-size: 0.64rem;
+  }
+  .milk-factor-table td.dt-target {
+    min-width: 9rem;
+  }
+  .milk-factor-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    white-space: nowrap;
+  }
+  .milk-factor-source--point {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+  }
+  .milk-factor-source--farmer {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+  }
+  .milk-factor-target-name {
+    display: block;
+    font-weight: 600;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 16rem;
+  }
+  .milk-factor-target-sub {
+    display: block;
+    font-size: 0.66rem;
+    color: #94a3b8;
+    margin-top: 0.08rem;
+  }
+  .milk-factor-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+  }
+  .custom-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid #94a3b8;
+    border-radius: 0.3rem;
+    background: #fff;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+    vertical-align: middle;
+  }
+  .custom-check:hover { border-color: #059669; }
+  .custom-check:checked { border-color: #059669; background: #059669; }
+  .custom-check:checked::after {
+    content: "";
+    position: absolute;
+    left: 0.28rem;
+    top: 0.08rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  @media (max-width: 991.98px) {
+    .milk-factor-lab-card > .card-body.table-wrap {
+      overflow-x: auto;
+    }
+    .milk-factor-table {
+      min-width: 1080px;
+    }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions">
+  <span class="smart-badge smart-badge--secondary">{{ object_list|length }} reading{{ object_list|length|pluralize }}</span>
+  {% if perms.collections.add_milkfactor %}
+  <a class="btn btn-primary" href="{% url 'milk-factor-add' %}?standalone=1" target="_blank" rel="noopener">
+    <i class="bi bi-plus-lg me-1"></i>Add reading
+  </a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="milk-factor-lab-shell">
+  <div class="card milk-factor-lab-card smart-list-card">
+    <div class="card-header">
+      <form method="get" id="milk-factor-filter-form" class="milk-factor-filter-form" role="search">
+        {% if filter_branches|length > 1 %}
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Branch</span>
+          <select name="branch" id="milk-factor-branch" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Branch">
+            <option value="">All branches</option>
+            {% for b in filter_branches %}
+            <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        <label class="smart-dt-branch-filter-wrap mb-0 milk-filter-date-wrap">
+          <span class="visually-hidden">Date range</span>
+          <div class="input-group input-group-sm flatpickr-range-wrap">
+            <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+            <input
+              type="text"
+              id="milk-factor-date-range"
+              class="form-control border-start-0 js-datepicker-range js-datepicker-range-iso"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="All dates"
+              autocomplete="off"
+              readonly
+              aria-label="Date range"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ date_from }}">
+          <input type="hidden" name="date_to" value="{{ date_to }}">
+        </label>
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Route</span>
+          <select name="route" id="milk-factor-route" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Route">
+            <option value="">All routes</option>
+            {% for ro in filter_routes %}
+            <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == selected_route %}selected{% endif %}>{{ ro.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Sample source</span>
+          <select name="source" id="milk-factor-source" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Sample source">
+            <option value="" {% if not selected_source %}selected{% endif %}>All samples</option>
+            <option value="point" {% if selected_source == 'point' %}selected{% endif %}>Point</option>
+            <option value="farmer" {% if selected_source == 'farmer' %}selected{% endif %}>Farmer</option>
+          </select>
+        </label>
+        {% if has_active_filters %}
+        <a href="{% url 'milk-factor-list' %}" class="btn btn-sm btn-outline-secondary" title="Clear filters" aria-label="Clear filters">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </a>
+        {% endif %}
+      </form>
+    </div>
+    <div class="card-body table-wrap">
+      <form method="post" class="js-swal-submit-guard">
+        {% csrf_token %}
+        {% if perms.collections.delete_milkfactor %}
+        <div id="milkFactorDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Milk factor actions">
+          <button
+            type="submit"
+            class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger"
+            name="bulk_action"
+            value="delete_selected"
+            hidden
+            data-swal-title="Delete selected readings?"
+            data-swal-text="All checked milk factor rows on this page will be removed."
+          >Delete selected</button>
+          {% if user.is_superuser %}
+          <button
+            type="submit"
+            class="btn btn-sm btn-danger js-swal-submit-trigger"
+            name="bulk_action"
+            value="delete_all"
+            data-swal-title="Delete all milk factor records?"
+            data-swal-text="This removes every milk factor row in your current branch scope (superuser only)."
+          >Delete all (superuser)</button>
+          {% endif %}
+        </div>
+        {% endif %}
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table milk-factor-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No laboratory readings for this search."
+          data-smart-order="1,desc"
+          {% if perms.collections.delete_milkfactor %}data-filters-target="milkFactorDtFilters"{% endif %}
+        >
+          <thead>
+            <tr>
+              <th class="dt-check all">
+                <input type="checkbox" class="form-check-input custom-check js-select-all-factor" aria-label="Select all">
+              </th>
+              <th class="dt-date all">Date</th>
+              <th class="min-tablet-l">Branch</th>
+              <th class="min-tablet-l">Route</th>
+              <th class="all">Sample</th>
+              <th class="dt-num all">FAT</th>
+              <th class="dt-num all">SNF</th>
+              <th class="dt-num min-tablet-l">LR</th>
+              <th class="dt-num min-tablet-l">Alc</th>
+              <th class="dt-num min-tablet-l">Acid</th>
+              <th class="dt-num all">KQ</th>
+              <th class="all text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in object_list %}
+            <tr>
+              <td class="dt-check">
+                <input type="checkbox" class="form-check-input custom-check js-factor-row" name="selected_ids" value="{{ o.pk }}" aria-label="Select row">
+              </td>
+              <td class="dt-date" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"Y-m-d" }}</td>
+              <td>{% if o.branch_id and o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+              <td>{% if o.route_id and o.route %}{{ o.route.name }}{% else %}—{% endif %}</td>
+              <td class="dt-target">
+                {% if o.source == 'point' and o.collection_point_id and o.collection_point %}
+                  <span class="milk-factor-target-name">{{ o.collection_point.number }} — {{ o.collection_point.name }}</span>
+                  <span class="milk-factor-target-sub">
+                    <span class="milk-factor-source milk-factor-source--point">Point</span>
+                  </span>
+                {% elif o.source == 'farmer' and o.farmer_id and o.farmer %}
+                  <span class="milk-factor-target-name">{{ o.farmer.common_name|default:o.farmer.full_name }}</span>
+                  <span class="milk-factor-target-sub">
+                    <span class="milk-factor-source milk-factor-source--farmer">Farmer</span>
+                  </span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="dt-num">{{ o.fat }}</td>
+              <td class="dt-num">{{ o.snf }}</td>
+              <td class="dt-num">{{ o.lr }}</td>
+              <td class="dt-num">{{ o.alcohol }}</td>
+              <td class="dt-num">{{ o.acidity }}</td>
+              <td class="dt-num">{{ o.kq }}</td>
+              <td class="text-end">
+                <div class="milk-factor-actions">
+                  {% if perms.collections.change_milkfactor %}
+                  <a class="smart-badge smart-badge--primary" href="{% url 'milk-factor-edit' o.pk %}">Edit</a>
+                  {% endif %}
+                  {% if perms.collections.delete_milkfactor %}
+                  <button
+                    type="submit"
+                    class="smart-badge smart-badge--secondary js-swal-submit-trigger"
+                    name="bulk_action"
+                    value="delete_one"
+                    data-one-input="factor-one-id"
+                    data-one-value="{{ o.pk }}"
+                    data-swal-title="Delete this milk factor reading?"
+                    data-swal-text="This cannot be undone."
+                  >Delete</button>
+                  {% endif %}
+                  {% if not perms.collections.change_milkfactor and not perms.collections.delete_milkfactor %}
+                  —
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <input type="hidden" name="one_id" id="factor-one-id" value="">
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var master = document.querySelector(".js-select-all-factor");
+  var rows = document.querySelectorAll(".js-factor-row");
+  var deleteBtn = document.querySelector(".delete-selected-btn");
+  function syncBulkDeleteVisibility() {
+    if (!deleteBtn) return;
+    var anyChecked = false;
+    rows.forEach(function (cb) { if (cb.checked) anyChecked = true; });
+    deleteBtn.hidden = !anyChecked;
+  }
+  if (master) {
+    master.addEventListener("change", function () {
+      rows.forEach(function (cb) {
+        cb.checked = master.checked;
+      });
+      syncBulkDeleteVisibility();
+    });
+    rows.forEach(function (cb) {
+      cb.addEventListener("change", syncBulkDeleteVisibility);
+    });
+    syncBulkDeleteVisibility();
+  }
+
+  var filterForm = document.getElementById("milk-factor-filter-form");
+  if (!filterForm) return;
+
+  function submitFilters() {
+    filterForm.requestSubmit ? filterForm.requestSubmit() : filterForm.submit();
+  }
+
+  var branchSel = document.getElementById("milk-factor-branch");
+  var routeSel = document.getElementById("milk-factor-route");
+  var sourceSel = document.getElementById("milk-factor-source");
+
+  function syncRouteOptions() {
+    if (!routeSel) return;
+    var branchId = branchSel ? String(branchSel.value || "").trim() : "";
+    Array.prototype.forEach.call(routeSel.options, function (opt) {
+      if (!opt.value) {
+        opt.hidden = false;
+        return;
+      }
+      var optBranch = String(opt.getAttribute("data-branch-id") || "");
+      opt.hidden = !!(branchId && optBranch && optBranch !== branchId);
+    });
+  }
+
+  if (branchSel) {
+    branchSel.addEventListener("change", function () {
+      if (routeSel) routeSel.value = "";
+      syncRouteOptions();
+      submitFilters();
+    });
+  }
+  if (routeSel) {
+    routeSel.addEventListener("change", submitFilters);
+  }
+  if (sourceSel) {
+    sourceSel.addEventListener("change", submitFilters);
+  }
+  syncRouteOptions();
+
+  var rangeInput = document.getElementById("milk-factor-date-range");
+  if (rangeInput) {
+    window.setTimeout(function () {
+      var fp = rangeInput._flatpickrInstance || rangeInput._flatpickr;
+      if (!fp) return;
+      var fromEl = filterForm.querySelector('input[name="date_from"]');
+      var toEl = filterForm.querySelector('input[name="date_to"]');
+      var dateSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+      var prevOnChange = fp.config.onChange;
+      fp.set("onChange", function (selectedDates, dateStr, instance) {
+        if (typeof prevOnChange === "function") {
+          prevOnChange(selectedDates, dateStr, instance);
+        } else if (Array.isArray(prevOnChange)) {
+          prevOnChange.forEach(function (fn) { fn(selectedDates, dateStr, instance); });
+        }
+        var nextSnapshot = (fromEl ? fromEl.value : "") + "|" + (toEl ? toEl.value : "");
+        if (nextSnapshot !== dateSnapshot && (selectedDates.length === 2 || selectedDates.length === 0)) {
+          dateSnapshot = nextSnapshot;
+          submitFilters();
+        }
+      });
+    }, 0);
+  }
+})();
+</script>
+{% endblock %}

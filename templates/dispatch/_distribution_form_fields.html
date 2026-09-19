@@ -1,0 +1,153 @@
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-calendar3"></i> Trip</div>
+      <div class="dispatch-form-grid">
+        <div>
+          {{ form.date.errors }}
+          <label class="form-label" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+          {{ form.date }}
+        </div>
+        <div>
+          {{ form.branch.errors }}
+          <label class="form-label" for="{{ form.branch.id_for_label }}">{{ form.branch.label }}</label>
+          {{ form.branch }}
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-geo-alt"></i> Destination</div>
+      <div id="dispatch-destination-wrap">
+        <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3 mb-2" id="dispatch-to-wrap">
+          <label class="form-label fw-semibold mb-0" id="dispatch-destination-label" for="{{ form.buyer.id_for_label }}">Buyer</label>
+          {{ form.dispatch_to.errors }}
+          <div class="dispatch-segment dispatch-to-segment" role="group" aria-label="Dispatch to">
+            {% for radio in form.dispatch_to %}
+            <div class="dispatch-segment__option">
+              {{ radio.tag }}
+              <label for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div id="buyer-field-wrap">
+          {{ form.buyer.errors }}
+          <label class="visually-hidden" for="{{ form.buyer.id_for_label }}">{{ form.buyer.label }}</label>
+          <div class="input-group dispatch-buyer-wrap">
+            {{ form.buyer }}
+            {% if perms.masters.add_buyer and not hide_buyer_quick_add %}
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#dispatchBuyerQuickAddModal" title="Add buyer" aria-label="Add buyer"><i class="bi bi-plus-lg"></i></button>
+            {% endif %}
+          </div>
+        </div>
+        <div id="destination-branch-wrap" class="d-none">
+          {{ form.destination_branch.errors }}
+          <label class="visually-hidden" for="{{ form.destination_branch.id_for_label }}">{{ form.destination_branch.label }}</label>
+          {{ form.destination_branch }}
+          <p class="form-text text-muted small mb-0">Milk is deducted from the source branch and added to this branch.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-droplet"></i> Quantity</div>
+      <div id="dispatch-qty-wrap">
+        <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3 mb-2">
+          <label class="form-label fw-semibold mb-0" for="{{ form.kg.id_for_label }}" id="dispatch-qty-label">Quantity (liters)</label>
+          <div class="qty-segment" role="group" aria-label="Quantity unit">
+            <button type="button" class="qty-segment__btn" data-qty-unit="kg" aria-pressed="false">Kg</button>
+            <button type="button" class="qty-segment__btn is-active" data-qty-unit="liters" aria-pressed="true">Liters</button>
+          </div>
+        </div>
+        {{ form.kg.errors }}
+        {{ form.kg }}
+        <input type="hidden" name="quantity_unit" id="id_quantity_unit" value="{% if request.POST.quantity_unit %}{{ request.POST.quantity_unit }}{% else %}liters{% endif %}">
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-truck"></i> Dispatch details</div>
+      <div class="dispatch-form-grid">
+        <div>
+          {{ form.dispatch_no.errors }}
+          <label class="form-label" for="{{ form.dispatch_no.id_for_label }}">{{ form.dispatch_no.label }}</label>
+          {{ form.dispatch_no }}
+        </div>
+        <div>
+          {{ form.browser_number.errors }}
+          <label class="form-label" for="{{ form.browser_number.id_for_label }}">{{ form.browser_number.label }}</label>
+          {{ form.browser_number }}
+        </div>
+        <div class="full">
+          {{ form.driver.errors }}
+          <label class="form-label" for="{{ form.driver.id_for_label }}">{{ form.driver.label }}</label>
+          {{ form.driver }}
+        </div>
+        <div>
+          {{ form.in_time.errors }}
+          <label class="form-label" for="{{ form.in_time.id_for_label }}">{{ form.in_time.label }}</label>
+          {{ form.in_time }}
+        </div>
+        <div>
+          {{ form.out_time.errors }}
+          <label class="form-label" for="{{ form.out_time.id_for_label }}">{{ form.out_time.label }}</label>
+          {{ form.out_time }}
+        </div>
+        <div>
+          {{ form.sealing_numbers.errors }}
+          <label class="form-label" for="{{ form.sealing_numbers.id_for_label }}">{{ form.sealing_numbers.label }}</label>
+          {{ form.sealing_numbers }}
+        </div>
+        <div>
+          {{ form.temperature.errors }}
+          <label class="form-label" for="{{ form.temperature.id_for_label }}">{{ form.temperature.label }}</label>
+          {{ form.temperature }}
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-clipboard2-pulse"></i> Quality readings</div>
+      <div class="dispatch-form-grid">
+        <div class="quality-grid">
+          <div>
+            {{ form.fat.errors }}
+            <label class="form-label" for="{{ form.fat.id_for_label }}">{{ form.fat.label }}</label>
+            {{ form.fat }}
+          </div>
+          <div>
+            {{ form.lr.errors }}
+            <label class="form-label" for="{{ form.lr.id_for_label }}">{{ form.lr.label }}</label>
+            {{ form.lr }}
+          </div>
+          <div>
+            {{ form.snf.errors }}
+            <label class="form-label" for="{{ form.snf.id_for_label }}">{{ form.snf.label }}</label>
+            {{ form.snf }}
+            <div class="dispatch-snf-hint">Auto: (LR ÷ 4) + (0.2 × FAT) + 0.36</div>
+          </div>
+          <div>
+            <label class="form-label" for="id_ts">TS</label>
+            <input type="text" class="form-control" id="id_ts" readonly value="" inputmode="decimal">
+            <div class="dispatch-snf-hint">Total solids = FAT + SNF</div>
+          </div>
+          <div>
+            {{ form.alcohol_result.errors }}
+            <label class="form-label" for="{{ form.alcohol_result.id_for_label }}">{{ form.alcohol_result.label }}</label>
+            {{ form.alcohol_result }}
+            {{ form.alcohol }}
+          </div>
+          <div class="full">
+            {{ form.kq.errors }}
+            <label class="form-label" for="{{ form.kq.id_for_label }}">{{ form.kq.label }}</label>
+            {{ form.kq }}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dispatch-form-section">
+      <div class="dispatch-form-section__title"><i class="bi bi-chat-left-text"></i> Notes</div>
+      {{ form.remarks.errors }}
+      <label class="form-label" for="{{ form.remarks.id_for_label }}">{{ form.remarks.label }}</label>
+      {{ form.remarks }}
+    </section>

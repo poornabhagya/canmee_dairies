@@ -1,0 +1,1069 @@
+<script>
+(function () {
+  function extractErrors(data) {
+    var messages = [];
+    var errors = (data && data.errors) || {};
+    Object.keys(errors).forEach(function (key) {
+      (errors[key] || []).forEach(function (msg) {
+        if (msg) messages.push(msg);
+      });
+    });
+    return messages;
+  }
+
+  function showDispatchError(messages, title) {
+    var text = (messages && messages.length) ? messages.join(" ") : "Could not save changes.";
+    if (typeof Swal !== "undefined") {
+      Swal.fire({ icon: "error", title: title || "Could not save", text: text });
+    }
+  }
+
+  function postDispatchForm(form) {
+    return fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (response) {
+        var contentType = response.headers.get("content-type") || "";
+        if (contentType.indexOf("application/json") === -1) {
+          return {
+            ok: false,
+            data: {
+              errors: {
+                __all__: [
+                  response.ok
+                    ? "Unexpected server response."
+                    : "Request failed (" + response.status + "). Refresh and try again.",
+                ],
+              },
+            },
+          };
+        }
+        return response.json().then(function (data) {
+          return { ok: response.ok, data: data };
+        });
+      });
+  }
+
+  function updateStatusReturnHint(statusSelect, data) {
+    if (!statusSelect || !statusSelect.form) return;
+    var hint = statusSelect.form.querySelector(".dispatch-return-branch-hint");
+    if (hint) {
+      if (data && data.status === "return" && data.returned_branch) {
+        hint.textContent = "→ " + data.returned_branch;
+        hint.classList.remove("d-none");
+        if (data.returned_branch_id) {
+          statusSelect.dataset.initialReturnBranch = String(data.returned_branch_id);
+        }
+      } else {
+        hint.textContent = "";
+        hint.classList.add("d-none");
+      }
+    }
+    var deliveredHint = statusSelect.form.querySelector(".dispatch-delivered-hint");
+    if (deliveredHint) {
+      if (data && (data.status === "completed" || data.delivered_liters)) {
+        var liters = data.delivered_liters || statusSelect.dataset.availableLiters || "";
+        deliveredHint.textContent = liters ? ("Delivered " + liters + " L") : "Delivered";
+        deliveredHint.classList.remove("d-none");
+        if (data.delivered_liters) statusSelect.dataset.initialDeliveredLiters = data.delivered_liters;
+        if (data.delivered_kg) statusSelect.dataset.initialDeliveredKg = data.delivered_kg;
+      } else {
+        deliveredHint.textContent = "";
+        deliveredHint.classList.add("d-none");
+      }
+    }
+    if (hint && data && data.buyer_result_liters && Number(data.buyer_result_liters) > 0) {
+      var returnText = data.buyer_result_liters + " L returned";
+      if (data.returned_branch) returnText += " → " + data.returned_branch;
+      hint.textContent = returnText;
+      hint.classList.remove("d-none");
+    }
+    var row = statusSelect.closest("tr");
+    var tsBuyer = row && row.querySelector(".dispatch-ts-buyer");
+    if (tsBuyer) {
+      if (data && data.delivered_ts) {
+        tsBuyer.textContent = Number(data.delivered_ts).toFixed(2);
+        tsBuyer.classList.remove("is-empty");
+      } else if (data && data.status === "return") {
+        tsBuyer.textContent = "—";
+        tsBuyer.classList.add("is-empty");
+      }
+    }
+  }
+
+  var modalEl = document.getElementById("dispatchReturnModal");
+  var modal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  var returnForm = document.getElementById("dispatchReturnForm");
+  var subtitleEl = document.getElementById("dispatchReturnSubtitle");
+  var qtyEl = document.getElementById("dispatchReturnQty");
+  var returnDeliveredQtyEl = document.getElementById("dispatchReturnDeliveredQty");
+  var deliveredTsEl = document.getElementById("dispatchReturnDeliveredTs");
+  var deliveredTsWrap = document.getElementById("dispatchReturnDeliveredTsWrap");
+  var dispatchedHintEl = document.getElementById("dispatchReturnDispatchedHint");
+  var statusEl = document.getElementById("dispatchReturnStatus");
+  var deliveredUnitEl = document.getElementById("dispatchReturnDeliveredUnit");
+  var returnUnitEl = document.getElementById("dispatchReturnQtyUnit");
+  var qtyLabelEl = document.getElementById("dispatchReturnQtyLabel");
+  var branchEl = document.getElementById("dispatchReturnBranch");
+  var branchWrapEl = document.getElementById("dispatchReturnBranchWrap");
+  var availableQtyEl = document.getElementById("dispatchReturnAvailableQty");
+  var nextEl = document.getElementById("dispatchReturnNext");
+  var errorsEl = document.getElementById("dispatchReturnFormErrors");
+  var kindEl = document.getElementById("dispatchReturnKind");
+  var deliveredPanel = document.getElementById("dispatchReturnDeliveredPanel");
+  var returnedPanel = document.getElementById("dispatchReturnReturnedPanel");
+  var activeStatusSelect = null;
+  var KG_TO_L = modalEl ? Number(modalEl.dataset.kgToLiters || "0") : 0;
+  var deliveredQtyUnit = "liters";
+  var returnQtyUnit = "liters";
+  var resultKind = "delivered";
+  var returnAvailableLiters = "";
+  var returnAvailableKg = "";
+
+  function formatQty2(n) {
+    return (Math.round(n * 100) / 100).toFixed(2);
+  }
+
+  function focusNextOnEnter(form, fieldIds) {
+    if (!form) return;
+    form.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      var target = e.target;
+      if (!target || (target.tagName !== "INPUT" && target.tagName !== "SELECT")) return;
+      var ids = fieldIds;
+      if (typeof fieldIds === "function") ids = fieldIds();
+      var index = ids.indexOf(target.id);
+      if (index === -1) return;
+      if (index < ids.length - 1) {
+        e.preventDefault();
+        var next = document.getElementById(ids[index + 1]);
+        if (next) {
+          next.focus();
+          if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+        }
+      }
+    });
+  }
+
+  function parseQtyField(el) {
+    if (!el) return NaN;
+    var n = parseFloat(String(el.value || "").replace(",", "."));
+    return isNaN(n) ? NaN : n;
+  }
+
+  function convertQtyValue(el, fromUnit, toUnit) {
+    if (!el || fromUnit === toUnit || !KG_TO_L) return;
+    var n = parseQtyField(el);
+    if (isNaN(n)) return;
+    if (fromUnit === "kg" && toUnit === "liters") el.value = formatQty2(n * KG_TO_L);
+    else if (fromUnit === "liters" && toUnit === "kg") el.value = formatQty2(n / KG_TO_L);
+  }
+
+  function setQtyMax(el, unit) {
+    if (!el) return;
+    if (unit === "liters" && returnAvailableLiters) el.max = returnAvailableLiters;
+    else if (unit === "kg" && returnAvailableKg) el.max = returnAvailableKg;
+    else el.removeAttribute("max");
+  }
+
+  function applyDeliveredQtyChrome(unit) {
+    deliveredQtyUnit = unit;
+    if (deliveredUnitEl) deliveredUnitEl.value = unit;
+    if (returnForm) {
+      returnForm.querySelectorAll(".qty-segment__btn[data-delivered-qty-unit]").forEach(function (btn) {
+        var on = btn.getAttribute("data-delivered-qty-unit") === unit;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    setQtyMax(returnDeliveredQtyEl, unit);
+  }
+
+  function applyReturnQtyChrome(unit) {
+    returnQtyUnit = unit;
+    if (returnUnitEl) returnUnitEl.value = unit;
+    if (returnForm) {
+      returnForm.querySelectorAll(".qty-segment__btn[data-return-qty-unit]").forEach(function (btn) {
+        var on = btn.getAttribute("data-return-qty-unit") === unit;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    if (qtyLabelEl) qtyLabelEl.textContent = "Returned quantity";
+    setQtyMax(qtyEl, unit);
+    updateReturnAvailableQtyText();
+  }
+
+  function applyResultKind(kind, options) {
+    resultKind = kind === "returned" ? "returned" : "delivered";
+    if (kindEl) kindEl.value = resultKind;
+    if (returnForm) {
+      returnForm.querySelectorAll(".qty-segment__btn[data-result-kind]").forEach(function (btn) {
+        var on = btn.getAttribute("data-result-kind") === resultKind;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    if (deliveredPanel) deliveredPanel.classList.toggle("d-none", resultKind !== "delivered");
+    if (returnedPanel) returnedPanel.classList.toggle("d-none", resultKind !== "returned");
+    if (options && options.clear === false) return;
+    if (resultKind === "delivered") {
+      if (qtyEl) qtyEl.value = "";
+      if (branchEl) branchEl.value = "";
+    } else {
+      if (returnDeliveredQtyEl) returnDeliveredQtyEl.value = "";
+    }
+  }
+
+  function switchDeliveredQtyUnit(next) {
+    if (next === deliveredQtyUnit) return;
+    convertQtyValue(returnDeliveredQtyEl, deliveredQtyUnit, next);
+    applyDeliveredQtyChrome(next);
+  }
+
+  function switchReturnQtyUnit(next) {
+    if (next === returnQtyUnit) return;
+    convertQtyValue(qtyEl, returnQtyUnit, next);
+    applyReturnQtyChrome(next);
+  }
+
+  function hasPositiveQty(el) {
+    var n = parseQtyField(el);
+    return !isNaN(n) && n > 0;
+  }
+
+  function syncReturnedBranchVisibility() {
+    if (!branchWrapEl) return;
+    var show = hasPositiveQty(qtyEl);
+    branchWrapEl.classList.toggle("d-none", !show);
+    if (!show && branchEl) branchEl.value = "";
+  }
+
+  function syncDeliveredTsVisibility() {
+    if (!deliveredTsWrap) return;
+    deliveredTsWrap.classList.toggle("d-none", !hasPositiveQty(returnDeliveredQtyEl));
+  }
+
+  function updateReturnAvailableQtyText() {
+    if (!availableQtyEl) return;
+    if (!returnAvailableLiters && !returnAvailableKg) {
+      availableQtyEl.textContent = "";
+      return;
+    }
+    if (returnQtyUnit === "kg" && returnAvailableKg) {
+      availableQtyEl.textContent =
+        "Available to return: " + returnAvailableKg + " kg" +
+        (returnAvailableLiters ? " (" + returnAvailableLiters + " L dispatched)" : "") + ".";
+      return;
+    }
+    availableQtyEl.textContent =
+      "Available to return: " + returnAvailableLiters + " L" +
+      (returnAvailableKg ? " (" + returnAvailableKg + " kg dispatched)" : "") + ".";
+  }
+
+  function syncReturnQtyToLitersForSubmit() {
+    if (resultKind === "delivered") {
+      convertQtyValue(returnDeliveredQtyEl, deliveredQtyUnit, "liters");
+      if (deliveredUnitEl) deliveredUnitEl.value = "liters";
+      deliveredQtyUnit = "liters";
+      if (qtyEl) qtyEl.value = "";
+      if (branchEl) branchEl.value = "";
+      if (statusEl) statusEl.value = "completed";
+      return;
+    }
+    convertQtyValue(qtyEl, returnQtyUnit, "liters");
+    if (returnUnitEl) returnUnitEl.value = "liters";
+    returnQtyUnit = "liters";
+    if (returnDeliveredQtyEl) returnDeliveredQtyEl.value = "";
+    if (deliveredTsEl) deliveredTsEl.value = "";
+    if (statusEl) statusEl.value = "return";
+  }
+
+  if (returnForm) {
+    returnForm.querySelectorAll(".qty-segment__btn[data-result-kind]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        applyResultKind(btn.getAttribute("data-result-kind"));
+      });
+    });
+    returnForm.querySelectorAll(".qty-segment__btn[data-delivered-qty-unit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchDeliveredQtyUnit(btn.getAttribute("data-delivered-qty-unit"));
+      });
+    });
+    returnForm.querySelectorAll(".qty-segment__btn[data-return-qty-unit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchReturnQtyUnit(btn.getAttribute("data-return-qty-unit"));
+      });
+    });
+    focusNextOnEnter(returnForm, function () {
+      return resultKind === "returned"
+        ? ["dispatchReturnQty", "dispatchReturnBranch"]
+        : ["dispatchReturnDeliveredQty", "dispatchReturnDeliveredTs"];
+    });
+  }
+
+  function showErrors(messages) {
+    if (!errorsEl) return;
+    if (!messages.length) {
+      errorsEl.classList.add("d-none");
+      errorsEl.textContent = "";
+      return;
+    }
+    errorsEl.classList.remove("d-none");
+    errorsEl.textContent = messages.join(" ");
+  }
+
+  function openReturnModal(statusSelect) {
+    activeStatusSelect = statusSelect;
+    var url = statusSelect.dataset.buyerResultUrl || "";
+    if (!url) {
+      if (typeof Swal !== "undefined") {
+        Swal.fire({
+          icon: "info",
+          title: "Return not available",
+          text: "Return details can only be recorded for buyer dispatches.",
+        });
+      }
+      return;
+    }
+    showErrors([]);
+    returnForm.action = url;
+    if (subtitleEl) subtitleEl.textContent = statusSelect.dataset.dispatchLabel || "";
+    var nextInput = statusSelect.form && statusSelect.form.querySelector('[name="next"]');
+    if (nextEl) nextEl.value = (nextInput && nextInput.value) || "";
+    returnAvailableLiters = statusSelect.dataset.availableLiters || "";
+    returnAvailableKg = statusSelect.dataset.availableKg || "";
+    applyDeliveredQtyChrome("liters");
+    applyReturnQtyChrome("liters");
+    if (dispatchedHintEl) {
+      dispatchedHintEl.textContent = returnAvailableLiters
+        ? ("Dispatched: " + returnAvailableLiters + " L" + (returnAvailableKg ? " (" + returnAvailableKg + " kg)" : "") + ".")
+        : "";
+    }
+    if (qtyEl) qtyEl.value = statusSelect.dataset.initialLiters || "";
+    if (returnDeliveredQtyEl) {
+      returnDeliveredQtyEl.value = statusSelect.dataset.initialDeliveredLiters || "";
+    }
+    if (deliveredTsEl) deliveredTsEl.value = statusSelect.dataset.initialDeliveredTs || "";
+    if (branchEl) branchEl.value = statusSelect.dataset.initialReturnBranch || "";
+    var hasReturn = parseQtyField(qtyEl) > 0;
+    applyResultKind(hasReturn ? "returned" : "delivered", { clear: false });
+    var paidLocked = statusSelect.dataset.paidLocked === "1";
+    if (returnDeliveredQtyEl) {
+      returnDeliveredQtyEl.readOnly = paidLocked;
+      returnDeliveredQtyEl.classList.toggle("bg-light", paidLocked);
+    }
+    if (returnForm) {
+      returnForm.querySelectorAll("[data-result-kind]").forEach(function (btn) {
+        btn.disabled = paidLocked && btn.getAttribute("data-result-kind") === "returned";
+      });
+      returnForm.querySelectorAll("[data-delivered-qty-unit]").forEach(function (btn) {
+        btn.disabled = paidLocked;
+      });
+    }
+    if (modal) modal.show();
+  }
+
+  document.querySelectorAll(".dispatch-status-select").forEach(function (select) {
+    select.dataset.previousStatus = select.value;
+    select.addEventListener("change", function () {
+      var previousStatus = select.dataset.previousStatus || select.value;
+      if (select.value === "return") {
+        select.value = previousStatus;
+        openReturnModal(select);
+        return;
+      }
+      if (select.value === "completed") {
+        openDeliveredPopover(select, previousStatus);
+        return;
+      }
+      var form = select.form;
+      if (!form) return;
+      var newValue = select.value;
+      postDispatchForm(form)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            select.dataset.previousStatus = newValue;
+            updateStatusReturnHint(select, result.data);
+            return;
+          }
+          select.value = previousStatus;
+          showDispatchError(extractErrors(result.data), "Could not save status");
+        })
+        .catch(function () {
+          select.value = previousStatus;
+          showDispatchError(["Could not save status."]);
+        });
+    });
+  });
+
+  var deliveredPopover = document.getElementById("dispatchDeliveredPopover");
+  var deliveredForm = document.getElementById("dispatchDeliveredForm");
+  var deliveredQtyEl = document.getElementById("dispatchDeliveredQty");
+  var deliveredTsEl = document.getElementById("dispatchDeliveredTs");
+  var deliveredQtyLabelEl = document.getElementById("dispatchDeliveredQtyLabel");
+  var deliveredAvailableEl = document.getElementById("dispatchDeliveredAvailableQty");
+  var deliveredErrorsEl = document.getElementById("dispatchDeliveredFormErrors");
+  var deliveredCancelEl = document.getElementById("dispatchDeliveredCancel");
+  var deliveredActiveSelect = null;
+  var deliveredPreviousStatus = "";
+  var deliveredQtyUnit = "liters";
+  var deliveredAvailableLiters = "";
+  var deliveredAvailableKg = "";
+  var deliveredQtyLocked = false;
+
+  function setDeliveredQtyLocked(locked) {
+    deliveredQtyLocked = !!locked;
+    if (deliveredQtyEl) {
+      deliveredQtyEl.readOnly = deliveredQtyLocked;
+      deliveredQtyEl.classList.toggle("bg-light", deliveredQtyLocked);
+    }
+    if (deliveredForm) {
+      deliveredForm.querySelectorAll("[data-delivered-unit]").forEach(function (btn) {
+        btn.disabled = deliveredQtyLocked;
+      });
+    }
+    var lockNote = document.getElementById("dispatchDeliveredQtyLocked");
+    if (lockNote) lockNote.classList.toggle("d-none", !deliveredQtyLocked);
+  }
+
+  function showDeliveredErrors(messages) {
+    if (!deliveredErrorsEl) return;
+    if (!messages || !messages.length) {
+      deliveredErrorsEl.classList.add("d-none");
+      deliveredErrorsEl.textContent = "";
+      return;
+    }
+    deliveredErrorsEl.textContent = messages.join(" ");
+    deliveredErrorsEl.classList.remove("d-none");
+  }
+
+  function setDeliveredUnit(unit) {
+    deliveredQtyUnit = unit;
+    if (deliveredForm) {
+      deliveredForm.querySelectorAll("[data-delivered-unit]").forEach(function (btn) {
+        var active = btn.getAttribute("data-delivered-unit") === unit;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    }
+    if (deliveredQtyLabelEl) {
+      deliveredQtyLabelEl.textContent = unit === "kg" ? "Kg" : "Liters";
+    }
+    if (deliveredQtyEl) {
+      if (unit === "liters" && deliveredAvailableLiters) deliveredQtyEl.max = deliveredAvailableLiters;
+      else if (unit === "kg" && deliveredAvailableKg) deliveredQtyEl.max = deliveredAvailableKg;
+      else deliveredQtyEl.removeAttribute("max");
+    }
+    if (deliveredAvailableEl) {
+      if (deliveredQtyUnit === "kg" && deliveredAvailableKg) {
+        deliveredAvailableEl.textContent =
+          "Dispatched: " + deliveredAvailableKg + " kg" +
+          (deliveredAvailableLiters ? " (" + deliveredAvailableLiters + " L)" : "") + ".";
+      } else if (deliveredAvailableLiters) {
+        deliveredAvailableEl.textContent =
+          "Dispatched: " + deliveredAvailableLiters + " L" +
+          (deliveredAvailableKg ? " (" + deliveredAvailableKg + " kg)" : "") + ".";
+      } else {
+        deliveredAvailableEl.textContent = "";
+      }
+    }
+  }
+
+  function convertDeliveredQty(next) {
+    if (deliveredQtyLocked) return;
+    if (!deliveredQtyEl || next === deliveredQtyUnit || !KG_TO_L) return;
+    var n = parseFloat(deliveredQtyEl.value);
+    if (!isFinite(n)) {
+      deliveredQtyUnit = next;
+      setDeliveredUnit(next);
+      return;
+    }
+    if (deliveredQtyUnit === "kg" && next === "liters") {
+      deliveredQtyEl.value = formatQty2(n * KG_TO_L);
+    } else if (deliveredQtyUnit === "liters" && next === "kg") {
+      deliveredQtyEl.value = formatQty2(n / KG_TO_L);
+    }
+    deliveredQtyUnit = next;
+    setDeliveredUnit(next);
+  }
+
+  function hideDeliveredPopover(revert) {
+    if (deliveredPopover) deliveredPopover.classList.add("d-none");
+    showDeliveredErrors([]);
+    if (revert && deliveredActiveSelect) {
+      deliveredActiveSelect.value = deliveredPreviousStatus;
+    }
+    deliveredActiveSelect = null;
+  }
+
+  function positionDeliveredPopover(anchor) {
+    if (!deliveredPopover || !anchor) return;
+    deliveredPopover.classList.remove("d-none");
+    var rect = anchor.getBoundingClientRect();
+    var width = deliveredPopover.offsetWidth || 260;
+    var left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
+    var top = rect.bottom + 8;
+    if (top + deliveredPopover.offsetHeight > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - deliveredPopover.offsetHeight - 8);
+    }
+    deliveredPopover.style.left = left + "px";
+    deliveredPopover.style.top = top + "px";
+  }
+
+  function openDeliveredPopover(statusSelect, previousStatus) {
+    deliveredActiveSelect = statusSelect;
+    deliveredPreviousStatus = previousStatus || statusSelect.dataset.previousStatus || "pending";
+    statusSelect.value = "completed";
+    deliveredAvailableLiters = statusSelect.dataset.availableLiters || "";
+    deliveredAvailableKg = statusSelect.dataset.availableKg || "";
+    deliveredQtyUnit = "liters";
+    setDeliveredUnit("liters");
+    if (deliveredQtyEl) {
+      deliveredQtyEl.value =
+        statusSelect.dataset.initialDeliveredLiters ||
+        deliveredAvailableLiters ||
+        "";
+    }
+    if (deliveredTsEl) {
+      deliveredTsEl.value = statusSelect.dataset.initialDeliveredTs || "";
+    }
+    setDeliveredQtyLocked(statusSelect.dataset.paidLocked === "1");
+    showDeliveredErrors([]);
+    positionDeliveredPopover(statusSelect);
+    if (deliveredQtyLocked && deliveredTsEl) deliveredTsEl.focus();
+    else if (deliveredQtyEl) deliveredQtyEl.focus();
+  }
+
+  if (deliveredForm) {
+    deliveredForm.querySelectorAll("[data-delivered-unit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        convertDeliveredQty(btn.getAttribute("data-delivered-unit"));
+      });
+    });
+    focusNextOnEnter(deliveredForm, ["dispatchDeliveredQty", "dispatchDeliveredTs"]);
+    deliveredForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!deliveredActiveSelect || !deliveredActiveSelect.form) return;
+      var qty = deliveredQtyEl ? parseFloat(deliveredQtyEl.value) : NaN;
+      if (!deliveredQtyLocked && (!isFinite(qty) || qty <= 0)) {
+        showDeliveredErrors(["Enter delivered quantity."]);
+        return;
+      }
+      var ts = deliveredTsEl ? parseFloat(String(deliveredTsEl.value || "").replace(",", ".")) : NaN;
+      if (!isFinite(ts) || ts < 0) {
+        showDeliveredErrors(["Enter TS as measured at the buyer."]);
+        return;
+      }
+      var form = deliveredActiveSelect.form;
+      var qtyInput = form.querySelector(".js-delivered-qty");
+      var unitInput = form.querySelector(".js-delivered-qty-unit");
+      var tsInput = form.querySelector(".js-delivered-ts");
+      if (deliveredQtyLocked) {
+        if (qtyInput) qtyInput.value = "";
+      } else {
+        if (qtyInput) qtyInput.value = formatQty2(qty);
+        if (unitInput) unitInput.value = deliveredQtyUnit;
+      }
+      if (tsInput) tsInput.value = formatQty2(ts);
+      deliveredActiveSelect.value = "completed";
+      var select = deliveredActiveSelect;
+      postDispatchForm(form)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            select.dataset.previousStatus = "completed";
+            if (result.data.delivered_ts !== undefined) {
+              select.dataset.initialDeliveredTs = result.data.delivered_ts || "";
+            } else {
+              select.dataset.initialDeliveredTs = formatQty2(ts);
+            }
+            updateStatusReturnHint(
+              select,
+              result.data && result.data.delivered_ts !== undefined
+                ? result.data
+                : Object.assign({}, result.data || {}, { delivered_ts: formatQty2(ts), status: "completed" })
+            );
+            hideDeliveredPopover(false);
+            if (qtyInput) qtyInput.value = "";
+            if (tsInput) tsInput.value = "";
+            return;
+          }
+          showDeliveredErrors(extractErrors(result.data).length ? extractErrors(result.data) : ["Could not save delivered quantity."]);
+        })
+        .catch(function () {
+          showDeliveredErrors(["Could not save delivered quantity."]);
+        });
+    });
+  }
+  if (deliveredCancelEl) {
+    deliveredCancelEl.addEventListener("click", function () {
+      hideDeliveredPopover(true);
+    });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && deliveredPopover && !deliveredPopover.classList.contains("d-none")) {
+      hideDeliveredPopover(true);
+    }
+  });
+  document.addEventListener("mousedown", function (e) {
+    if (!deliveredPopover || deliveredPopover.classList.contains("d-none")) return;
+    if (deliveredPopover.contains(e.target)) return;
+    if (deliveredActiveSelect && deliveredActiveSelect.contains(e.target)) return;
+    hideDeliveredPopover(true);
+  });
+  document.querySelectorAll(".dispatch-delivered-hint").forEach(function (hint) {
+    hint.addEventListener("click", function () {
+      var form = hint.closest("form");
+      var select = form && form.querySelector(".dispatch-status-select");
+      if (!select) return;
+      openDeliveredPopover(select, select.value);
+    });
+  });
+
+
+  document.querySelectorAll(".js-dispatch-return-modal").forEach(function (trigger) {
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      var row = trigger.closest("tr");
+      if (!row) return;
+      var select = row.querySelector(".dispatch-status-select");
+      if (!select) return;
+      openReturnModal(select);
+    });
+  });
+
+  if (modalEl) {
+    modalEl.addEventListener("hidden.bs.modal", function () {
+      showErrors([]);
+      if (qtyEl) {
+        qtyEl.value = "";
+        qtyEl.removeAttribute("max");
+      }
+      if (returnDeliveredQtyEl) {
+        returnDeliveredQtyEl.value = "";
+        returnDeliveredQtyEl.removeAttribute("max");
+      }
+      if (deliveredTsEl) deliveredTsEl.value = "";
+      if (dispatchedHintEl) dispatchedHintEl.textContent = "";
+      returnAvailableLiters = "";
+      returnAvailableKg = "";
+      if (availableQtyEl) availableQtyEl.textContent = "";
+      if (branchEl) branchEl.value = "";
+      applyDeliveredQtyChrome("liters");
+      applyReturnQtyChrome("liters");
+      applyResultKind("delivered");
+      activeStatusSelect = null;
+    });
+  }
+
+  if (returnForm) {
+    returnForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showErrors([]);
+      syncReturnQtyToLitersForSubmit();
+      postDispatchForm(returnForm)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (modal) modal.hide();
+            if (activeStatusSelect) {
+              var savedStatus = result.data.status || "return";
+              activeStatusSelect.value = savedStatus;
+              activeStatusSelect.dataset.previousStatus = savedStatus;
+              if (result.data.buyer_result_liters !== undefined) {
+                activeStatusSelect.dataset.initialLiters = result.data.buyer_result_liters || "";
+              }
+              if (result.data.delivered_liters !== undefined) {
+                activeStatusSelect.dataset.initialDeliveredLiters = result.data.delivered_liters || "";
+              }
+              if (result.data.delivered_ts !== undefined) {
+                activeStatusSelect.dataset.initialDeliveredTs = result.data.delivered_ts || "";
+              }
+              updateStatusReturnHint(activeStatusSelect, result.data);
+            }
+            if (typeof window.refreshDispatchNotifications === "function") {
+              window.refreshDispatchNotifications(true);
+            }
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not save buyer result. Check delivered and returned quantities.");
+          showErrors(messages);
+          showDispatchError(messages, "Could not save buyer result");
+        })
+        .catch(function () {
+          showDispatchError(["Could not save buyer result."]);
+        });
+    });
+  }
+
+  function formatDispatchMoney(value) {
+    var num = Number(String(value == null ? "" : value).replace(/,/g, ""));
+    if (!isFinite(num)) return "0.00";
+    return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function todayISODate() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  var paymentModalEl = document.getElementById("dispatchPaymentModal");
+  var paymentModal = paymentModalEl && typeof bootstrap !== "undefined" ? new bootstrap.Modal(paymentModalEl) : null;
+  var paymentForm = document.getElementById("dispatchPaymentForm");
+  var paymentErrorsEl = document.getElementById("dispatchPaymentFormErrors");
+  var paymentSubtitleEl = document.getElementById("dispatchPaymentSubtitle");
+  var paymentTotalEl = document.getElementById("dispatchPaymentTotal");
+  var paymentOutstandingEl = document.getElementById("dispatchPaymentOutstanding");
+  var paymentDateEl = document.getElementById("dispatchPaymentDate");
+  var paymentAmountEl = document.getElementById("dispatchPaymentAmount");
+  var paymentReferenceEl = document.getElementById("dispatchPaymentReference");
+  var paymentNoteEl = document.getElementById("dispatchPaymentNote");
+  var paymentAccountLink = document.getElementById("dispatchPaymentAccountLink");
+  var paymentNextEl = document.getElementById("dispatchPaymentNext");
+  var paymentBulkIdsEl = document.getElementById("dispatchPaymentBulkIds");
+  var paymentBulkHintEl = document.getElementById("dispatchPaymentBulkHint");
+  var activePaymentTrigger = null;
+
+  function showPaymentErrors(messages) {
+    if (!paymentErrorsEl) return;
+    if (!messages || !messages.length) {
+      paymentErrorsEl.classList.add("d-none");
+      paymentErrorsEl.textContent = "";
+      return;
+    }
+    paymentErrorsEl.classList.remove("d-none");
+    paymentErrorsEl.innerHTML = messages.map(function (m) {
+      return "<div>" + m + "</div>";
+    }).join("");
+  }
+
+  function updatePaymentBadgeInRow(trigger, data) {
+    if (!trigger || !data) return;
+    var row = trigger.closest("tr");
+    if (!row) return;
+    var cell = row.querySelector(".dispatch-payment-cell");
+    if (!cell) return;
+    var status = data.payment_status || "pending";
+    var amountEl = cell.querySelector(".dispatch-payment-amount");
+    var badge = cell.querySelector(".dispatch-payment-badge");
+    if (amountEl) {
+      amountEl.textContent = formatDispatchMoney(data.total_amount);
+    }
+    if (badge) {
+      badge.className = "dispatch-payment-badge dispatch-payment-badge--" + status;
+      badge.textContent = data.payment_status_display || status;
+    }
+    var paid = formatDispatchMoney(data.paid_amount);
+    var total = formatDispatchMoney(data.total_amount);
+    cell.setAttribute("title", "Paid " + paid + " / " + total);
+  }
+
+  function clearPaymentBulkIds() {
+    if (paymentBulkIdsEl) paymentBulkIdsEl.innerHTML = "";
+    if (paymentBulkHintEl) paymentBulkHintEl.classList.add("d-none");
+  }
+
+  function setPaymentBulkIds(ids) {
+    clearPaymentBulkIds();
+    if (!paymentBulkIdsEl || !ids || !ids.length) return;
+    ids.forEach(function (id) {
+      var input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "selected_ids";
+      input.value = String(id);
+      paymentBulkIdsEl.appendChild(input);
+    });
+    if (paymentBulkHintEl) paymentBulkHintEl.classList.remove("d-none");
+  }
+
+  function openPaymentModal(opts) {
+    if (!paymentForm || !paymentModal) return;
+    showPaymentErrors([]);
+    paymentForm.action = opts.url || "";
+    if (opts.ids && opts.ids.length) {
+      setPaymentBulkIds(opts.ids);
+    } else {
+      clearPaymentBulkIds();
+    }
+    if (paymentSubtitleEl) paymentSubtitleEl.textContent = opts.subtitle || "";
+    if (paymentTotalEl) paymentTotalEl.textContent = formatDispatchMoney(opts.total || 0);
+    if (paymentOutstandingEl) paymentOutstandingEl.textContent = formatDispatchMoney(opts.outstanding || 0);
+    if (paymentAmountEl) paymentAmountEl.value = formatDispatchMoney(opts.outstanding || 0);
+    if (paymentReferenceEl) paymentReferenceEl.value = "";
+    if (paymentNoteEl) paymentNoteEl.value = "";
+    if (paymentDateEl) {
+      if (!paymentDateEl.value) paymentDateEl.value = todayISODate();
+    }
+    if (paymentAccountLink) paymentAccountLink.href = opts.accountUrl || "#";
+    if (paymentNextEl) paymentNextEl.value = window.location.pathname + window.location.search;
+    paymentModal.show();
+  }
+
+  document.querySelectorAll(".js-dispatch-payment-modal").forEach(function (trigger) {
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      activePaymentTrigger = trigger;
+      openPaymentModal({
+        url: trigger.getAttribute("data-payment-url") || trigger.getAttribute("href") || "",
+        accountUrl: trigger.getAttribute("data-account-url") || "#",
+        subtitle: ((trigger.getAttribute("data-dispatch-no") || "") ? trigger.getAttribute("data-dispatch-no") + " · " : "") + (trigger.getAttribute("data-buyer-name") || ""),
+        total: trigger.getAttribute("data-total") || "0",
+        outstanding: trigger.getAttribute("data-outstanding") || "0",
+      });
+    });
+  });
+
+  var bulkPaymentBtn = document.getElementById("dispatch-bulk-payment-btn");
+  if (bulkPaymentBtn) {
+    bulkPaymentBtn.addEventListener("click", function () {
+      var boxes = Array.prototype.filter.call(document.querySelectorAll(".js-row-select"), function (cb) {
+        return cb.checked;
+      });
+      var payable = [];
+      boxes.forEach(function (cb) {
+        var buyerId = cb.getAttribute("data-buyer-id") || "";
+        var outstanding = Number(String(cb.getAttribute("data-outstanding") || "0").replace(/,/g, ""));
+        if (buyerId && isFinite(outstanding) && outstanding > 0) payable.push(cb);
+      });
+      if (!payable.length) {
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            icon: "warning",
+            title: "No unpaid buyer dispatches",
+            text: "Select unpaid buyer dispatches. Branch transfers and paid rows are skipped.",
+          });
+        }
+        return;
+      }
+      var buyerId = payable[0].getAttribute("data-buyer-id");
+      var mixed = payable.some(function (cb) {
+        return cb.getAttribute("data-buyer-id") !== buyerId;
+      });
+      if (mixed) {
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            icon: "warning",
+            title: "One buyer only",
+            text: "Bulk payment can only be recorded for one buyer at a time.",
+          });
+        }
+        return;
+      }
+      var ids = [];
+      var total = 0;
+      var outstanding = 0;
+      payable.forEach(function (cb) {
+        ids.push(cb.value);
+        total += Number(String(cb.getAttribute("data-total") || "0").replace(/,/g, "")) || 0;
+        outstanding += Number(String(cb.getAttribute("data-outstanding") || "0").replace(/,/g, "")) || 0;
+      });
+      activePaymentTrigger = null;
+      openPaymentModal({
+        url: bulkPaymentBtn.getAttribute("data-url") || "",
+        accountUrl: payable[0].getAttribute("data-account-url") || "#",
+        subtitle: payable.length + " dispatches · " + (payable[0].getAttribute("data-buyer-name") || ""),
+        total: total,
+        outstanding: outstanding,
+        ids: ids,
+      });
+    });
+  }
+
+  if (paymentModalEl) {
+    paymentModalEl.addEventListener("hidden.bs.modal", function () {
+      showPaymentErrors([]);
+      activePaymentTrigger = null;
+      clearPaymentBulkIds();
+    });
+  }
+
+  if (paymentForm) {
+    focusNextOnEnter(paymentForm, [
+      "dispatchPaymentDate",
+      "dispatchPaymentAmount",
+      "dispatchPaymentReference",
+      "dispatchPaymentNote",
+    ]);
+    paymentForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showPaymentErrors([]);
+      postDispatchForm(paymentForm)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (paymentModal) paymentModal.hide();
+            updatePaymentBadgeInRow(activePaymentTrigger, result.data);
+            if (typeof Swal !== "undefined" && result.data.message) {
+              Swal.fire({ icon: "success", title: "Payment recorded", text: result.data.message, timer: 1600, showConfirmButton: false });
+            }
+            window.setTimeout(function () { window.location.reload(); }, 400);
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not record payment.");
+          showPaymentErrors(messages);
+          showDispatchError(messages, "Could not record payment");
+        })
+        .catch(function () {
+          showPaymentErrors(["Could not record payment."]);
+          showDispatchError(["Could not record payment."]);
+        });
+    });
+  }
+
+  var editModalEl = document.getElementById("dispatchEditModal");
+  if (editModalEl && editModalEl.parentElement !== document.body) {
+    document.body.appendChild(editModalEl);
+  }
+  var editModal = editModalEl && typeof bootstrap !== "undefined"
+    ? bootstrap.Modal.getOrCreateInstance(editModalEl)
+    : null;
+  var editModalContent = document.getElementById("dispatchEditModalContent");
+
+  function refreshEditModalLayout() {
+    if (editModal && typeof editModal.handleUpdate === "function") {
+      editModal.handleUpdate();
+    }
+  }
+  if (editModalEl) {
+    editModalEl.addEventListener("shown.bs.modal", refreshEditModalLayout);
+  }
+
+  function initEditModalSelects(form) {
+    if (!form || !window.jQuery || !jQuery.fn || !jQuery.fn.select2) return;
+    jQuery(form).find("select").each(function () {
+      var $el = jQuery(this);
+      if ($el.hasClass("no-global-select2")) return;
+      if ($el.closest(".d-none").length) return;
+      if ($el.hasClass("select2-hidden-accessible")) {
+        $el.select2("destroy");
+      }
+      $el.select2({
+        width: "100%",
+        dropdownParent: jQuery(editModalEl),
+      });
+    });
+  }
+
+  function showEditFormErrors(messages) {
+    var el = document.getElementById("dispatchEditFormErrors");
+    if (!el) return;
+    if (!messages || !messages.length) {
+      el.classList.add("d-none");
+      el.innerHTML = "";
+      return;
+    }
+    el.classList.remove("d-none");
+    el.innerHTML = messages.map(function (m) {
+      return "<div>" + m + "</div>";
+    }).join("");
+  }
+
+  function bindEditForm(form) {
+    if (!form) return;
+    try {
+      if (window.initDistributionForm) window.initDistributionForm(form);
+    } catch (err) {}
+    if (form.getAttribute("data-view-only") !== "1") {
+      window.setTimeout(function () { initEditModalSelects(form); }, 40);
+      form.querySelectorAll('input[name="dispatch_to"]').forEach(function (el) {
+        el.addEventListener("change", function () {
+          window.setTimeout(function () { initEditModalSelects(form); }, 0);
+        });
+      });
+    }
+    if (window.CanmeeDatepicker && form.getAttribute("data-view-only") !== "1") {
+      form.querySelectorAll("input.js-datepicker").forEach(function (el) {
+        window.CanmeeDatepicker.initSingle(el, {
+          onClose: function (dates, str) {
+            if (!str) return;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+          },
+        });
+      });
+    }
+    var nextEl = form.querySelector('input[name="next"]');
+    if (nextEl && !nextEl.value) {
+      nextEl.value = window.location.pathname + window.location.search;
+    }
+    if (form.getAttribute("data-view-only") === "1") return;
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showEditFormErrors([]);
+      postDispatchForm(form)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (editModal) editModal.hide();
+            if (typeof Swal !== "undefined") {
+              Swal.fire({
+                icon: "success",
+                title: "Dispatch updated",
+                text: result.data.message || "",
+                timer: 1400,
+                showConfirmButton: false,
+              });
+            }
+            window.setTimeout(function () { window.location.reload(); }, 350);
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not save dispatch.");
+          showEditFormErrors(messages);
+          showDispatchError(messages, "Could not save dispatch");
+        })
+        .catch(function () {
+          showEditFormErrors(["Could not save dispatch."]);
+          showDispatchError(["Could not save dispatch."]);
+        });
+    });
+  }
+
+  document.querySelectorAll(".js-dispatch-edit-modal").forEach(function (trigger) {
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (!editModal || !editModalContent) return;
+      var url = trigger.getAttribute("data-edit-url") || trigger.getAttribute("href") || "";
+      var viewOnly = trigger.getAttribute("data-view-only") === "1";
+      var loadingTitle = viewOnly ? "View dispatch" : "Edit dispatch";
+      editModalContent.innerHTML =
+        '<div class="modal-header"><h5 class="modal-title">' + loadingTitle + '</h5>' +
+        '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>' +
+        '<div class="modal-body"><p class="text-center text-muted py-5 mb-0">Loading…</p></div>';
+      editModal.show();
+      fetch(url, {
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (response) {
+          return response.text().then(function (html) {
+            return { ok: response.ok, html: html };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            editModalContent.innerHTML =
+              '<div class="modal-header"><h5 class="modal-title">Edit dispatch</h5>' +
+              '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>' +
+              '<div class="modal-body"><div class="alert alert-danger mb-0">Could not load this dispatch.</div></div>';
+            return;
+          }
+          editModalContent.innerHTML = result.html;
+          bindEditForm(editModalContent.querySelector("form"));
+          refreshEditModalLayout();
+          window.setTimeout(refreshEditModalLayout, 50);
+        })
+        .catch(function () {
+          editModalContent.innerHTML =
+            '<div class="modal-header"><h5 class="modal-title">Edit dispatch</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>' +
+            '<div class="modal-body"><div class="alert alert-danger mb-0">Could not load this dispatch.</div></div>';
+        });
+    });
+  });
+
+})();
+</script>

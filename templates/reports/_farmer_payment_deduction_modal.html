@@ -1,0 +1,52 @@
+<div class="modal fade" id="farmerDeductionPickerModal" tabindex="-1" aria-labelledby="farmerDeductionPickerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="farmerDeductionPickerModalLabel">Deductions for <span id="deduction-picker-farmer-name"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-3">Checked items are deducted from this payment. Uncheck to skip an advance, product line, whole receipt, or loan instalment.</p>
+        <ul class="nav nav-tabs mb-3" id="deduction-picker-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="deduction-tab-advance" data-bs-toggle="tab" data-bs-target="#deduction-pane-advance" type="button" role="tab">Advances</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="deduction-tab-goods" data-bs-toggle="tab" data-bs-target="#deduction-pane-goods" type="button" role="tab">Products</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="deduction-tab-loan" data-bs-toggle="tab" data-bs-target="#deduction-pane-loan" type="button" role="tab">Loans</button>
+          </li>
+        </ul>
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="deduction-pane-advance" role="tabpanel">
+            <div id="deduction-picker-advances" class="deduction-picker-list"></div>
+          </div>
+          <div class="tab-pane fade" id="deduction-pane-goods" role="tabpanel">
+            <div id="deduction-picker-goods" class="deduction-picker-list"></div>
+          </div>
+          <div class="tab-pane fade" id="deduction-pane-loan" role="tabpanel">
+            <div class="deduction-picker-loan-all mb-2" id="deduction-picker-loan-all-wrap" hidden>
+              <table class="table table-sm deduction-picker-items-table mb-0">
+                <tbody>
+                  <tr class="deduction-picker-receipt-row">
+                    <td style="width:2rem">
+                      <input class="form-check-input" type="checkbox" id="deduction-picker-loan-all">
+                    </td>
+                    <td colspan="3">Deduct all loan instalments this period</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="deduction-picker-loans" class="deduction-picker-list"></div>
+          </div>
+        </div>
+        <div class="border-top pt-3 mt-3 small" id="deduction-picker-totals"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

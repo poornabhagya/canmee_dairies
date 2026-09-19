@@ -1,0 +1,20 @@
+<div class="smart-badge-row" role="group" aria-label="Row actions">
+  {% if o.source == 'point' and o.collection_point_id %}
+  <a
+    href="{% url 'milk-collection-point-receipt' %}?date={{ o.date|date:'Y-m-d' }}&amp;point={{ o.collection_point_id }}"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="smart-badge smart-badge--print-receipts"
+  >Receipt</a>
+  {% endif %}
+  {% if perms.collections.view_milkcollectionadjustment %}
+  <a
+    href="{% url 'milk-collection-adjustments' o.pk %}"
+    class="smart-badge smart-badge--print-summary"
+    title="Kg add/subtract history"
+  >History</a>
+  {% endif %}
+  {% if perms.collections.change_milkcollection %}
+  <a href="{% url 'milk-collection-edit' o.pk %}" class="smart-badge smart-badge--secondary">Edit</a>
+  {% endif %}
+</div>

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Company profile · Canmee Dairies{% endblock %}
+{% block page_heading %}Company profile{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_modal_styles.html" %}
+<style>
+  .company-profile-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .company-profile-card .card-body { padding: 1.1rem 1.2rem; }
+  .company-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem 1rem;
+  }
+  .company-profile-grid .span-2 { grid-column: 1 / -1; }
+  @media (max-width: 768px) {
+    .company-profile-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card company-profile-card">
+      <div class="card-body">
+        <div class="payment-sheet-card__title mb-1">Company details</div>
+        <p class="text-muted small mb-3">Used on letters, payslips, and bank payment files.</p>
+        <form method="post" action="{% url 'company-profile' %}">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="profile">
+          {% if profile_form.non_field_errors %}
+          <div class="text-danger small mb-2">{{ profile_form.non_field_errors }}</div>
+          {% endif %}
+          <div class="company-profile-grid">
+            <div class="span-2">
+              <label class="form-label" for="{{ profile_form.name.id_for_label }}">Company name</label>
+              {{ profile_form.name }}
+              {% if profile_form.name.errors %}<div class="invalid-feedback d-block">{{ profile_form.name.errors }}</div>{% endif %}
+            </div>
+            <div class="span-2">
+              <label class="form-label" for="{{ profile_form.legal_name.id_for_label }}">Legal name</label>
+              {{ profile_form.legal_name }}
+            </div>
+            <div class="span-2">
+              <label class="form-label" for="{{ profile_form.address.id_for_label }}">Address</label>
+              {{ profile_form.address }}
+            </div>
+            <div>
+              <label class="form-label" for="{{ profile_form.phone.id_for_label }}">Phone</label>
+              {{ profile_form.phone }}
+            </div>
+            <div>
+              <label class="form-label" for="{{ profile_form.email.id_for_label }}">Email</label>
+              {{ profile_form.email }}
+            </div>
+            <div>
+              <label class="form-label" for="{{ profile_form.tax_id.id_for_label }}">Tax / VAT ID</label>
+              {{ profile_form.tax_id }}
+            </div>
+            <div>
+              <label class="form-label" for="{{ profile_form.website.id_for_label }}">Website</label>
+              {{ profile_form.website }}
+            </div>
+          </div>
+          <div class="mt-3">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save profile</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    {% include "masters/_company_bank_accounts.html" %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% if perms.masters.change_companyprofile or request.user.is_superuser %}
+<script>
+(function () {
+  var modalEl = document.getElementById("companyBankAccountModal");
+  var form = document.getElementById("company-bank-account-form");
+  if (!modalEl || !form || !window.bootstrap) return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  var titleEl = document.getElementById("companyBankAccountModalLabel");
+  var idInput = document.getElementById("id_company_bank_account_id");
+  var nameInput = form.querySelector('[name="account_name"]');
+  var numberInput = form.querySelector('[name="account_number"]');
+  var bankInput = form.querySelector('[name="bank_name"]');
+  var bankCodeInput = form.querySelector('[name="bank_code"]');
+  var branchInput = form.querySelector('[name="bank_branch"]');
+  var branchCodeInput = form.querySelector('[name="branch_code"]');
+  var primaryInput = form.querySelector('[name="is_primary"]');
+  var activeInput = form.querySelector('[name="is_active"]');
+
+  function setTitle(isEdit) {
+    if (titleEl) titleEl.textContent = isEdit ? "Edit company bank account" : "Add company bank account";
+  }
+
+  function clearForm() {
+    if (idInput) idInput.value = "";
+    if (nameInput) nameInput.value = "";
+    if (numberInput) numberInput.value = "";
+    if (bankInput) bankInput.value = "";
+    if (bankCodeInput) bankCodeInput.value = "";
+    if (branchInput) branchInput.value = "";
+    if (branchCodeInput) branchCodeInput.value = "";
+    if (primaryInput) primaryInput.checked = false;
+    if (activeInput) activeInput.checked = true;
+  }
+
+  function fillForm(btn) {
+    if (idInput) idInput.value = btn.getAttribute("data-id") || "";
+    if (nameInput) nameInput.value = btn.getAttribute("data-account-name") || "";
+    if (numberInput) numberInput.value = btn.getAttribute("data-account-number") || "";
+    if (bankInput) {
+      var bankName = btn.getAttribute("data-bank-name") || "";
+      bankInput.value = bankName;
+      if (bankName && bankInput.value !== bankName) {
+        var option = document.createElement("option");
+        option.value = bankName;
+        option.textContent = bankName;
+        bankInput.appendChild(option);
+        bankInput.value = bankName;
+      }
+    }
+    if (bankCodeInput) bankCodeInput.value = btn.getAttribute("data-bank-code") || "";
+    if (branchInput) branchInput.value = btn.getAttribute("data-bank-branch") || "";
+    if (branchCodeInput) branchCodeInput.value = btn.getAttribute("data-branch-code") || "";
+    if (primaryInput) primaryInput.checked = btn.getAttribute("data-is-primary") === "1";
+    if (activeInput) activeInput.checked = btn.getAttribute("data-is-active") !== "0";
+  }
+
+  document.querySelectorAll(".js-company-bank-add").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      clearForm();
+      setTitle(false);
+      modal.show();
+    });
+  });
+  document.querySelectorAll(".js-company-bank-edit").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      clearForm();
+      fillForm(btn);
+      setTitle(true);
+      modal.show();
+    });
+  });
+  {% if bank_account_form.errors %}
+  modal.show();
+  {% endif %}
+})();
+</script>
+{% endif %}
+{% endblock %}

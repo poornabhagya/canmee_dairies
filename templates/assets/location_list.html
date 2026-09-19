@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}Asset locations · Canmee Dairies{% endblock %}
+{% block page_heading %}Locations{% endblock %}
+{% block topbar_actions %}
+{% if perms.assets.add_assetlocation %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-location-add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add location</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block content %}
+{% csrf_token %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Location summary">
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="all">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-geo-alt" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Locations</span>
+        <span class="smart-stat-card__value">{{ stats.total }}</span>
+        <span class="smart-stat-card__hint">Physical custody points</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--main js-asset-stat-filter" data-smart-filter="main">
+      <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-building" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Main</span>
+        <span class="smart-stat-card__value">{{ stats.main }}</span>
+        <span class="smart-stat-card__hint">Shared / head office</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--branch js-asset-stat-filter" data-smart-filter="branch">
+      <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-diagram-3" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Branch</span>
+        <span class="smart-stat-card__value">{{ stats.branch }}</span>
+        <span class="smart-stat-card__hint">Assigned to a branch</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--cost js-asset-stat-filter" data-smart-filter="sub">
+      <span class="smart-stat-card__icon smart-stat-card__icon--blue"><i class="bi bi-diagram-2" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Sub-locations</span>
+        <span class="smart-stat-card__value">{{ stats.sub }}</span>
+        <span class="smart-stat-card__hint">Nested under a parent</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--book js-asset-stat-filter" data-smart-filter="active">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Active</span>
+        <span class="smart-stat-card__value">{{ stats.active }}</span>
+        <span class="smart-stat-card__hint">Open for custody</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="inactive">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-pause-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Inactive</span>
+        <span class="smart-stat-card__value">{{ stats.inactive }}</span>
+        <span class="smart-stat-card__hint">Closed locations</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div id="assetLocationDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Location filters">
+        <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">All<span class="smart-dt-chip-count">{{ stats.total }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="active">Active<span class="smart-dt-chip-count">{{ stats.active }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="inactive">Inactive<span class="smart-dt-chip-count">{{ stats.inactive }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="main">Main<span class="smart-dt-chip-count">{{ stats.main }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="branch">Branch<span class="smart-dt-chip-count">{{ stats.branch }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="sub">Sub-locations<span class="smart-dt-chip-count">{{ stats.sub }}</span></button>
+        {% if branches %}
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Filter by branch</span>
+          <select id="assetLocationBranchFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by branch" autocomplete="off">
+            <option value="all">All branches</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}">{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+      </div>
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Master</span>
+            <h2 class="asset-statement__title">Location register</h2>
+            <p class="asset-statement__meta">Physical sites used for custody and verification</p>
+          </div>
+          <span class="asset-statement__account">LOC-{% now "Y" %}</span>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No locations yet."
+          data-filters-target="assetLocationDtFilters"
+          data-branch-filter-target="assetLocationBranchFilter"
+          data-print-title="Asset location register"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Code</th>
+              <th class="all">Name</th>
+              <th class="min-tablet-l">Branch</th>
+              <th class="min-tablet-l">Parent</th>
+              <th class="all text-end">Assets</th>
+              <th class="min-desktop">Status</th>
+              <th class="all text-end no-export">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loc in locations %}
+            <tr
+              class="smart-row--{% if loc.branch_id %}branch{% else %}main{% endif %}{% if loc.parent_id %} smart-row--sub{% endif %} smart-row--{% if loc.is_active %}active{% else %}inactive{% endif %}"
+              data-branch-id="{{ loc.branch_id|default:'' }}"
+            >
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all"><span class="asset-tag-code">{{ loc.code }}</span></td>
+              <td class="all">
+                <div class="smart-dt-name-row">
+                  <span class="smart-dt-name-text">{{ loc.name }}</span>
+                  {% if perms.assets.change_assetlocation %}
+                  <a href="{% url 'asset-location-edit' loc.pk %}" class="smart-dt-edit-btn" title="Edit location" aria-label="Edit {{ loc.name }}">
+                    <i class="bi bi-pen-fill" aria-hidden="true"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="min-tablet-l">{% if loc.branch %}{{ loc.branch.name }}{% else %}Head Office{% endif %}</td>
+              <td class="min-tablet-l">{% if loc.parent %}{{ loc.parent.name }}{% else %}—{% endif %}</td>
+              <td class="all text-end dt-num">{{ loc.asset_count }}</td>
+              <td class="min-desktop">
+                {% if loc.is_active %}
+                <span class="smart-badge smart-badge--success">Active</span>
+                {% else %}
+                <span class="smart-badge smart-badge--secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="all text-end">
+                {% if perms.assets.delete_assetlocation %}
+                <a
+                  href="{% url 'asset-location-delete' loc.pk %}"
+                  class="icon-action-btn icon-action-danger js-asset-location-delete"
+                  title="Delete location"
+                  aria-label="Delete {{ loc.name }}"
+                  data-location-id="{{ loc.pk }}"
+                  data-location-name="{{ loc.name }}"
+                  data-asset-count="{{ loc.asset_count }}"
+                  data-child-count="{{ loc.child_count }}"
+                >
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="asset-statement__disclaimer">Computer-generated location master. Inactive locations stay on historical custody. Locations in use must be moved before delete.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ location_options|json_script:"asset-location-options" }}
+{% include "assets/_asset_stat_filter_script.html" %}
+<script>
+(function () {
+  var locsEl = document.getElementById("asset-location-options");
+  var locations = [];
+  try {
+    locations = locsEl ? JSON.parse(locsEl.textContent || "[]") : [];
+  } catch (err) {
+    locations = [];
+  }
+
+  function csrfToken() {
+    var name = "csrftoken=";
+    var parts = document.cookie.split(";");
+    for (var i = 0; i < parts.length; i++) {
+      var c = parts[i].replace(/^\s+/, "");
+      if (c.indexOf(name) === 0) return decodeURIComponent(c.substring(name.length));
+    }
+    var input = document.querySelector("[name=csrfmiddlewaretoken]");
+    return input ? input.value : "";
+  }
+
+  function escapeHtml(text) {
+    var div = document.createElement("div");
+    div.textContent = text == null ? "" : String(text);
+    return div.innerHTML;
+  }
+
+  function descendantIds(id) {
+    var ids = {};
+    function walk(pid) {
+      locations.forEach(function (loc) {
+        if (String(loc.parent_id || "") === String(pid) && !ids[String(loc.id)]) {
+          ids[String(loc.id)] = true;
+          walk(loc.id);
+        }
+      });
+    }
+    walk(id);
+    return ids;
+  }
+
+  function locationLabel(loc) {
+    var label = (loc.code || "") + " — " + (loc.name || "") + " (" + (loc.branch || "Head Office") + ")";
+    if (!loc.is_active) label += " · Inactive";
+    return label;
+  }
+
+  function swalBase(extra) {
+    return Object.assign({
+      buttonsStyling: false,
+      reverseButtons: true,
+      customClass: {
+        popup: "app-swal-popup",
+        title: "app-swal-title",
+        htmlContainer: "app-swal-html text-start",
+        confirmButton: "btn btn-danger",
+        cancelButton: "btn btn-outline-secondary",
+        validationMessage: "text-danger small",
+      },
+    }, extra || {});
+  }
+
+  function postLocationDelete(url, replacement) {
+    var headers = {
+      "X-CSRFToken": csrfToken(),
+      "X-Requested-With": "XMLHttpRequest",
+      Accept: "application/json,text/html;q=0.9,*/*;q=0.8",
+    };
+    var opts = {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      redirect: "manual",
+    };
+    if (replacement) {
+      var fd = new FormData();
+      fd.append("replacement", replacement);
+      opts.body = fd;
+    }
+    return fetch(url, opts).then(function (r) {
+      if (r.type === "opaqueredirect" || r.status === 302 || r.status === 303 || r.status === 0) {
+        window.location.reload();
+        return { ok: true };
+      }
+      var contentType = (r.headers.get("Content-Type") || "").toLowerCase();
+      if (contentType.indexOf("application/json") !== -1) {
+        return r.json().then(function (data) {
+          if (r.ok && data && data.ok) {
+            window.location.href = data.redirect || window.location.href;
+            return { ok: true };
+          }
+          return { ok: false, error: (data && (data.error || data.detail)) || "Could not delete this location." };
+        });
+      }
+      if (r.ok) {
+        window.location.reload();
+        return { ok: true };
+      }
+      return { ok: false, error: "Could not delete this location." };
+    });
+  }
+
+  function showDeletingThenPost(url, replacement) {
+    if (typeof window.markAssetListFilterReset === "function") {
+      window.markAssetListFilterReset();
+    }
+    Swal.fire(swalBase({
+      title: "Deleting…",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      showCancelButton: false,
+      didOpen: function () { Swal.showLoading(); },
+    }));
+    postLocationDelete(url, replacement).then(function (result) {
+      if (result && result.ok) return;
+      Swal.fire(swalBase({
+        icon: "error",
+        title: "Could not delete",
+        text: (result && result.error) || "Could not delete this location.",
+        confirmButtonText: "OK",
+        showCancelButton: false,
+        customClass: {
+          popup: "app-swal-popup",
+          title: "app-swal-title",
+          confirmButton: "btn btn-primary",
+        },
+      })).then(function () {
+        if (typeof window.resetAssetListFilters === "function") {
+          window.resetAssetListFilters();
+        }
+      });
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a.js-asset-location-delete");
+    if (!a) return;
+    e.preventDefault();
+    if (typeof Swal === "undefined") return;
+    var url = a.getAttribute("href");
+    if (!url) return;
+    var name = a.getAttribute("data-location-name") || "this location";
+    var locId = String(a.getAttribute("data-location-id") || "");
+    var assets = Number(a.getAttribute("data-asset-count") || 0);
+    var children = Number(a.getAttribute("data-child-count") || 0);
+    var blocked = children ? descendantIds(locId) : {};
+    var others = locations.filter(function (loc) {
+      var id = String(loc.id);
+      if (id === locId) return false;
+      if (children && blocked[id]) return false;
+      return true;
+    });
+    var swalOpts = {
+      popup: "app-swal-popup",
+      title: "app-swal-title",
+      htmlContainer: "app-swal-html text-start",
+      confirmButton: "btn btn-danger",
+      cancelButton: "btn btn-outline-secondary",
+      validationMessage: "text-danger small",
+    };
+
+    if ((assets || children) && !others.length) {
+      Swal.fire(swalBase({
+        icon: "error",
+        title: "Cannot delete",
+        text: children
+          ? "Move or delete sub-locations first, then try again."
+          : "Add another location first, then move the assets.",
+        confirmButtonText: "OK",
+        showCancelButton: false,
+        customClass: {
+          popup: "app-swal-popup",
+          title: "app-swal-title",
+          confirmButton: "btn btn-primary",
+        },
+      })).then(function () {
+        if (typeof window.resetAssetListFilters === "function") {
+          window.resetAssetListFilters();
+        }
+      });
+      return;
+    }
+
+    if (!assets && !children) {
+      Swal.fire(swalBase({
+        icon: "warning",
+        title: "Delete " + name + "?",
+        text: "This location is not used by any assets. This cannot be undone.",
+        showCancelButton: true,
+        confirmButtonText: "Delete",
+        cancelButtonText: "Cancel",
+      })).then(function (res) {
+        if (!res.isConfirmed) return;
+        showDeletingThenPost(url);
+      });
+      return;
+    }
+
+    var optionsHtml = '<option value="">Choose a location</option>' + others.map(function (loc) {
+      return '<option value="' + escapeHtml(loc.id) + '">' + escapeHtml(locationLabel(loc)) + "</option>";
+    }).join("");
+    var usedBits = [];
+    if (assets) usedBits.push("<strong>" + assets + "</strong> asset" + (assets === 1 ? "" : "s"));
+    if (children) usedBits.push("<strong>" + children + "</strong> sub-location" + (children === 1 ? "" : "s"));
+    Swal.fire({
+      icon: "warning",
+      title: "Delete " + name + "?",
+      html:
+        "<p class=\"mb-3\">This location is used by " + usedBits.join(" and ") +
+        ". Choose a location to move them to.</p>" +
+        "<label class=\"form-label\" for=\"swal-location-replacement\">Move to location</label>" +
+        "<select id=\"swal-location-replacement\" class=\"form-select\">" + optionsHtml + "</select>",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+      focusCancel: true,
+      buttonsStyling: false,
+      customClass: swalOpts,
+      preConfirm: function () {
+        var field = document.getElementById("swal-location-replacement");
+        var value = field ? field.value : "";
+        if (!value) {
+          Swal.showValidationMessage("Choose a location");
+          return false;
+        }
+        return value;
+      },
+    }).then(function (res) {
+      if (!res.isConfirmed) return;
+      showDeletingThenPost(url, res.value);
+    });
+  });
+})();
+</script>
+{% endblock %}

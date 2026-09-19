@@ -1,0 +1,71 @@
+<style>
+  .branch-dispatch-respond-form .qty-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  .branch-dispatch-respond-form .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+  }
+  .branch-dispatch-respond-form .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+</style>
+<p class="text-muted small mb-3">
+  Dispatch <strong>#{{ dispatch.dispatch_no }}</strong> from <strong>{{ dispatch.branch.name }}</strong>
+  to <strong>{{ dispatch.destination_branch.name }}</strong> —
+  {{ dispatch.kg }} kg ({{ dispatch.liters_equivalent }} L).
+</p>
+<div class="mb-3">
+  <label class="form-label d-block">Action</label>
+  {% for radio in form.response_action %}
+  <div class="form-check">{{ radio.tag }} <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>
+  {% endfor %}
+</div>
+<div
+  class="mb-3 branch-respond-field branch-respond-field--quantity"
+  id="branch-return-qty-wrap"
+  data-kg="{{ dispatch.kg }}"
+  data-liters="{{ dispatch.liters_equivalent }}"
+  data-kg-to-liters="{{ MILK_LITER_FACTOR_JS }}"
+>
+  <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+    <label class="form-label mb-0" for="{{ form.return_quantity.id_for_label }}" id="branch-return-qty-label">Quantity (liters)</label>
+    <div class="qty-segment" role="group" aria-label="Quantity unit">
+      <button type="button" class="qty-segment__btn" data-qty-unit="kg" aria-pressed="false">Kg</button>
+      <button type="button" class="qty-segment__btn is-active" data-qty-unit="liters" aria-pressed="true">Liters</button>
+    </div>
+  </div>
+  {{ form.return_quantity }}
+  {{ form.return_quantity_unit }}
+  {% if form.return_quantity.errors %}
+  <div class="invalid-feedback d-block">{{ form.return_quantity.errors|striptags }}</div>
+  {% endif %}
+  <p class="form-text text-muted small mb-0" id="branch-return-available-qty">
+    Available: {{ dispatch.liters_equivalent }} L ({{ dispatch.kg }} kg)
+  </p>
+</div>
+<div class="mb-3 branch-respond-field branch-respond-field--divert-branch" id="branch-divert-branch-wrap">
+  <label class="form-label" for="{{ form.divert_branch.id_for_label }}">Divert to branch</label>
+  {{ form.divert_branch }}
+</div>
+<div class="mb-3 branch-respond-field branch-respond-field--divert-buyer" id="branch-divert-buyer-wrap">
+  <label class="form-label" for="{{ form.divert_buyer.id_for_label }}">Divert to buyer</label>
+  {{ form.divert_buyer }}
+</div>
+<div class="mb-0">
+  <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+  {{ form.notes }}
+</div>

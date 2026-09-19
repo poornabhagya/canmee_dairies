@@ -1,0 +1,40 @@
+{% extends "attendance/base_portal.html" %}
+{% block title %}My history · Attendance{% endblock %}
+{% block content %}
+<div class="att-card">
+  <p class="att-eyebrow">History</p>
+  <h1 class="att-title">My attendance</h1>
+  <p class="att-subtitle">Your check-in and check-out times, grouped by day.</p>
+
+  {% for day in history_days %}
+  <section class="att-day">
+    <div class="att-day-head">
+      <strong>{{ day.date|date:"D, d M Y" }}</strong>
+      <span>{{ day.records|length }} punch{{ day.records|length|pluralize }}</span>
+    </div>
+    <ul class="att-list att-timeline">
+      {% for r in day.records %}
+      <li class="{% if r.punch_type == 'check_out' %}is-out{% endif %}">
+        <span class="att-badge {% if r.punch_type == 'check_out' %}att-badge--out{% endif %}">{{ r.get_punch_type_display }}</span>
+        <span class="fw-semibold">{{ r.punched_at|date:"H:i" }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% empty %}
+  <div class="att-panel text-center text-muted py-4">No attendance yet.</div>
+  {% endfor %}
+
+  {% if is_paginated %}
+  <div class="att-pager">
+    {% if page_obj.has_previous %}
+    <a class="att-btn att-btn-ghost" href="?page={{ page_obj.previous_page_number }}">Prev</a>
+    {% else %}<span></span>{% endif %}
+    <span class="small text-muted">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="att-btn att-btn-ghost" href="?page={{ page_obj.next_page_number }}">Next</a>
+    {% else %}<span></span>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

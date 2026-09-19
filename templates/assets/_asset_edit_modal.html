@@ -1,0 +1,163 @@
+{% load widget_tweaks %}
+<div class="modal fade smart-modal smart-modal--wide" id="assetEditModal" tabindex="-1" aria-labelledby="assetEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="" id="assetQuickEditForm" class="js-master-form-enter-next">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" id="assetEditHeaderIcon" aria-hidden="true"><i class="bi bi-pen-fill"></i></span>
+            <div>
+              <h5 class="modal-title" id="assetEditModalLabel">Edit asset</h5>
+              <p class="modal-subtitle" id="assetEditSubtitle">Update register particulars and custody.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="assetEditFormError"></div>
+          <section class="smart-form-section">
+            <h6 class="smart-form-section-title"><i class="bi bi-tag" aria-hidden="true"></i>Identification</h6>
+            <div class="smart-form-grid">
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.asset_tag.id_for_label }}">Asset tag</label>
+                {% render_field form.asset_tag class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="asset_tag"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.name.id_for_label }}">Particulars / name</label>
+                {% render_field form.name class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="name"></div>
+              </div>
+              <div class="smart-field span-2">
+                <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+                {% render_field form.description class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="description"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.serial_number.id_for_label }}">Serial no.</label>
+                {% render_field form.serial_number class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="serial_number"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.manufacturer.id_for_label }}">Manufacturer</label>
+                {% render_field form.manufacturer class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="manufacturer"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.model_number.id_for_label }}">Model</label>
+                {% render_field form.model_number class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="model_number"></div>
+              </div>
+            </div>
+          </section>
+          <section class="smart-form-section">
+            <h6 class="smart-form-section-title"><i class="bi bi-diagram-3" aria-hidden="true"></i>Classification &amp; custody</h6>
+            <div class="smart-form-grid">
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.asset_type.id_for_label }}">Type</label>
+                {% render_field form.asset_type class="form-select" id="assetEditType" %}
+                <div class="invalid-feedback" data-modal-error-for="asset_type"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.category.id_for_label }}">Category</label>
+                {% render_field form.category class="form-select" id="assetEditCategory" %}
+                <div class="invalid-feedback" data-modal-error-for="category"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.branch.id_for_label }}">Branch</label>
+                {% render_field form.branch class="form-select" id="assetEditBranch" %}
+                <div class="invalid-feedback" data-modal-error-for="branch"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.location.id_for_label }}">Location</label>
+                {% render_field form.location class="form-select" id="assetEditLocation" %}
+                <div class="invalid-feedback" data-modal-error-for="location"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+                {% render_field form.status class="form-select" %}
+                <div class="invalid-feedback" data-modal-error-for="status"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.condition.id_for_label }}">Condition</label>
+                {% render_field form.condition class="form-select" %}
+                <div class="invalid-feedback" data-modal-error-for="condition"></div>
+              </div>
+              <div class="smart-field span-2">
+                <label class="form-label" for="{{ form.custodian.id_for_label }}">Custodian</label>
+                {% render_field form.custodian class="form-select" %}
+                <div class="invalid-feedback" data-modal-error-for="custodian"></div>
+              </div>
+            </div>
+          </section>
+          <section class="smart-form-section">
+            <h6 class="smart-form-section-title"><i class="bi bi-receipt" aria-hidden="true"></i>Acquisition &amp; cost</h6>
+            <div class="smart-form-grid">
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.purchase_date.id_for_label }}">Purchase date</label>
+                <div class="input-group asset-date-group">
+                  {% render_field form.purchase_date class="form-control js-datepicker" %}
+                  <span class="input-group-text js-datepicker-trigger" data-target="#{{ form.purchase_date.id_for_label }}" role="button" tabindex="0" aria-label="Open calendar"><i class="bi bi-calendar3"></i></span>
+                </div>
+                <div class="invalid-feedback" data-modal-error-for="purchase_date"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.warranty_expiry.id_for_label }}">Warranty expiry</label>
+                <div class="input-group asset-date-group">
+                  {% render_field form.warranty_expiry class="form-control js-datepicker" %}
+                  <span class="input-group-text js-datepicker-trigger" data-target="#{{ form.warranty_expiry.id_for_label }}" role="button" tabindex="0" aria-label="Open calendar"><i class="bi bi-calendar3"></i></span>
+                </div>
+                <div class="invalid-feedback" data-modal-error-for="warranty_expiry"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.supplier_name.id_for_label }}">Supplier</label>
+                {% render_field form.supplier_name class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="supplier_name"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.purchase_cost.id_for_label }}">Gross cost</label>
+                {% render_field form.purchase_cost class="form-control js-money-input" inputmode="decimal" autocomplete="off" %}
+                <div class="invalid-feedback" data-modal-error-for="purchase_cost"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.current_value.id_for_label }}">Book value</label>
+                {% render_field form.current_value class="form-control js-money-input" inputmode="decimal" autocomplete="off" %}
+                <div class="invalid-feedback" data-modal-error-for="current_value"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.salvage_value.id_for_label }}">Salvage value</label>
+                {% render_field form.salvage_value class="form-control js-money-input" inputmode="decimal" autocomplete="off" %}
+                <div class="invalid-feedback" data-modal-error-for="salvage_value"></div>
+              </div>
+            </div>
+          </section>
+          <section class="smart-form-section mb-0">
+            <h6 class="smart-form-section-title"><i class="bi bi-graph-down" aria-hidden="true"></i>Depreciation &amp; notes</h6>
+            <div class="smart-form-grid">
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.depreciation_policy.id_for_label }}">Depreciation policy</label>
+                {% render_field form.depreciation_policy class="form-select" %}
+                <div class="invalid-feedback" data-modal-error-for="depreciation_policy"></div>
+              </div>
+              <div class="smart-field">
+                <label class="form-label" for="{{ form.useful_life_months.id_for_label }}">Useful life (months)</label>
+                {% render_field form.useful_life_months class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="useful_life_months"></div>
+              </div>
+              <div class="smart-field span-2">
+                <label class="form-label" for="{{ form.notes.id_for_label }}">Internal notes</label>
+                {% render_field form.notes class="form-control" %}
+                <div class="invalid-feedback" data-modal-error-for="notes"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="assetEditSubmit"><i class="bi bi-check2 me-1"></i><span id="assetEditSubmitLabel">Post changes</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

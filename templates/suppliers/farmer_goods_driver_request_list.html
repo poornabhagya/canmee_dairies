@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Driver goods requests · Canmee Dairies{% endblock %}
+{% block page_heading %}Driver goods requests{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+<style>
+  .driver-request-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .driver-request-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .driver-request-list-card .table-wrap,
+  .driver-request-list-card .dataTables_wrapper,
+  .driver-request-list-card div.dt-container,
+  .driver-request-list-card div.dt-scroll,
+  .driver-request-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .driver-request-list-card .driver-request-table {
+    width: 100% !important;
+  }
+  .driver-request-list-card .driver-request-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .driver-request-list-card .driver-request-table tbody td {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .driver-request-list-card .driver-request-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .driver-request-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .driver-request-list-card div.dt-smart-toolbar .dt-smart-actions {
+    margin-left: auto;
+  }
+  .driver-request-list-card div.dt-container .dt-search {
+    margin: 0;
+  }
+  .driver-request-list-card div.dt-container .dt-search label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .driver-request-list-card div.dt-container .dt-search input {
+    min-width: min(220px, 42vw);
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.38rem 0.85rem 0.38rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    box-shadow: none;
+  }
+  .driver-request-list-card div.dt-container .dt-search input:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.1);
+  }
+  .smart-row--pending td {
+    background-color: rgba(254, 243, 199, 0.22);
+  }
+  .smart-row--issued td {
+    background-color: rgba(220, 252, 231, 0.35);
+  }
+  .smart-row--cancelled td {
+    background-color: rgba(254, 226, 226, 0.28);
+  }
+  .driver-request-status-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .driver-request-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .driver-request-requested-cell .fw-semibold,
+  .driver-request-requested-cell .small {
+    display: block;
+  }
+  .smart-dt-chip--warn.is-active {
+    border-color: rgba(217, 119, 6, 0.4);
+    background: rgba(254, 243, 199, 0.7);
+    color: #b45309;
+  }
+  .smart-dt-chip--warn.is-active .smart-dt-chip-count {
+    background: rgba(217, 119, 6, 0.14);
+    color: #b45309;
+  }
+  .smart-dt-chip--danger.is-active {
+    border-color: rgba(220, 38, 38, 0.4);
+    background: rgba(254, 226, 226, 0.55);
+    color: #b91c1c;
+  }
+  .smart-dt-chip--danger.is-active .smart-dt-chip-count {
+    background: rgba(220, 38, 38, 0.14);
+    color: #b91c1c;
+  }
+  .smart-dt-stat--danger .smart-dt-stat-value { color: #b91c1c; }
+  #driverRequestViewModal .modal-content {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  #driverRequestViewModal .modal-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e7edf5;
+  }
+  #driverRequestViewModal .driver-request-view-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 575.98px) {
+    #driverRequestViewModal .driver-request-view-meta {
+      grid-template-columns: 1fr;
+    }
+  }
+  #driverRequestViewModal .driver-request-view-meta .label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    margin-bottom: 0.15rem;
+  }
+  #driverRequestViewModal .driver-request-view-meta .value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  #driverRequestViewModal .driver-request-view-table th {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+  }
+  @media (max-width: 767.98px) {
+    .driver-request-list-card .card-body.table-wrap { padding: 0.75rem; }
+    .driver-request-list-card div.dt-container .dt-search input {
+      min-width: 8rem;
+      width: 100%;
+      max-width: none;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table driver-request-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Driver request summary">
+      <button type="button" class="smart-dt-stat smart-dt-stat--clickable js-driver-request-stat-filter" data-smart-filter="all">
+        <span class="smart-dt-stat-label">All requests</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.all }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--warn smart-dt-stat--clickable js-driver-request-stat-filter" data-smart-filter="pending">
+        <span class="smart-dt-stat-label">Pending</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.pending }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--active smart-dt-stat--clickable js-driver-request-stat-filter" data-smart-filter="issued">
+        <span class="smart-dt-stat-label">Issued</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.issued }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--danger smart-dt-stat--clickable js-driver-request-stat-filter" data-smart-filter="cancelled">
+        <span class="smart-dt-stat-label">Cancelled</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.cancelled }}</span>
+      </button>
+    </div>
+
+    <div id="driverRequestDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Request status filters">
+      <button type="button" class="smart-dt-chip{% if filter_status == 'all' %} is-active{% endif %}" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ status_tab_counts.all }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn{% if filter_status == 'pending' %} is-active{% endif %}" data-smart-filter="pending">
+        Pending<span class="smart-dt-chip-count">{{ status_tab_counts.pending }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip{% if filter_status == 'issued' %} is-active{% endif %}" data-smart-filter="issued">
+        Issued<span class="smart-dt-chip-count">{{ status_tab_counts.issued }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--danger{% if filter_status == 'cancelled' %} is-active{% endif %}" data-smart-filter="cancelled">
+        Cancelled<span class="smart-dt-chip-count">{{ status_tab_counts.cancelled }}</span>
+      </button>
+    </div>
+
+    <table
+      class="table table-hover datatable datatable-smart driver-request-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No driver goods requests."
+      data-filters-target="driverRequestDtFilters"
+      data-default-filter="{{ filter_status|default:'pending' }}"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Requested</th>
+          <th class="all">Route</th>
+          <th class="all">Point</th>
+          <th class="min-tablet-l text-end">Lines</th>
+          <th class="all">Status</th>
+          <th class="min-desktop">Note</th>
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr class="smart-row--{{ req.status }}" data-request-id="{{ req.pk }}" data-route-id="{{ req.route_id }}">
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all driver-request-requested-cell" data-order="{{ req.requested_at|date:'Y-m-d H:i:s' }}">
+            <span class="fw-semibold">{{ req.requested_at|date:"M j, Y H:i" }}</span>
+            <span class="small text-muted">{{ req.requested_at|timesince }} ago</span>
+          </td>
+          <td class="all">{{ req.route.name }}</td>
+          <td class="all">
+            <button
+              type="button"
+              class="smart-dt-name-link btn btn-link p-0 align-baseline js-driver-request-view"
+              data-json-url="{% url 'farmer-goods-driver-request-detail-json' req.pk %}"
+            >{{ req.collection_point.number }} — {{ req.collection_point.name }}</button>
+          </td>
+          <td class="min-tablet-l text-end dt-num" data-order="{{ req.line_count }}">{{ req.line_count }}</td>
+          <td class="all">
+            {% if req.status == 'pending' %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis driver-request-status-badge">Pending</span>
+            {% elif req.status == 'issued' %}
+            <span class="badge text-bg-success-subtle text-success-emphasis driver-request-status-badge">Issued</span>
+            {% elif req.status == 'cancelled' %}
+            <span class="badge text-bg-danger-subtle text-danger-emphasis driver-request-status-badge">Cancelled</span>
+            {% else %}
+            <span class="badge text-bg-light border driver-request-status-badge">{{ req.get_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="min-desktop">{{ req.note|default:req.fulfill_note|default:"—" }}</td>
+          <td class="all text-end">
+            <span class="driver-request-row-actions">
+              <button
+                type="button"
+                class="icon-action-btn js-driver-request-view"
+                data-json-url="{% url 'farmer-goods-driver-request-detail-json' req.pk %}"
+                title="View request"
+                aria-label="View request {{ req.pk }}"
+              ><i class="bi bi-eye" aria-hidden="true"></i></button>
+              {% if req.status == 'pending' %}
+              <a class="btn btn-sm btn-primary" href="{% url 'farmer-goods-driver-request-fulfill' req.pk %}">Issue</a>
+              {% if can_issue %}
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger js-driver-request-reject"
+                data-url="{% url 'farmer-goods-driver-request-reject' req.pk %}"
+              >Reject</button>
+              {% endif %}
+              {% elif req.status == 'issued' and req.issued_batch_ref %}
+              <a
+                href="{% url 'farmer-goods-issue-print' req.issued_batch_ref %}"
+                class="btn btn-sm btn-success js-payslip-embed-link"
+                data-embed-url="{% url 'farmer-goods-issue-print' req.issued_batch_ref %}?embed=1"
+                data-open-url="{% url 'farmer-goods-issue-print' req.issued_batch_ref %}"
+                data-embed-title="Receipt {{ req.issued_batch_ref|slice:':8'|upper }}"
+                title="Open receipt"
+              ><i class="bi bi-receipt me-1" aria-hidden="true"></i>Receipt</a>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="driverRequestViewModal" tabindex="-1" aria-labelledby="driverRequestViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fs-6" id="driverRequestViewModalLabel">Driver goods request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="js-driver-request-view-loading text-center py-4 text-muted">
+          <div class="spinner-border spinner-border-sm" role="status"></div>
+        </div>
+        <div class="js-driver-request-view-error alert alert-danger py-2 mb-0" hidden></div>
+        <div class="js-driver-request-view-content" hidden>
+          <div class="driver-request-view-meta">
+            <div>
+              <span class="label">Status</span>
+              <span class="value js-drv-status"></span>
+            </div>
+            <div>
+              <span class="label">Requested</span>
+              <span class="value js-drv-requested"></span>
+            </div>
+            <div>
+              <span class="label">Route</span>
+              <span class="value js-drv-route"></span>
+            </div>
+            <div>
+              <span class="label">Collection point</span>
+              <span class="value js-drv-point"></span>
+            </div>
+            <div class="js-drv-fulfilled-wrap" hidden>
+              <span class="label">Fulfilled</span>
+              <span class="value js-drv-fulfilled"></span>
+            </div>
+            <div class="js-drv-note-wrap" hidden>
+              <span class="label">Note</span>
+              <span class="value js-drv-note"></span>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 driver-request-view-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th class="text-end">Requested</th>
+                  <th class="text-end">Issued</th>
+                </tr>
+              </thead>
+              <tbody class="js-drv-lines"></tbody>
+            </table>
+          </div>
+          <div class="small text-muted mt-2 js-drv-skipped" hidden></div>
+        </div>
+      </div>
+      <div class="modal-footer flex-wrap gap-2 js-driver-request-view-footer" hidden>
+        <a href="#" class="btn btn-success js-drv-receipt" hidden>
+          <i class="bi bi-receipt me-1" aria-hidden="true"></i>Open receipt
+        </a>
+        <a href="#" class="btn btn-primary js-drv-issue" hidden>Issue</a>
+        <button type="button" class="btn btn-outline-danger js-drv-reject" hidden>Reject</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% include "reports/_payslip_embed_modal.html" %}
+{% endblock %}
+{% block extra_js %}
+{% include "reports/_payslip_embed_script.html" %}
+<script>
+(function () {
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function applyInitialDriverRequestFilter() {
+    var table = document.querySelector(".driver-request-table[data-default-filter]");
+    if (!table) return;
+    var filter = table.getAttribute("data-default-filter") || "pending";
+    if (!filter || filter === "all") return;
+    var chip = document.querySelector('#driverRequestDtFilters [data-smart-filter="' + filter + '"]');
+    if (chip) chip.click();
+  }
+
+  function openDriverRequestView(url) {
+    var modalEl = document.getElementById("driverRequestViewModal");
+    if (!modalEl || !window.bootstrap || !url) return;
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    var loading = modalEl.querySelector(".js-driver-request-view-loading");
+    var errorEl = modalEl.querySelector(".js-driver-request-view-error");
+    var content = modalEl.querySelector(".js-driver-request-view-content");
+    var footer = modalEl.querySelector(".js-driver-request-view-footer");
+    loading.hidden = false;
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+    content.hidden = true;
+    footer.hidden = true;
+    modal.show();
+
+    fetch(url, {
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" },
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok || !data.ok) throw new Error((data && data.error) || "Could not load request");
+          return data;
+        });
+      })
+      .then(function (data) {
+        loading.hidden = true;
+        content.hidden = false;
+        footer.hidden = false;
+        modalEl.querySelector("#driverRequestViewModalLabel").textContent =
+          "Driver request · " + (data.point_label || ("#" + data.id));
+        modalEl.querySelector(".js-drv-status").textContent = data.status_label || data.status || "—";
+        modalEl.querySelector(".js-drv-requested").textContent =
+          (data.requested_at || "—") + (data.requested_ago ? " · " + data.requested_ago : "");
+        modalEl.querySelector(".js-drv-route").textContent = data.route_name || "—";
+        modalEl.querySelector(".js-drv-point").textContent = data.point_label || "—";
+
+        var fulfilledWrap = modalEl.querySelector(".js-drv-fulfilled-wrap");
+        var fulfilledEl = modalEl.querySelector(".js-drv-fulfilled");
+        if (data.fulfilled_at) {
+          fulfilledWrap.hidden = false;
+          fulfilledEl.textContent =
+            data.fulfilled_at + (data.fulfilled_by ? " · " + data.fulfilled_by : "");
+        } else {
+          fulfilledWrap.hidden = true;
+          fulfilledEl.textContent = "";
+        }
+
+        var noteWrap = modalEl.querySelector(".js-drv-note-wrap");
+        var noteEl = modalEl.querySelector(".js-drv-note");
+        var noteText = data.note || data.fulfill_note || "";
+        if (noteText) {
+          noteWrap.hidden = false;
+          noteEl.textContent = noteText;
+        } else {
+          noteWrap.hidden = true;
+          noteEl.textContent = "";
+        }
+
+        var tbody = modalEl.querySelector(".js-drv-lines");
+        var showIssued = data.status === "issued";
+        tbody.innerHTML = (data.lines || [])
+          .map(function (line) {
+            var unit = line.unit ? " " + escapeHtml(line.unit) : "";
+            return (
+              "<tr><td>" +
+              escapeHtml(line.product_name) +
+              '</td><td class="text-end">' +
+              escapeHtml(line.quantity) +
+              unit +
+              '</td><td class="text-end">' +
+              (showIssued ? escapeHtml(line.issued_quantity) + unit : "—") +
+              "</td></tr>"
+            );
+          })
+          .join("") ||
+          '<tr><td colspan="3" class="text-center text-muted py-3">No product lines.</td></tr>';
+
+        var skipped = modalEl.querySelector(".js-drv-skipped");
+        if (data.skipped_out_of_stock) {
+          skipped.hidden = false;
+          skipped.textContent = "Skipped / limited: " + data.skipped_out_of_stock;
+        } else {
+          skipped.hidden = true;
+          skipped.textContent = "";
+        }
+
+        var issueBtn = modalEl.querySelector(".js-drv-issue");
+        if (data.status === "pending" && data.fulfill_url) {
+          issueBtn.hidden = false;
+          issueBtn.href = data.fulfill_url;
+        } else {
+          issueBtn.hidden = true;
+          issueBtn.removeAttribute("href");
+        }
+
+        var rejectBtn = modalEl.querySelector(".js-drv-reject");
+        if (data.reject_url) {
+          rejectBtn.hidden = false;
+          rejectBtn.setAttribute("data-url", data.reject_url);
+          rejectBtn.classList.add("js-driver-request-reject");
+        } else {
+          rejectBtn.hidden = true;
+          rejectBtn.removeAttribute("data-url");
+          rejectBtn.classList.remove("js-driver-request-reject");
+        }
+
+        var receiptBtn = modalEl.querySelector(".js-drv-receipt");
+        if (data.receipt_embed_url) {
+          receiptBtn.hidden = false;
+          receiptBtn.href = data.receipt_url || data.receipt_embed_url;
+          receiptBtn.classList.add("js-payslip-embed-link");
+          receiptBtn.setAttribute("data-embed-url", data.receipt_embed_url);
+          receiptBtn.setAttribute("data-open-url", data.receipt_url || "");
+          receiptBtn.setAttribute(
+            "data-embed-title",
+            "Receipt " + String(data.issued_batch_ref || "").slice(0, 8).toUpperCase()
+          );
+        } else {
+          receiptBtn.hidden = true;
+          receiptBtn.removeAttribute("href");
+          receiptBtn.removeAttribute("data-embed-url");
+          receiptBtn.removeAttribute("data-open-url");
+          receiptBtn.classList.remove("js-payslip-embed-link");
+        }
+      })
+      .catch(function (err) {
+        loading.hidden = true;
+        content.hidden = true;
+        footer.hidden = true;
+        errorEl.hidden = false;
+        errorEl.textContent = err.message || "Could not load request";
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".js-driver-request-stat-filter").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var filter = btn.getAttribute("data-smart-filter");
+        var chip = document.querySelector('#driverRequestDtFilters [data-smart-filter="' + filter + '"]');
+        if (chip) chip.click();
+      });
+    });
+    window.setTimeout(applyInitialDriverRequestFilter, 80);
+
+    document.addEventListener("click", function (e) {
+      var viewBtn = e.target.closest(".js-driver-request-view");
+      if (!viewBtn) return;
+      e.preventDefault();
+      openDriverRequestView(viewBtn.getAttribute("data-json-url"));
+    });
+
+    // When receipt is opened from the view modal, close the view modal first.
+    document.addEventListener("click", function (e) {
+      var receipt = e.target.closest("#driverRequestViewModal .js-drv-receipt.js-payslip-embed-link");
+      if (!receipt) return;
+      var viewModalEl = document.getElementById("driverRequestViewModal");
+      if (viewModalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(viewModalEl).hide();
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

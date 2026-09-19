@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}Asset classification · Canmee Dairies{% endblock %}
+{% block page_heading %}Classification{% endblock %}
+{% block topbar_actions %}
+{% if perms.assets.add_assettype %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-type-add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add type</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block content %}
+{% csrf_token %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Type summary">
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="all">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-layers" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Types</span>
+        <span class="smart-stat-card__value">{{ stats.total }}</span>
+        <span class="smart-stat-card__hint">Chart of asset classes</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--book js-asset-stat-filter" data-smart-filter="active">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Active</span>
+        <span class="smart-stat-card__value">{{ stats.active }}</span>
+        <span class="smart-stat-card__hint">In use on the register</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="inactive">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-pause-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Inactive</span>
+        <span class="smart-stat-card__value">{{ stats.inactive }}</span>
+        <span class="smart-stat-card__hint">Closed classifications</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div id="assetTypeDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Type filters">
+        <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">All<span class="smart-dt-chip-count">{{ stats.total }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="active">Active<span class="smart-dt-chip-count">{{ stats.active }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="inactive">Inactive<span class="smart-dt-chip-count">{{ stats.inactive }}</span></button>
+      </div>
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Master</span>
+            <h2 class="asset-statement__title">Asset classification</h2>
+            <p class="asset-statement__meta">Types group categories (Current, Fixed, Fixtures &amp; Fittings, Memorandum)</p>
+          </div>
+          <span class="asset-statement__account">CLS-{% now "Y" %}</span>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No types yet."
+          data-filters-target="assetTypeDtFilters"
+          data-print-title="Asset classification"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Code</th>
+              <th class="all">Name</th>
+              <th class="min-tablet-l text-end">Categories</th>
+              <th class="all text-end">Assets</th>
+              <th class="min-desktop">Status</th>
+              <th class="all text-end no-export">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in types %}
+            <tr class="smart-row--{% if t.is_active %}active{% else %}inactive{% endif %}">
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all"><span class="asset-tag-code">{{ t.code }}</span></td>
+              <td class="all">
+                <div class="smart-dt-name-row">
+                  <span class="smart-dt-name-text">{{ t.name }}</span>
+                  {% if perms.assets.change_assettype %}
+                  <a href="{% url 'asset-type-edit' t.pk %}" class="smart-dt-edit-btn" title="Edit type" aria-label="Edit {{ t.name }}">
+                    <i class="bi bi-pen-fill" aria-hidden="true"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="min-tablet-l text-end dt-num">{{ t.category_count }}</td>
+              <td class="all text-end dt-num">{{ t.asset_count }}</td>
+              <td class="min-desktop">
+                {% if t.is_active %}
+                <span class="smart-badge smart-badge--success">Active</span>
+                {% else %}
+                <span class="smart-badge smart-badge--secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="all text-end">
+                {% if perms.assets.delete_assettype %}
+                <a
+                  href="{% url 'asset-type-delete' t.pk %}"
+                  class="icon-action-btn icon-action-danger js-asset-type-delete"
+                  title="Delete type"
+                  aria-label="Delete {{ t.name }}"
+                  data-type-id="{{ t.pk }}"
+                  data-type-name="{{ t.name }}"
+                  data-asset-count="{{ t.asset_count }}"
+                  data-category-count="{{ t.category_count }}"
+                >
+                  <i class="bi bi-trash3" aria-hidden="true"></i>
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="asset-statement__disclaimer">Computer-generated classification master. Inactive types remain on historical postings.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ type_options|json_script:"asset-type-options" }}
+{% include "assets/_asset_stat_filter_script.html" %}
+<script>
+(function () {
+  var typesEl = document.getElementById("asset-type-options");
+  var types = [];
+  try {
+    types = typesEl ? JSON.parse(typesEl.textContent || "[]") : [];
+  } catch (err) {
+    types = [];
+  }
+
+  function csrfToken() {
+    var name = "csrftoken=";
+    var parts = document.cookie.split(";");
+    for (var i = 0; i < parts.length; i++) {
+      var c = parts[i].replace(/^\s+/, "");
+      if (c.indexOf(name) === 0) return decodeURIComponent(c.substring(name.length));
+    }
+    var input = document.querySelector("[name=csrfmiddlewaretoken]");
+    return input ? input.value : "";
+  }
+
+  function escapeHtml(text) {
+    var div = document.createElement("div");
+    div.textContent = text == null ? "" : String(text);
+    return div.innerHTML;
+  }
+
+  function swalBase(extra) {
+    return Object.assign({
+      buttonsStyling: false,
+      reverseButtons: true,
+      customClass: {
+        popup: "app-swal-popup",
+        title: "app-swal-title",
+        htmlContainer: "app-swal-html text-start",
+        confirmButton: "btn btn-danger",
+        cancelButton: "btn btn-outline-secondary",
+        validationMessage: "text-danger small",
+      },
+    }, extra || {});
+  }
+
+  function postTypeDelete(url, replacement) {
+    var headers = {
+      "X-CSRFToken": csrfToken(),
+      "X-Requested-With": "XMLHttpRequest",
+      Accept: "application/json,text/html;q=0.9,*/*;q=0.8",
+    };
+    var opts = {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      redirect: "manual",
+    };
+    if (replacement) {
+      var fd = new FormData();
+      fd.append("replacement", replacement);
+      opts.body = fd;
+    }
+    return fetch(url, opts).then(function (r) {
+      if (r.type === "opaqueredirect" || r.status === 302 || r.status === 303 || r.status === 0) {
+        window.location.reload();
+        return { ok: true };
+      }
+      var contentType = (r.headers.get("Content-Type") || "").toLowerCase();
+      if (contentType.indexOf("application/json") !== -1) {
+        return r.json().then(function (data) {
+          if (r.ok && data && data.ok) {
+            window.location.href = data.redirect || window.location.href;
+            return { ok: true };
+          }
+          return { ok: false, error: (data && (data.error || data.detail)) || "Could not delete this type." };
+        });
+      }
+      if (r.ok) {
+        window.location.reload();
+        return { ok: true };
+      }
+      return { ok: false, error: "Could not delete this type." };
+    });
+  }
+
+  function showDeletingThenPost(url, replacement) {
+    if (typeof window.markAssetListFilterReset === "function") {
+      window.markAssetListFilterReset();
+    }
+    Swal.fire(swalBase({
+      title: "Deleting…",
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      showCancelButton: false,
+      didOpen: function () { Swal.showLoading(); },
+    }));
+    postTypeDelete(url, replacement).then(function (result) {
+      if (result && result.ok) return;
+      Swal.fire(swalBase({
+        icon: "error",
+        title: "Could not delete",
+        text: (result && result.error) || "Could not delete this type.",
+        confirmButtonText: "OK",
+        showCancelButton: false,
+        customClass: {
+          popup: "app-swal-popup",
+          title: "app-swal-title",
+          confirmButton: "btn btn-primary",
+        },
+      })).then(function () {
+        if (typeof window.resetAssetListFilters === "function") {
+          window.resetAssetListFilters();
+        }
+      });
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a.js-asset-type-delete");
+    if (!a) return;
+    e.preventDefault();
+    if (typeof Swal === "undefined") return;
+    var url = a.getAttribute("href");
+    if (!url) return;
+    var name = a.getAttribute("data-type-name") || "this type";
+    var typeId = String(a.getAttribute("data-type-id") || "");
+    var assets = Number(a.getAttribute("data-asset-count") || 0);
+    var cats = Number(a.getAttribute("data-category-count") || 0);
+    var others = types.filter(function (t) { return String(t.id) !== typeId; });
+    var swalOpts = {
+      popup: "app-swal-popup",
+      title: "app-swal-title",
+      htmlContainer: "app-swal-html text-start",
+      confirmButton: "btn btn-danger",
+      cancelButton: "btn btn-outline-secondary",
+      validationMessage: "text-danger small",
+    };
+
+    if (!others.length) {
+      Swal.fire(swalBase({
+        icon: "error",
+        title: "Cannot delete",
+        text: "Cannot delete the last asset type. Add another type first.",
+        confirmButtonText: "OK",
+        showCancelButton: false,
+        customClass: {
+          popup: "app-swal-popup",
+          title: "app-swal-title",
+          confirmButton: "btn btn-primary",
+        },
+      })).then(function () {
+        if (typeof window.resetAssetListFilters === "function") {
+          window.resetAssetListFilters();
+        }
+      });
+      return;
+    }
+
+    if (!assets && !cats) {
+      Swal.fire(swalBase({
+        icon: "warning",
+        title: "Delete " + name + "?",
+        text: "This type is not used by any assets or categories. This cannot be undone.",
+        showCancelButton: true,
+        confirmButtonText: "Delete",
+        cancelButtonText: "Cancel",
+      })).then(function (res) {
+        if (!res.isConfirmed) return;
+        showDeletingThenPost(url);
+      });
+      return;
+    }
+
+    var optionsHtml = '<option value="">Choose a type</option>' + others.map(function (t) {
+      return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + "</option>";
+    }).join("");
+    Swal.fire({
+      icon: "warning",
+      title: "Delete " + name + "?",
+      html:
+        "<p class=\"mb-3\">This type is used by <strong>" + assets + "</strong> asset" + (assets === 1 ? "" : "s") +
+        " and <strong>" + cats + "</strong> categor" + (cats === 1 ? "y" : "ies") +
+        ". Choose a type to move them to.</p>" +
+        "<label class=\"form-label\" for=\"swal-type-replacement\">Move to type</label>" +
+        "<select id=\"swal-type-replacement\" class=\"form-select\">" + optionsHtml + "</select>",
+      showCancelButton: true,
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+      focusCancel: true,
+      buttonsStyling: false,
+      customClass: swalOpts,
+      preConfirm: function () {
+        var field = document.getElementById("swal-type-replacement");
+        var value = field ? field.value : "";
+        if (!value) {
+          Swal.showValidationMessage("Choose a type");
+          return false;
+        }
+        return value;
+      },
+    }).then(function (res) {
+      if (!res.isConfirmed) return;
+      showDeletingThenPost(url, res.value);
+    });
+  });
+})();
+</script>
+{% endblock %}

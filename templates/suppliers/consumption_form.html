@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Consumption Settlement{% endblock %}
+{% block page_heading %}Consumption Settlement{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Consumption Settlement</h1>
+      <p class="page-subtitle">Finalize stock consumption from farmer or collection point allocations.</p>
+    </div>
+  </div>
+  <div class="module-card form-shell">
+    <div class="module-card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Record Consumption</button>
+        <a href="{% url 'grn-list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% if perms.reports.record_manual_settlement %}
+{% if advance.recovered_at or advance.recovered_amount %}
+<form
+  method="post"
+  action="{% url 'collection-point-advance-manual-settle' advance.pk %}"
+  class="d-inline js-swal-settlement-form"
+>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <input type="hidden" name="action" value="update_paid_on">
+  <button
+    type="submit"
+    class="point-advance-card__paid-on-btn js-swal-settlement-trigger"
+    data-swal-title="Change paid on date"
+    data-swal-text="Paid and balance amounts stay the same. The remaining balance is re-enabled on payment sheets from the next day."
+    data-swal-date="{% if advance.recovered_at %}{{ advance.recovered_at|date:'Y-m-d' }}{% endif %}"
+    title="Change paid on date"
+  >{% if as_date_only %}{% if advance.recovered_at %}{{ advance.recovered_at|date:"Y-m-d" }}{% else %}—{% endif %}{% else %}Paid on {% if advance.recovered_at %}{{ advance.recovered_at|date:"Y-m-d" }}{% else %}—{% endif %}{% endif %}</button>
+</form>
+{% elif as_date_only %}
+—
+{% endif %}
+{% elif advance.recovered_at %}
+{% if as_date_only %}{{ advance.recovered_at|date:"Y-m-d" }}{% else %}<div class="point-advance-card__paid-on">Paid on {{ advance.recovered_at|date:"Y-m-d" }}</div>{% endif %}
+{% elif as_date_only %}
+—
+{% endif %}

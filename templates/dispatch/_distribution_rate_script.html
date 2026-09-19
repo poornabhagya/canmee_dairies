@@ -1,0 +1,349 @@
+<script>
+(function () {
+  var modalEl = document.getElementById("dispatchRateModal");
+  if (!modalEl || typeof bootstrap === "undefined") return;
+  var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+  var form = document.getElementById("dispatchRateForm");
+  var subtitleEl = document.getElementById("dispatchRateSubtitle");
+  var errorsEl = document.getElementById("dispatchRateFormErrors");
+  var nextEl = document.getElementById("dispatchRateNext");
+  var usePeriodEl = document.getElementById("dispatchRateUsePeriod");
+  var amountEl = document.getElementById("dispatchRateAmount");
+  var unitEl = document.getElementById("dispatchRateUnit");
+  var hintEl = document.getElementById("dispatchRateHint");
+  var periodUrl = modalEl.getAttribute("data-period-rate-url") || "";
+
+  function showErrors(messages) {
+    if (!errorsEl) return;
+    if (!messages || !messages.length) {
+      errorsEl.classList.add("d-none");
+      errorsEl.textContent = "";
+      return;
+    }
+    errorsEl.classList.remove("d-none");
+    errorsEl.textContent = messages.join(" ");
+  }
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function parseMoney(value) {
+    var raw = String(value || "").replace(/,/g, "").trim();
+    return raw;
+  }
+
+  function extractErrors(data) {
+    var messages = [];
+    var errors = (data && data.errors) || {};
+    Object.keys(errors).forEach(function (key) {
+      (errors[key] || []).forEach(function (msg) {
+        if (msg) messages.push(msg);
+      });
+    });
+    return messages;
+  }
+
+  function setManualEnabled(enabled) {
+    if (amountEl) amountEl.readOnly = !enabled;
+    if (unitEl) unitEl.disabled = !enabled;
+    if (hintEl) {
+      hintEl.textContent = enabled
+        ? "This dispatch will keep the rate you enter."
+        : "Filled from the buyer rate effective on the dispatch date.";
+    }
+  }
+
+  function loadPeriodRate(trigger) {
+    if (!periodUrl || !trigger) return;
+    var buyerId = trigger.getAttribute("data-buyer-id") || "";
+    var dateVal = trigger.getAttribute("data-date") || "";
+    if (!buyerId) return;
+    var url = periodUrl + "?buyer=" + encodeURIComponent(buyerId) + "&date=" + encodeURIComponent(dateVal);
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }, credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) return;
+        if (amountEl) amountEl.value = formatMoney(data.rate || "0.00");
+        if (unitEl && data.rate_unit) unitEl.value = data.rate_unit;
+        if (hintEl && data.rate_unit_label) {
+          hintEl.textContent = "Period rate: " + formatMoney(data.rate || "0.00") + " " + data.rate_unit_label.toLowerCase() + ".";
+        }
+      })
+      .catch(function () {});
+  }
+
+  function openRateModal(trigger) {
+    if (!form || !trigger) return;
+    showErrors([]);
+    form._rateTrigger = trigger;
+    form.action = trigger.getAttribute("data-rate-url") || "";
+    if (nextEl) nextEl.value = window.location.pathname + window.location.search;
+    if (subtitleEl) {
+      subtitleEl.textContent = (trigger.getAttribute("data-dispatch-no") || "") +
+        (trigger.getAttribute("data-buyer-name") ? " · " + trigger.getAttribute("data-buyer-name") : "");
+    }
+    var locked = trigger.getAttribute("data-paid-locked") === "1";
+    var manual = trigger.getAttribute("data-manual") === "1";
+    if (usePeriodEl) usePeriodEl.checked = !manual;
+    if (amountEl) amountEl.value = formatMoney(trigger.getAttribute("data-rate") || "0");
+    if (unitEl) unitEl.value = trigger.getAttribute("data-rate-unit") || "liter";
+    setManualEnabled(manual);
+    if (!manual) loadPeriodRate(trigger);
+    [usePeriodEl, amountEl, unitEl, document.getElementById("dispatchRateSave")].forEach(function (el) {
+      if (el) el.disabled = locked;
+    });
+    if (locked && hintEl) hintEl.textContent = "Rate is locked after a payment has been recorded.";
+    modal.show();
+  }
+
+  if (amountEl) {
+    amountEl.addEventListener("blur", function () {
+      var formatted = formatMoney(amountEl.value);
+      if (formatted) amountEl.value = formatted;
+    });
+  }
+
+  if (usePeriodEl) {
+    usePeriodEl.addEventListener("change", function () {
+      setManualEnabled(!usePeriodEl.checked);
+      if (usePeriodEl.checked) {
+        loadPeriodRate(form && form._rateTrigger);
+      }
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var trigger = e.target.closest(".js-dispatch-rate-modal");
+    if (!trigger) return;
+    e.preventDefault();
+    openRateModal(trigger);
+  });
+
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (unitEl) unitEl.disabled = false;
+      if (amountEl) amountEl.value = parseMoney(amountEl.value);
+      var body = new FormData(form);
+      fetch(form.action, {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            modal.hide();
+            window.location.reload();
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push((result.data && result.data.error) || "Could not save rate.");
+          showErrors(messages);
+        })
+        .catch(function () {
+          showErrors(["Could not save rate."]);
+        });
+    });
+  }
+})();
+</script>
+<script>
+(function () {
+  var csrfToken = (document.querySelector("#dispatchRateForm [name=csrfmiddlewaretoken]") || document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "{{ csrf_token }}";
+  var inFlight = Object.create(null);
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function unitLabel(unit) {
+    return unit === "kg" ? "kg" : "liter";
+  }
+
+  function getEditors() {
+    return Array.prototype.slice.call(document.querySelectorAll(".dispatch-rate-inline"));
+  }
+
+  function closeEditor(wrap, restore) {
+    if (!wrap) return;
+    var input = wrap.querySelector(".js-dispatch-rate-input");
+    var unit = wrap.querySelector(".js-dispatch-rate-unit");
+    if (restore && input) {
+      var original = wrap.getAttribute("data-rate") || "";
+      input.value = original === "0" || original === "0.00" ? "" : formatMoney(original);
+    }
+    if (restore && unit) {
+      unit.value = wrap.getAttribute("data-rate-unit") || "liter";
+    }
+    wrap.classList.remove("is-editing", "is-error");
+  }
+
+  function openEditor(wrap) {
+    getEditors().forEach(function (other) {
+      if (other !== wrap) closeEditor(other, true);
+    });
+    wrap.classList.add("is-editing");
+    wrap.classList.remove("is-error", "is-saved");
+    var input = wrap.querySelector(".js-dispatch-rate-input");
+    if (input) {
+      var current = wrap.getAttribute("data-rate") || input.value;
+      input.value = current === "0" || current === "0.00" ? "" : formatMoney(current);
+      input.focus();
+      if (typeof input.select === "function") input.select();
+    }
+  }
+
+  function setLabel(wrap, rateDisplay, unit, hasRate) {
+    var label = wrap.querySelector(".js-dispatch-rate-label");
+    var btn = wrap.querySelector(".dispatch-rate-display");
+    if (!label) return;
+    if (hasRate) {
+      label.innerHTML = '<span class="dispatch-rate-amount">' + rateDisplay + '</span><span class="dispatch-rate-unit">per ' + (unit === "kg" ? "kg" : "L") + "</span>";
+      if (btn) btn.classList.remove("is-empty");
+    } else {
+      label.innerHTML = '<span class="dispatch-rate-amount">Set rate</span>';
+      if (btn) btn.classList.add("is-empty");
+    }
+  }
+
+  function nextEditor(wrap) {
+    var editors = getEditors().filter(function (el) {
+      return el.offsetParent !== null;
+    });
+    var idx = editors.indexOf(wrap);
+    if (idx < 0) return null;
+    return editors[idx + 1] || null;
+  }
+
+  function saveEditor(wrap, options) {
+    options = options || {};
+    var url = wrap.getAttribute("data-rate-url");
+    if (!url || inFlight[url]) return Promise.resolve();
+    var input = wrap.querySelector(".js-dispatch-rate-input");
+    var unit = wrap.querySelector(".js-dispatch-rate-unit");
+    if (!input || !unit) return Promise.resolve();
+
+    var rate = String(input.value || "").replace(/,/g, "").trim();
+    var rateUnit = unit.value;
+    var originalRate = wrap.getAttribute("data-rate") || "0";
+    var originalUnit = wrap.getAttribute("data-rate-unit") || "liter";
+    if (!rate) {
+      closeEditor(wrap, true);
+      return Promise.resolve();
+    }
+    if (rate === originalRate && rateUnit === originalUnit) {
+      closeEditor(wrap, false);
+      if (options.moveNext) {
+        var nxtSame = nextEditor(wrap);
+        if (nxtSame) openEditor(nxtSame);
+      }
+      return Promise.resolve();
+    }
+
+    inFlight[url] = true;
+    wrap.classList.add("is-saving");
+    wrap.classList.remove("is-error");
+    var body = new FormData();
+    body.append("unit_rate", rate);
+    body.append("rate_unit", rateUnit);
+    body.append("csrfmiddlewaretoken", csrfToken);
+
+    return fetch(url, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return { ok: r.ok, data: d };
+        });
+      })
+      .then(function (res) {
+        wrap.classList.remove("is-saving");
+        delete inFlight[url];
+        if (!res.ok || !res.data || !res.data.ok) {
+          wrap.classList.add("is-error");
+          if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Could not save rate",
+              text: (res.data && (res.data.error || (res.data.errors && res.data.errors.__all__ && res.data.errors.__all__[0]))) || "Please try again.",
+              timer: 2200,
+              showConfirmButton: false,
+              toast: true,
+              position: "top-end",
+            });
+          }
+          return;
+        }
+        var data = res.data;
+        wrap.setAttribute("data-rate", data.unit_rate);
+        wrap.setAttribute("data-rate-unit", data.rate_unit);
+        input.value = formatMoney(data.unit_rate);
+        unit.value = data.rate_unit;
+        setLabel(wrap, data.rate_display || formatMoney(data.unit_rate), data.rate_unit, parseFloat(data.unit_rate) > 0);
+        var cell = wrap.closest("td");
+        if (cell) cell.setAttribute("data-order", data.unit_rate);
+        var row = wrap.closest("tr");
+        if (row && data.total_amount) {
+          var pay = row.querySelector(".dispatch-payment-amount");
+          if (pay) pay.textContent = formatMoney(data.total_amount);
+        }
+        wrap.classList.remove("is-editing");
+        wrap.classList.add("is-saved");
+        window.setTimeout(function () {
+          wrap.classList.remove("is-saved");
+        }, 900);
+        if (options.moveNext) {
+          var nxt = nextEditor(wrap);
+          if (nxt) openEditor(nxt);
+        }
+      })
+      .catch(function () {
+        wrap.classList.remove("is-saving");
+        delete inFlight[url];
+        wrap.classList.add("is-error");
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    if (ev.target.closest(".js-dispatch-rate-modal")) return;
+    var editBtn = ev.target.closest(".js-dispatch-rate-edit");
+    if (editBtn) {
+      ev.preventDefault();
+      openEditor(editBtn.closest(".dispatch-rate-inline"));
+      return;
+    }
+    var inside = ev.target.closest(".dispatch-rate-inline.is-editing");
+    if (!inside) {
+      getEditors().forEach(function (wrap) {
+        if (wrap.classList.contains("is-editing")) saveEditor(wrap);
+      });
+    }
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var wrap = ev.target.closest(".dispatch-rate-inline.is-editing");
+    if (!wrap) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor(wrap, { moveNext: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor(wrap, true);
+    }
+  });
+})();
+</script>

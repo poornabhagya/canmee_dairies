@@ -1,0 +1,853 @@
+{% extends "base.html" %}
+{% load format_extras widget_tweaks %}
+{% block title %}Asset register · Canmee Dairies{% endblock %}
+{% block page_heading %}Asset register{% endblock %}
+{% block topbar_actions %}
+{% if perms.assets.add_asset %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-add' %}" class="btn btn-primary js-asset-register" data-no-page-loader="1"><i class="bi bi-plus-lg me-1"></i>Register asset</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block content %}
+{% csrf_token %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Asset register summary">
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="all">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-journal-richtext" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Assets</span>
+        <span class="smart-stat-card__value">{{ stats.total }}</span>
+        <span class="smart-stat-card__hint">{{ stats.active }} active · {{ stats.main }} main · {{ stats.branch }} branch</span>
+      </span>
+    </button>
+    <div class="smart-stat-card asset-kpi--cost">
+      <span class="smart-stat-card__icon smart-stat-card__icon--blue"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Gross cost</span>
+        <span class="smart-stat-card__value">{{ stats.total_cost|money }}</span>
+        <span class="smart-stat-card__hint">Acquisition value</span>
+      </span>
+    </div>
+    <div class="smart-stat-card asset-kpi--book">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Book value</span>
+        <span class="smart-stat-card__value">{{ stats.total_value|money }}</span>
+        <span class="smart-stat-card__hint">Net carrying amount</span>
+      </span>
+    </div>
+    <div class="smart-stat-card asset-kpi--written{% if stats.written_down %} smart-stat-card--warn{% endif %}">
+      <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Written down</span>
+        <span class="smart-stat-card__value">{{ stats.written_down|money }}</span>
+        <span class="smart-stat-card__hint">Cost less book value</span>
+      </span>
+    </div>
+  </div>
+
+  {% if stats.total_cost %}
+  <div class="asset-nbv" aria-label="Net book value remaining">
+    <div class="asset-nbv__meta">
+      <span class="asset-nbv__label">NBV remaining</span>
+      <span class="asset-nbv__value">{{ stats.nbv_pct }}%</span>
+    </div>
+    <div class="asset-nbv__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ stats.nbv_pct }}">
+      <span class="asset-nbv__fill" style="width: {{ stats.nbv_pct }}%;"></span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div id="assetDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Asset filters">
+        <button type="button" class="smart-dt-chip{% if scope == 'all' or not scope %} is-active{% endif %}" data-smart-filter="all">
+          All<span class="smart-dt-chip-count">{{ stats.total }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip{% if scope == 'main' %} is-active{% endif %}" data-smart-filter="main">
+          Main<span class="smart-dt-chip-count">{{ stats.main }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip{% if scope == 'branch' %} is-active{% endif %}" data-smart-filter="branch">
+          Branch-wise<span class="smart-dt-chip-count">{{ stats.branch }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="active">
+          Active<span class="smart-dt-chip-count">{{ stats.active }}</span>
+        </button>
+        {% if stats.in_storage %}
+        <button type="button" class="smart-dt-chip" data-smart-filter="in_storage">
+          In storage<span class="smart-dt-chip-count">{{ stats.in_storage }}</span>
+        </button>
+        {% endif %}
+        {% if stats.under_maintenance %}
+        <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="under_maintenance">
+          Maintenance<span class="smart-dt-chip-count">{{ stats.under_maintenance }}</span>
+        </button>
+        {% endif %}
+        {% if stats.lost %}
+        <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="lost">
+          Lost<span class="smart-dt-chip-count">{{ stats.lost }}</span>
+        </button>
+        {% endif %}
+        {% if stats.disposed %}
+        <button type="button" class="smart-dt-chip" data-smart-filter="disposed">
+          Disposed<span class="smart-dt-chip-count">{{ stats.disposed }}</span>
+        </button>
+        {% endif %}
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Filter by type</span>
+          <select id="assetTypeFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by type" autocomplete="off">
+            <option value="all">All types</option>
+            {% for t in asset_types %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% if branches %}
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Filter by branch</span>
+          <select id="assetBranchFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by branch" autocomplete="off">
+            <option value="all">All branches</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}">{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+        {% if categories %}
+        <label class="smart-dt-branch-filter-wrap mb-0">
+          <span class="visually-hidden">Filter by category</span>
+          <select id="assetCategoryFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by category" autocomplete="off">
+            <option value="all">All categories</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" data-type-id="{{ c.asset_type_id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
+      </div>
+
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Fixed assets</span>
+            <h2 class="asset-statement__title">Asset register</h2>
+            <p class="asset-statement__meta">As at {% now "j M Y" %} · Cost, written down and net book value</p>
+          </div>
+          <div class="asset-statement__head-actions">
+            {% if perms.assets.change_asset %}
+            <button type="button" class="btn btn-outline-secondary btn-sm js-asset-transfer-selected" disabled>
+              <i class="bi bi-arrow-left-right me-1"></i>Transfer selected
+              <span class="js-asset-selected-count d-none">(0)</span>
+            </button>
+            {% endif %}
+            <span class="asset-statement__account">FAR-{% now "Y" %}</span>
+          </div>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart datatable-no-responsive asset-table smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No assets on the register yet."
+          data-filters-target="assetDtFilters"
+          data-branch-filter-target="assetBranchFilter"
+          data-route-filter-target="assetCategoryFilter"
+          data-point-filter-target="assetTypeFilter"
+          data-footer-sum-cols="6,7"
+          data-default-order-col="3"
+          data-print-mode="statement"
+          data-print-title="Fixed asset register"
+          data-pdf-url="{% url 'asset-register-pdf' %}"
+        >
+          <thead>
+            <tr>
+              <th class="all no-export asset-col-check">
+                <input type="checkbox" class="form-check-input js-asset-select-all" aria-label="Select all assets" autocomplete="off">
+              </th>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all asset-col-tag">Tag</th>
+              <th class="all asset-col-name">Particulars</th>
+              <th class="all asset-col-branch">Branch</th>
+              <th class="all asset-col-status">Status</th>
+              <th class="all text-end asset-col-amt">Cost</th>
+              <th class="all text-end asset-col-amt">Book value</th>
+              <th class="all no-export asset-col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asset in assets %}
+            <tr
+              class="smart-row--{% if asset.branch_id %}branch{% else %}main{% endif %} smart-row--{{ asset.status }}"
+              data-branch-id="{{ asset.branch_id|default:'' }}"
+              data-route-id="{{ asset.category_id }}"
+              data-point-id="{{ asset.asset_type_id }}"
+            >
+              <td class="all asset-col-check">
+                <input type="checkbox" class="form-check-input js-asset-row-check" value="{{ asset.pk }}" aria-label="Select {{ asset.asset_tag }}" autocomplete="off">
+              </td>
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all asset-col-tag" data-order="{{ asset.asset_tag }}">
+                <a href="{% url 'asset-detail' asset.pk %}" class="asset-tag-code" title="Open asset account">{{ asset.asset_tag }}</a>
+              </td>
+              <td class="all asset-col-name" title="{% if asset.serial_number %}{{ asset.name }} · S/N {{ asset.serial_number }}{% else %}{{ asset.name }} · {{ asset.get_condition_display }}{% endif %}">
+                <div class="smart-dt-name-row">
+                  <a href="{% url 'asset-detail' asset.pk %}" class="smart-dt-name-link">{{ asset.name }}</a>
+                </div>
+              </td>
+              <td class="all asset-col-branch">{{ asset.branch_label }}</td>
+              <td class="all asset-col-status" data-order="{{ asset.status }}" data-search="{{ asset.get_status_display }}">
+                {% if perms.assets.change_asset %}
+                <span class="visually-hidden js-asset-status-export">{{ asset.get_status_display }}</span>
+                <select
+                  class="form-select form-select-sm asset-status-select js-asset-status-select asset-status-select--{{ asset.status }} no-global-select2"
+                  data-status-url="{% url 'asset-quick-status' asset.pk %}"
+                  data-previous="{{ asset.status }}"
+                  aria-label="Status for {{ asset.asset_tag }}"
+                  autocomplete="off"
+                >
+                  {% for value, label in status_choices %}
+                  <option value="{{ value }}"{% if asset.status == value %} selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                {% else %}
+                {% include "assets/_asset_status_badge.html" %}
+                {% endif %}
+              </td>
+              <td class="all text-end dt-num asset-col-amt asset-amt-cost{% if not asset.purchase_cost %} is-zero{% endif %}" data-order="{{ asset.purchase_cost }}">{{ asset.purchase_cost|money }}</td>
+              <td class="all text-end dt-num asset-col-amt asset-amt-book{% if not asset.current_value %} is-zero{% endif %}" data-order="{{ asset.current_value }}">{{ asset.current_value|money }}</td>
+              <td class="all text-end asset-col-actions">
+                <span class="asset-row-actions">
+                  <button type="button" class="icon-action-btn js-asset-view" data-json-url="{% url 'asset-detail-json' asset.pk %}" title="View asset" aria-label="View {{ asset.name }}"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                  {% if perms.assets.change_asset %}
+                  <button type="button" class="icon-action-btn js-asset-edit" data-json-url="{% url 'asset-detail-json' asset.pk %}" data-edit-url="{% url 'asset-quick-edit' asset.pk %}" title="Edit asset" aria-label="Edit {{ asset.name }}"><i class="bi bi-pen-fill" aria-hidden="true"></i></button>
+                  {% endif %}
+                  {% if perms.assets.delete_asset %}
+                  <a
+                    class="icon-action-btn icon-action-danger js-swal-delete-post"
+                    href="{% url 'asset-delete' asset.pk %}"
+                    title="Delete asset"
+                    aria-label="Delete {{ asset.name }}"
+                    data-reset-list-filters="1"
+                    data-swal-title="Delete {{ asset.asset_tag }}?"
+                    data-swal-text="{{ asset.name }} will be removed from the register. This cannot be undone."
+                  ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+                  {% endif %}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th class="all no-export"></th>
+              <th class="min-tablet-l"></th>
+              <th class="all"></th>
+              <th class="all text-end">Totals</th>
+              <th class="all"></th>
+              <th class="all"></th>
+              <th class="all text-end dt-foot-total asset-col-amt"></th>
+              <th class="all text-end dt-foot-total asset-col-amt"></th>
+              <th class="all no-export"></th>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="asset-statement__disclaimer">This is a computer-generated fixed asset register and does not require a signature.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% include "assets/_asset_view_modal.html" %}
+{% if perms.assets.change_asset or perms.assets.add_asset %}
+{% if asset_modal_form %}
+{% include "assets/_asset_edit_modal.html" with form=asset_modal_form %}
+{% endif %}
+{% endif %}
+{% if perms.assets.change_asset %}
+<div class="modal fade smart-modal" id="assetBulkTransferModal" tabindex="-1" aria-labelledby="assetBulkTransferModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'asset-bulk-transfer' %}" id="assetBulkTransferForm">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-arrow-left-right"></i></span>
+            <div>
+              <h5 class="modal-title" id="assetBulkTransferModalLabel">Transfer selected assets</h5>
+              <p class="modal-subtitle js-asset-transfer-subtitle">Choose the destination branch and location.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="assetBulkTransferIds"></div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ transfer_form.to_branch.id_for_label }}">To branch</label>
+            {% render_field transfer_form.to_branch class="form-select" id="assetTransferBranch" %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ transfer_form.to_location.id_for_label }}">To location</label>
+            {% render_field transfer_form.to_location class="form-select" id="assetTransferLocation" %}
+            <p class="form-text mb-0">Leave blank to keep each asset’s current location.</p>
+          </div>
+          <div class="mb-0">
+            <label class="form-label" for="{{ transfer_form.note.id_for_label }}">Narration</label>
+            {% render_field transfer_form.note class="form-control" placeholder="Optional transfer note" %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Post transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% include "assets/_asset_print_register.html" %}
+{% endblock %}
+{% block extra_js %}
+{% include "assets/_asset_stat_filter_script.html" %}
+{% include "assets/_asset_money_input_script.html" %}
+{{ location_options|json_script:"asset-location-options" }}
+{{ category_type_rows|json_script:"asset-category-type-data" }}
+{{ asset_modal_defaults|json_script:"asset-modal-defaults" }}
+<script>
+(function () {
+  function clickChip(filter) {
+    var chip = document.querySelector('#assetDtFilters [data-smart-filter="' + filter + '"]');
+    if (chip) chip.click();
+  }
+  var params = new URLSearchParams(window.location.search);
+  var scope = (params.get("scope") || "").toLowerCase();
+  if (scope === "main" || scope === "branch") {
+    window.addEventListener("load", function () {
+      setTimeout(function () { clickChip(scope); }, 200);
+    });
+  }
+  var typeSel = document.getElementById("assetTypeFilter");
+  var catSel = document.getElementById("assetCategoryFilter");
+  function syncCategoryOptions() {
+    if (!typeSel || !catSel) return;
+    var typeId = typeSel.value || "all";
+    var current = catSel.value;
+    var keep = typeId === "all" && current === "all";
+    Array.prototype.forEach.call(catSel.options, function (opt) {
+      if (opt.value === "all") {
+        opt.hidden = false;
+        return;
+      }
+      var match = typeId === "all" || String(opt.getAttribute("data-type-id") || "") === String(typeId);
+      opt.hidden = !match;
+      if (match && opt.value === current) keep = true;
+    });
+    if (!keep && current !== "all") {
+      catSel.value = "all";
+      catSel.dispatchEvent(new Event("change"));
+    }
+  }
+  if (typeSel) typeSel.addEventListener("change", syncCategoryOptions);
+  window.addEventListener("load", function () { setTimeout(syncCategoryOptions, 250); });
+
+  var table = document.querySelector("table.asset-table");
+  var selectAll = document.querySelector(".js-asset-select-all");
+  var transferBtn = document.querySelector(".js-asset-transfer-selected");
+  var countEl = document.querySelector(".js-asset-selected-count");
+  var idsWrap = document.getElementById("assetBulkTransferIds");
+  var modalEl = document.getElementById("assetBulkTransferModal");
+  var branchSel = document.getElementById("assetTransferBranch");
+  var locSel = document.getElementById("assetTransferLocation");
+  var locDataEl = document.getElementById("asset-location-options");
+  var locations = [];
+  try { locations = locDataEl ? JSON.parse(locDataEl.textContent || "[]") : []; } catch (err) { locations = []; }
+
+  function rowChecks() {
+    return table ? Array.prototype.slice.call(table.querySelectorAll("tbody .js-asset-row-check")) : [];
+  }
+  function visibleChecks() {
+    return rowChecks().filter(function (el) {
+      var tr = el.closest("tr");
+      return tr && tr.offsetParent !== null && !tr.classList.contains("child");
+    });
+  }
+  function selectedChecks() {
+    return rowChecks().filter(function (el) { return el.checked; });
+  }
+  function syncSelection() {
+    var visible = visibleChecks();
+    var selectedVisible = visible.filter(function (el) { return el.checked; });
+    var selected = selectedChecks();
+    if (selectAll) {
+      selectAll.checked = visible.length > 0 && selectedVisible.length === visible.length;
+      selectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < visible.length;
+    }
+    if (transferBtn) transferBtn.disabled = selected.length === 0;
+    if (countEl) {
+      countEl.textContent = "(" + selected.length + ")";
+      countEl.classList.toggle("d-none", selected.length === 0);
+    }
+  }
+  function fillLocations() {
+    if (!locSel) return;
+    var branchId = branchSel ? String(branchSel.value || "") : "";
+    var current = locSel.value;
+    var html = ['<option value="">---------</option>'];
+    locations.forEach(function (loc) {
+      var locBranch = String(loc.branch_id || "");
+      if (branchId && locBranch && locBranch !== branchId) return;
+      if (!branchId && locBranch) return;
+      html.push(
+        '<option value="' + loc.id + '"' + (String(loc.id) === String(current) ? " selected" : "") + ">" +
+        (loc.code ? loc.code + " — " : "") + loc.name + "</option>"
+      );
+    });
+    locSel.innerHTML = html.join("");
+    if (window.jQuery && jQuery.fn.select2 && jQuery(locSel).hasClass("select2-hidden-accessible")) {
+      jQuery(locSel).trigger("change.select2");
+    }
+  }
+
+  if (table) {
+    table.addEventListener("click", function (e) {
+      if (e.target.closest(".asset-col-check, .asset-col-actions")) e.stopPropagation();
+    });
+    table.addEventListener("change", function (e) {
+      if (!e.target.classList.contains("js-asset-row-check")) return;
+      syncSelection();
+    });
+  }
+  if (selectAll) {
+    selectAll.addEventListener("click", function (e) { e.stopPropagation(); });
+    selectAll.addEventListener("change", function () {
+      var on = selectAll.checked;
+      visibleChecks().forEach(function (el) { el.checked = on; });
+      syncSelection();
+    });
+  }
+  if (transferBtn && modalEl && typeof bootstrap !== "undefined") {
+    transferBtn.addEventListener("click", function () {
+      var selected = selectedChecks();
+      if (!selected.length) return;
+      if (idsWrap) {
+        idsWrap.innerHTML = selected.map(function (el) {
+          return '<input type="hidden" name="asset_ids" value="' + el.value + '">';
+        }).join("");
+      }
+      var sub = document.querySelector(".js-asset-transfer-subtitle");
+      if (sub) sub.textContent = "Move " + selected.length + " selected asset" + (selected.length === 1 ? "" : "s") + " to a branch and location.";
+      fillLocations();
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
+  }
+  if (branchSel) branchSel.addEventListener("change", fillLocations);
+  if (window.jQuery && table) {
+    jQuery(table).on("draw.dt", function () { syncSelection(); });
+  }
+  window.addEventListener("load", function () { setTimeout(syncSelection, 300); });
+})();
+</script>
+<script>
+(function () {
+  function csrfToken() {
+    var input = document.querySelector("#assetQuickEditForm [name=csrfmiddlewaretoken]") || document.querySelector("[name=csrfmiddlewaretoken]");
+    return input ? input.value : "";
+  }
+  function dash(value) {
+    if (value == null) return "—";
+    var text = String(value).trim();
+    return text ? text : "—";
+  }
+  function formatMoney(value) {
+    var n = Number(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fetchAsset(url) {
+    return fetch(url, {
+      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        if (!r.ok || !data || !data.asset) throw new Error((data && data.error) || "Could not load asset.");
+        return data.asset;
+      });
+    });
+  }
+  var statusClasses = ["active", "in_storage", "under_maintenance", "disposed", "lost", "transferred"];
+  function applyStatusSelectStyle(select, status) {
+    statusClasses.forEach(function (cls) {
+      select.classList.remove("asset-status-select--" + cls);
+    });
+    select.classList.add("asset-status-select--" + status);
+  }
+  function applyStatusRowStyle(row, status) {
+    if (!row) return;
+    Array.prototype.slice.call(row.classList).forEach(function (cls) {
+      if (cls.indexOf("smart-row--") === 0 && cls !== "smart-row--main" && cls !== "smart-row--branch") {
+        row.classList.remove(cls);
+      }
+    });
+    row.classList.add("smart-row--" + status);
+  }
+  document.addEventListener("change", function (e) {
+    var select = e.target.closest(".js-asset-status-select");
+    if (!select) return;
+    var url = select.getAttribute("data-status-url");
+    var next = select.value;
+    var previous = select.getAttribute("data-previous") || "";
+    if (!url || next === previous) return;
+    select.disabled = true;
+    var body = new FormData();
+    body.append("status", next);
+    fetch(url, {
+      method: "POST",
+      body: body,
+      headers: {
+        "X-CSRFToken": csrfToken(),
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        return { ok: r.ok && data && data.ok, data: data };
+      });
+    }).then(function (result) {
+      select.disabled = false;
+      if (!result.ok) {
+        select.value = previous;
+        applyStatusSelectStyle(select, previous);
+        showError((result.data && result.data.error) || "Could not update status.");
+        return;
+      }
+      var status = (result.data && result.data.status) || next;
+      var label = (result.data && result.data.label) || (select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : status);
+      select.setAttribute("data-previous", status);
+      applyStatusSelectStyle(select, status);
+      var td = select.closest("td");
+      var row = select.closest("tr");
+      if (td) {
+        td.setAttribute("data-order", status);
+        td.setAttribute("data-search", label);
+        var exportEl = td.querySelector(".js-asset-status-export");
+        if (exportEl) exportEl.textContent = label;
+      }
+      applyStatusRowStyle(row, status);
+      var listTable = document.querySelector("table.asset-table");
+      if (window.jQuery && listTable && row) {
+        var dt = jQuery(listTable).DataTable();
+        if (dt) {
+          dt.row(row).invalidate("dom");
+          dt.draw(false);
+        }
+      }
+    }).catch(function () {
+      select.disabled = false;
+      select.value = previous;
+      applyStatusSelectStyle(select, previous);
+      showError("Could not update status.");
+    });
+  });
+
+  function showError(message) {
+    if (typeof Swal === "undefined") return;
+    Swal.fire({
+      icon: "error",
+      title: "Could not open",
+      text: message || "Could not load this asset.",
+      confirmButtonText: "OK",
+      buttonsStyling: false,
+      customClass: { popup: "app-swal-popup", confirmButton: "btn btn-primary" },
+    });
+  }
+
+  var viewModal = document.getElementById("assetViewModal");
+  var viewLink = document.getElementById("assetViewAccountLink");
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-asset-view");
+    if (!btn || !viewModal || typeof bootstrap === "undefined") return;
+    e.preventDefault();
+    e.stopPropagation();
+    var url = btn.getAttribute("data-json-url");
+    if (!url) return;
+    fetchAsset(url).then(function (asset) {
+      document.getElementById("assetViewModalLabel").textContent = asset.name || "Asset details";
+      var tagEl = document.getElementById("assetViewTag");
+      if (tagEl) tagEl.textContent = asset.asset_tag || "—";
+      var badge = document.getElementById("assetViewStatusBadge");
+      if (badge) {
+        var status = asset.status || "";
+        var tone = "secondary";
+        if (status === "active") tone = "success";
+        else if (status === "under_maintenance") tone = "primary";
+        else if (status === "lost" || status === "disposed") tone = "dark";
+        badge.className = "smart-badge smart-badge--" + tone;
+        badge.textContent = asset.status_label || "—";
+      }
+      document.querySelectorAll("#assetViewModal [data-asset-view]").forEach(function (el) {
+        var key = el.getAttribute("data-asset-view");
+        var val = asset[key];
+        if (key === "useful_life_months" && val) val = val + " mo";
+        var text = dash(val);
+        el.textContent = text;
+        var hideEmpty = el.closest(".asset-view-fact, .asset-view-chip");
+        if (hideEmpty) hideEmpty.classList.toggle("is-empty", !val || text === "—");
+      });
+      document.querySelectorAll("#assetViewModal .asset-view-section").forEach(function (section) {
+        var facts = section.querySelectorAll(".asset-view-fact");
+        var visible = Array.prototype.filter.call(facts, function (fact) {
+          return !fact.classList.contains("is-empty");
+        });
+        section.classList.toggle("d-none", facts.length > 0 && visible.length === 0);
+      });
+      if (viewLink) viewLink.href = asset.account_url || "#";
+      bootstrap.Modal.getOrCreateInstance(viewModal).show();
+    }).catch(function (err) {
+      showError(err && err.message);
+    });
+  }, true);
+
+  var editForm = document.getElementById("assetQuickEditForm");
+  var editModal = document.getElementById("assetEditModal");
+  if (!editForm || !editModal) return;
+  var typeSel = document.getElementById("assetEditType");
+  var catSel = document.getElementById("assetEditCategory");
+  var branchSel = document.getElementById("assetEditBranch");
+  var locSel = document.getElementById("assetEditLocation");
+  var formError = document.getElementById("assetEditFormError");
+  var catDataEl = document.getElementById("asset-category-type-data");
+  var locDataEl = document.getElementById("asset-location-options");
+  var categories = [];
+  var locations = [];
+  try { categories = catDataEl ? JSON.parse(catDataEl.textContent || "[]") : []; } catch (err) { categories = []; }
+  try { locations = locDataEl ? JSON.parse(locDataEl.textContent || "[]") : []; } catch (err) { locations = []; }
+  var defaultsEl = document.getElementById("asset-modal-defaults");
+  var defaults = {};
+  try { defaults = defaultsEl ? JSON.parse(defaultsEl.textContent || "{}") : {}; } catch (err) { defaults = {}; }
+  var titleEl = document.getElementById("assetEditModalLabel");
+  var subtitleEl = document.getElementById("assetEditSubtitle");
+  var iconEl = document.getElementById("assetEditHeaderIcon");
+  var submitLabel = document.getElementById("assetEditSubmitLabel");
+
+  function setModalChrome(mode) {
+    var isNew = mode === "add";
+    if (titleEl) titleEl.textContent = isNew ? "Register asset" : "Edit asset";
+    if (subtitleEl) {
+      subtitleEl.textContent = isNew
+        ? "Post a new asset to the register."
+        : "Update register particulars and custody.";
+    }
+    if (iconEl) {
+      iconEl.innerHTML = isNew ? '<i class="bi bi-plus-lg"></i>' : '<i class="bi bi-pen-fill"></i>';
+    }
+    if (submitLabel) submitLabel.textContent = isNew ? "Post to register" : "Post changes";
+  }
+
+  function setSelect(el, value) {
+    if (!el) return;
+    el.value = value == null ? "" : String(value);
+    if (window.jQuery && jQuery(el).hasClass("select2-hidden-accessible")) {
+      jQuery(el).val(el.value).trigger("change");
+    }
+  }
+  function setInput(name, value) {
+    var el = editForm.querySelector('[name="' + name + '"]');
+    if (!el) return;
+    el.value = value == null ? "" : String(value);
+    if (el.classList.contains("js-datepicker") && el._flatpickr) {
+      if (value) el._flatpickr.setDate(value, true);
+      else el._flatpickr.clear();
+    }
+    if (el.classList.contains("js-money-input") && String(el.value || "").trim()) {
+      el.value = formatMoney(el.value);
+    }
+  }
+  function fillCategories(typeId, selected) {
+    if (!catSel) return;
+    var html = ['<option value="">---------</option>'];
+    categories.forEach(function (row) {
+      if (typeId && String(row.type_id) !== String(typeId)) return;
+      html.push('<option value="' + row.id + '"' + (String(row.id) === String(selected || "") ? " selected" : "") + ">" + row.name + "</option>");
+    });
+    catSel.innerHTML = html.join("");
+    setSelect(catSel, selected || "");
+  }
+  function fillLocations(branchId, selected) {
+    if (!locSel) return;
+    var html = ['<option value="">---------</option>'];
+    var branch = String(branchId || "");
+    locations.forEach(function (loc) {
+      var locBranch = String(loc.branch_id || "");
+      if (branch && locBranch && locBranch !== branch) return;
+      if (!branch && locBranch) return;
+      html.push('<option value="' + loc.id + '">' + (loc.code ? loc.code + " — " : "") + loc.name + "</option>");
+    });
+    locSel.innerHTML = html.join("");
+    if (selected && !locSel.querySelector('option[value="' + selected + '"]')) {
+      locSel.insertAdjacentHTML("beforeend", '<option value="' + selected + '">Current location</option>');
+    }
+    setSelect(locSel, selected || "");
+  }
+  function clearEditErrors() {
+    editForm.querySelectorAll("[data-modal-error-for]").forEach(function (el) {
+      el.textContent = "";
+      var field = editForm.querySelector('[name="' + el.getAttribute("data-modal-error-for") + '"]');
+      if (field) field.classList.remove("is-invalid");
+    });
+    if (formError) {
+      formError.textContent = "";
+      formError.classList.add("d-none");
+    }
+  }
+  function showEditErrors(errors) {
+    clearEditErrors();
+    if (!errors) return;
+    Object.keys(errors).forEach(function (name) {
+      var msg = (errors[name] || []).join(" ");
+      if (name === "__all__") {
+        if (formError) {
+          formError.textContent = msg;
+          formError.classList.remove("d-none");
+        }
+        return;
+      }
+      var box = editForm.querySelector('[data-modal-error-for="' + name + '"]');
+      var field = editForm.querySelector('[name="' + name + '"]');
+      if (box) box.textContent = msg;
+      if (field) field.classList.add("is-invalid");
+    });
+  }
+
+  var filling = false;
+  if (typeSel) {
+    typeSel.addEventListener("change", function () {
+      if (filling) return;
+      fillCategories(typeSel.value, "");
+    });
+  }
+  if (branchSel) {
+    branchSel.addEventListener("change", function () {
+      if (filling) return;
+      fillLocations(branchSel.value, "");
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-asset-register");
+    if (!btn) return;
+    if (!editForm || !editModal || typeof bootstrap === "undefined") return;
+    e.preventDefault();
+    filling = true;
+    clearEditErrors();
+    setModalChrome("add");
+    editForm.action = defaults.quick_add_url || btn.getAttribute("href") || "";
+    setInput("asset_tag", defaults.asset_tag || "");
+    setInput("name", "");
+    setInput("description", "");
+    setInput("serial_number", "");
+    setInput("manufacturer", "");
+    setInput("model_number", "");
+    setSelect(typeSel, defaults.asset_type_id || "");
+    fillCategories(defaults.asset_type_id || "", "");
+    setSelect(branchSel, "");
+    fillLocations("", "");
+    setSelect(editForm.querySelector('[name="status"]'), defaults.status || "active");
+    setSelect(editForm.querySelector('[name="condition"]'), defaults.condition || "good");
+    setSelect(editForm.querySelector('[name="custodian"]'), "");
+    setInput("purchase_date", "");
+    setInput("warranty_expiry", "");
+    setInput("supplier_name", "");
+    setInput("purchase_cost", "0.00");
+    setInput("current_value", "0.00");
+    setInput("salvage_value", "0.00");
+    setSelect(editForm.querySelector('[name="depreciation_policy"]'), "");
+    setInput("useful_life_months", "");
+    setInput("notes", "");
+    filling = false;
+    bootstrap.Modal.getOrCreateInstance(editModal).show();
+  });
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-asset-edit");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var jsonUrl = btn.getAttribute("data-json-url");
+    var editUrl = btn.getAttribute("data-edit-url");
+    if (!jsonUrl || !editUrl) return;
+    fetchAsset(jsonUrl).then(function (asset) {
+      filling = true;
+      clearEditErrors();
+      setModalChrome("edit");
+      editForm.action = editUrl;
+      document.getElementById("assetEditSubtitle").textContent = (asset.asset_tag || "") + " · " + (asset.name || "");
+      setInput("asset_tag", asset.asset_tag);
+      setInput("name", asset.name);
+      setInput("description", asset.description);
+      setInput("serial_number", asset.serial_number);
+      setInput("manufacturer", asset.manufacturer);
+      setInput("model_number", asset.model_number);
+      setSelect(typeSel, asset.asset_type_id);
+      fillCategories(asset.asset_type_id, asset.category_id);
+      setSelect(branchSel, asset.branch_id);
+      fillLocations(asset.branch_id, asset.location_id);
+      setSelect(editForm.querySelector('[name="status"]'), asset.status);
+      setSelect(editForm.querySelector('[name="condition"]'), asset.condition);
+      setSelect(editForm.querySelector('[name="custodian"]'), asset.custodian_id);
+      setInput("purchase_date", asset.purchase_date);
+      setInput("warranty_expiry", asset.warranty_expiry);
+      setInput("supplier_name", asset.supplier_name);
+      setInput("purchase_cost", asset.purchase_cost);
+      setInput("current_value", asset.current_value);
+      setInput("salvage_value", asset.salvage_value);
+      setSelect(editForm.querySelector('[name="depreciation_policy"]'), asset.depreciation_policy_id);
+      setInput("useful_life_months", asset.useful_life_months);
+      setInput("notes", asset.notes);
+      filling = false;
+      bootstrap.Modal.getOrCreateInstance(editModal).show();
+    }).catch(function (err) {
+      filling = false;
+      showError(err && err.message);
+    });
+  }, true);
+
+  editForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    clearEditErrors();
+    editForm.querySelectorAll(".js-money-input").forEach(function (el) {
+      el.value = String(el.value || "").replace(/,/g, "");
+    });
+    var submitBtn = document.getElementById("assetEditSubmit");
+    if (submitBtn) submitBtn.disabled = true;
+    fetch(editForm.action, {
+      method: "POST",
+      body: new FormData(editForm),
+      headers: {
+        "X-CSRFToken": csrfToken(),
+        "X-Requested-With": "XMLHttpRequest",
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        return { ok: r.ok && data && data.ok, data: data };
+      });
+    }).then(function (result) {
+      if (submitBtn) submitBtn.disabled = false;
+      if (result.ok) {
+        window.location.reload();
+        return;
+      }
+      showEditErrors(result.data && result.data.errors);
+    }).catch(function () {
+      if (submitBtn) submitBtn.disabled = false;
+      showError("Could not save this asset.");
+    });
+  });
+})();
+</script>
+{% endblock %}

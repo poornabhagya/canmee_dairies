@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+{% load format_extras %}
+<html lang="si">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Point goods summary · {{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+  {% include "collections/_receipt_common_styles.html" %}
+  <style>
+    body.point-goods-slip-body {
+      background: #f8fafc;
+    }
+    body.point-goods-slip-body .receipt-shell {
+      max-width: 100mm;
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .point-goods-slip-report {
+      width: 100mm;
+      max-width: 100mm;
+      min-width: 100mm;
+      margin: 0 auto 1rem;
+      padding: 2.5mm 2.5mm 3mm;
+      border: 1px solid #334155;
+      background: #fff;
+      box-sizing: border-box;
+    }
+    .point-goods-slip-report__title {
+      margin: 0 0 0.35rem;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      color: #0f172a;
+    }
+    .point-goods-slip-report__period {
+      margin-bottom: 0.75rem;
+      font-size: 12px;
+      text-align: center;
+    }
+    .point-goods-point-block {
+      padding-top: 0.65rem;
+      margin-top: 0.65rem;
+      border-top: 1px dashed #94a3b8;
+    }
+    .point-goods-point-block:first-of-type {
+      padding-top: 0;
+      margin-top: 0;
+      border-top: none;
+    }
+    .point-goods-point-block .center-name-row {
+      margin-bottom: 0.5rem;
+    }
+    .point-goods-slip-report .receipt-grid th,
+    .point-goods-slip-report .receipt-grid td {
+      font-size: 11px;
+      padding: 0.35rem 0.25rem;
+      word-break: break-word;
+    }
+    .point-goods-slip-report .receipt-grid tfoot td,
+    .point-goods-slip-report .receipt-grid tfoot th {
+      font-weight: 700;
+      background: #f8fafc;
+    }
+    .point-goods-report-grand {
+      margin-top: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 2px solid #334155;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .point-goods-slip-empty {
+      text-align: center;
+      color: #64748b;
+      font-size: 12px;
+      padding: 1rem;
+    }
+    .top-dashboard-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.55rem;
+    }
+    .top-dashboard-bar .btn-image-action {
+      font: inherit;
+      font-size: 13px;
+      padding: 0.45rem 0.8rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      color: #0f172a;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .top-dashboard-bar .btn-image-action:hover:not(:disabled) {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    .top-dashboard-bar .btn-image-action:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+    .dashboard-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 0;
+      border-radius: 10px;
+      padding: 0.45rem 0.8rem;
+      background: linear-gradient(135deg, #0f766e, #0d9488);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      box-shadow: 0 6px 14px rgba(13, 148, 136, 0.28);
+    }
+    .mobile-action-bar {
+      display: none;
+    }
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 10mm 14mm;
+      }
+      body.point-goods-slip-body {
+        background: #fff;
+        padding: 0;
+      }
+      body.point-goods-slip-body .receipt-shell {
+        max-width: 100mm !important;
+        width: 100mm !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+      .point-goods-slip-report {
+        width: 100mm !important;
+        max-width: 100mm !important;
+        min-width: 100mm !important;
+        margin: 0 auto !important;
+        border: 1px solid #334155;
+      }
+      .point-goods-slip-report__head {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+      .point-goods-point-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .point-goods-point-block--long {
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+      .point-goods-point-block--long .receipt-grid tbody tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .point-goods-point-block .center-name-row {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+      .point-goods-point-block .receipt-grid thead {
+        display: table-header-group;
+      }
+      .point-goods-report-grand {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+    @media (max-width: 768px) {
+      body.point-goods-slip-body {
+        padding: 1.15rem 0.85rem 5.75rem;
+        padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+      }
+      body.point-goods-slip-body .receipt-shell {
+        max-width: 100%;
+        padding-top: 0.25rem;
+        padding-bottom: 0.5rem;
+      }
+      .point-goods-slip-report {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 0.85rem 0.75rem 1rem;
+      }
+      .actions.no-print .btn {
+        flex: 1 1 100%;
+        justify-content: center;
+      }
+      .top-dashboard-bar {
+        display: none;
+      }
+      .mobile-action-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        position: fixed;
+        left: 0.6rem;
+        right: 0.6rem;
+        bottom: 0.6rem;
+        z-index: 30;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 0.55rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+      }
+      .mobile-action-bar .m-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 0.62rem 0.72rem;
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+      }
+      .mobile-action-bar .m-btn--back {
+        background: linear-gradient(135deg, #0f766e, #0d9488);
+        color: #fff;
+      }
+      .mobile-action-bar .m-btn--print {
+        background: #f1f5f9;
+        color: #0f172a;
+      }
+    }
+  </style>
+</head>
+<body class="receipt-body point-goods-slip-body">
+  <div class="receipt-shell">
+    <div class="no-print top-dashboard-bar">
+      <button
+        type="button"
+        class="btn-image-action"
+        onclick="copyElementAsImage(document.querySelector('.point-goods-slip-report'), this)"
+        data-copying-label="පිටපත් කරමින්…"
+        data-copied-label="පිටපත් විය!"
+        data-downloaded-label="බාගත විය"
+        data-failed-label="පිටපත් කිරීම අසාර්ථකයි"
+      >පිංතූරය ලෙස පිටපත් කරන්න</button>
+      <button
+        type="button"
+        class="btn-image-action"
+        onclick="downloadElementAsImage(document.querySelector('.point-goods-slip-report'), this)"
+        data-downloading-label="බාගත කරමින්…"
+        data-downloaded-label="බාගත විය"
+        data-failed-label="බාගත කිරීම අසාර්ථකයි"
+      >පිංතූරය ලෙස බාගත කරන්න</button>
+      <a class="dashboard-btn" href="{{ back_url }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+    </div>
+    <p class="no-print section-label" style="text-align:center;margin-bottom:1rem;font-weight:400;color:#64748b;">
+      රිසිට්පත පළල 100&nbsp;mm — එක් වාර්තාවක්, එක් තීරුවක්, පිටු මැදට (A4 උඩු අතට). මුද්‍රණය කරන්න.
+    </p>
+
+    {% if branch_sections %}
+    <article class="point-goods-slip-report" data-copy-filename="point-goods-{{ route.code }}-{{ start|date:'Y-m-d' }}_{{ end|date:'Y-m-d' }}">
+      <div class="point-goods-slip-report__head">
+        <header class="company">
+          <h1 class="receipt-text-14">කැන්මී ඩේරීස් පුද්ගලික සමාගම</h1>
+          <p class="phone receipt-text-12">දු. අංකය : 071 5435019</p>
+        </header>
+        <p class="point-goods-slip-report__title">මධ්‍යස්ථාන භාණ්ඩ නිකුතු සාරාංශය</p>
+        <p class="point-goods-slip-report__period receipt-text-12">
+          <strong>කාලය :</strong> {{ start|date:"Y-m-d" }} – {{ end|date:"Y-m-d" }}
+        </p>
+      </div>
+
+      {% for section in branch_sections %}
+        {% for point_section in section.point_sections %}
+        <section class="point-goods-point-block js-point-goods-slip">
+          <div class="center-name-row">
+            <span class="receipt-text-12"><strong>මධ්‍යස්ථානය :</strong></span>
+            <span class="receipt-text-14">
+              {% if point_section.point %}{{ point_section.point.name }}{% else %}{{ point_section.point_label }}{% endif %}
+            </span>
+          </div>
+          {% if point_section.product_rows %}
+          <table class="receipt-grid">
+            <thead>
+              <tr>
+                <th class="receipt-text-12">භාණ්ඩය</th>
+                <th class="receipt-text-12">ප්‍රමාණය</th>
+                <th class="receipt-text-12">මිල</th>
+                <th class="receipt-text-12">එකතුව</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in point_section.product_rows %}
+              <tr>
+                <td class="receipt-text-12">{{ row.product_name }}</td>
+                <td class="num receipt-text-12">{{ row.quantity|money }}</td>
+                <td class="num receipt-text-12">{{ row.unit_price|money }}</td>
+                <td class="num receipt-text-12">{{ row.amount|money }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th class="receipt-text-12" colspan="2">එකතුව</th>
+                <td class="num receipt-text-12" colspan="2">{{ point_section.totals.amount|money }}</td>
+              </tr>
+            </tfoot>
+          </table>
+          {% else %}
+          <p class="point-goods-slip-empty">මෙම කාලය සඳහා භාණ්ඩ නැත.</p>
+          {% endif %}
+        </section>
+        {% endfor %}
+      {% endfor %}
+
+      {% if grand_totals.line_count %}
+      <div class="point-goods-report-grand">
+        <span>සම්පූර්ණ එකතුව</span>
+        <span>{{ grand_totals.amount|money }}</span>
+      </div>
+      {% endif %}
+    </article>
+    {% else %}
+      <p class="point-goods-slip-empty">දත්ත නැත.</p>
+    {% endif %}
+
+    <p class="footer-note no-print">මුද්‍රණය: {{ generated_at|date:"Y-m-d H:i" }}</p>
+    <div class="actions no-print">
+      <button type="button" class="btn btn-print" onclick="prepareSlipPrint(); window.print();">මුද්‍රණය</button>
+      <button
+        type="button"
+        class="btn btn-print"
+        onclick="copyElementAsImage(document.querySelector('.point-goods-slip-report'), this)"
+        data-copying-label="පිටපත් කරමින්…"
+        data-copied-label="පිටපත් විය!"
+        data-downloaded-label="බාගත විය"
+        data-failed-label="පිටපත් කිරීම අසාර්ථකයි"
+      >පිංතූරය ලෙස පිටපත් කරන්න</button>
+      <button
+        type="button"
+        class="btn btn-print"
+        onclick="downloadElementAsImage(document.querySelector('.point-goods-slip-report'), this)"
+        data-downloading-label="බාගත කරමින්…"
+        data-downloaded-label="බාගත විය"
+        data-failed-label="බාගත කිරීම අසාර්ථකයි"
+      >පිංතූරය ලෙස බාගත කරන්න</button>
+      <a class="btn btn-back" href="{{ back_url }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+    </div>
+  </div>
+  <div class="no-print mobile-action-bar">
+    <a class="m-btn m-btn--back" href="{{ back_url }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+    <button type="button" class="m-btn m-btn--print" onclick="prepareSlipPrint(); window.print();"><i class="bi bi-printer"></i> Print</button>
+  </div>
+  {% include "collections/_receipt_copy_image.html" %}
+  <script>
+    function prepareSlipPrint() {
+      document.querySelectorAll(".js-point-goods-slip").forEach(function (el) {
+        el.classList.remove("point-goods-point-block--long");
+        var rows = el.querySelectorAll(".receipt-grid tbody tr").length;
+        if (rows > 8) {
+          el.classList.add("point-goods-point-block--long");
+        }
+      });
+    }
+  </script>
+</body>
+</html>

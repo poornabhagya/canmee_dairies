@@ -1,0 +1,17 @@
+{% if branches|length > 1 %}
+<label class="smart-dt-branch-filter-wrap mb-0">
+  <span class="visually-hidden">Branch</span>
+  <select
+    name="branch"
+    id="milk-list-branch"
+    class="form-select form-select-sm smart-dt-branch-filter no-global-select2"
+    aria-label="Branch"
+    {% if filter_form_id %}form="{{ filter_form_id }}"{% endif %}
+  >
+    <option value="">All branches</option>
+    {% for b in branches %}
+    <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+    {% endfor %}
+  </select>
+</label>
+{% endif %}

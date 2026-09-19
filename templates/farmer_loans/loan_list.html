@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}Farmer Loans · Canmee Dairies{% endblock %}
+{% block page_heading %}Farmer Loans{% endblock %}
+{% block extra_css %}
+<style>
+  .loan-list-card {
+    margin-top: 0.75rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .loan-list-card .card-header {
+    padding: 0.9rem 1rem 0;
+  }
+  .loan-list-card .card-body.table-wrap {
+    padding: 0.85rem 1rem 1rem;
+    overflow-x: hidden;
+  }
+  .loan-list-card .table-wrap,
+  .loan-list-card .dataTables_wrapper,
+  .loan-list-card div.dt-container,
+  .loan-list-card div.dt-scroll,
+  .loan-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .loan-list-card .loan-table {
+    width: 100% !important;
+  }
+  .loan-list-card .loan-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    word-break: normal;
+  }
+  .loan-list-card .loan-table tbody td,
+  .loan-list-card .loan-table tfoot th {
+    white-space: normal;
+    word-break: normal;
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.4rem;
+    vertical-align: middle;
+  }
+  .loan-list-card .loan-table tbody td.loan-amount,
+  .loan-list-card .loan-table tfoot th.loan-amount,
+  .loan-list-card .loan-table tbody td.loan-actions-cell {
+    white-space: nowrap;
+  }
+  .loan-list-card .loan-table tfoot th {
+    border-top: 2px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .loan-actions-cell {
+    min-width: 0;
+  }
+  .loan-actions-trigger {
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .loan-actions-menu {
+    min-width: 180px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+    padding: 0.35rem;
+  }
+  .loan-actions-menu .dropdown-item {
+    border-radius: 8px;
+    font-size: 0.86rem;
+    padding: 0.45rem 0.6rem;
+  }
+  .loan-actions-menu .dropdown-item.text-danger:hover,
+  .loan-actions-menu .dropdown-item.text-danger:focus {
+    background: #fef2f2;
+    color: #b91c1c !important;
+  }
+  .loan-list-card .loan-actions {
+    white-space: nowrap;
+    line-height: 1.35;
+  }
+  .loan-filter-form .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+  }
+  .loan-filter-form .form-select {
+    font-size: 0.875rem;
+    height: 38px;
+    min-height: 38px;
+  }
+  @media (min-width: 992px) {
+    .loan-filter-form {
+      flex-wrap: nowrap;
+    }
+  }
+  .loan-filter-form .form-select.loan-branch-select[multiple] {
+    height: 38px !important;
+    min-height: 38px !important;
+    overflow-y: auto;
+  }
+  .loan-filter-form .loan-branch-select + .select2 .select2-selection--multiple {
+    min-height: 38px !important;
+    height: 38px !important;
+    border-color: var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    overflow: hidden;
+  }
+  .loan-filter-form .loan-branch-select + .select2 .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+  }
+  .loan-filter-form .loan-branch-select + .select2 .select2-selection--multiple .select2-selection__choice {
+    margin: 0 !important;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+  }
+  .loan-filter-form .loan-branch-select + .select2 .select2-search--inline .select2-search__field {
+    margin-top: 0 !important;
+    height: 24px;
+  }
+  .loan-filter-form .filter-actions .btn {
+    height: 38px;
+    min-height: 38px;
+    width: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .loan-status-tabs .nav-link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    color: #64748b;
+  }
+  .loan-status-tabs .nav-link .badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    margin-left: 0.25rem;
+  }
+  .loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control,
+  .loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+    padding-left: 0.5rem;
+    cursor: pointer;
+  }
+  .loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  .loan-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    line-height: 1.2;
+    color: var(--color-primary, #059669);
+  }
+  .loan-list-card table.dataTable > tbody > tr.child td {
+    padding: 0.65rem 1rem 0.75rem 2.25rem;
+    background: rgba(5, 150, 105, 0.04);
+    border-top: none;
+  }
+  .loan-list-card table.dataTable > tbody > tr.child ul.dtr-details {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+  }
+  .loan-list-card table.dataTable > tbody > tr.child ul.dtr-details > li {
+    border: none;
+    padding: 0.1rem 0;
+  }
+  .loan-list-card table.dataTable > tbody > tr.child span.dtr-title {
+    font-weight: 600;
+    display: inline-block;
+    min-width: 5.5rem;
+    color: var(--color-text-muted, #64748b);
+  }
+  .loan-list-card div.dt-container .dt-layout-row {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  @media (max-width: 767.98px) {
+    .loan-list-card .card-body.table-wrap {
+      padding: 0.75rem;
+    }
+    .loan-list-card .loan-table {
+      table-layout: fixed;
+    }
+    .loan-list-card .loan-table thead th,
+    .loan-list-card .loan-table tbody td {
+      font-size: 0.78rem;
+      padding: 0.4rem 0.3rem;
+    }
+    .loan-actions-trigger .loan-actions-label,
+    .loan-actions-trigger .dropdown-toggle::after {
+      display: none;
+    }
+    .loan-actions-trigger .bi-three-dots-vertical {
+      margin-right: 0 !important;
+    }
+    .loan-actions-trigger {
+      padding: 0.3rem 0.45rem;
+      font-size: 0.74rem;
+    }
+    .loan-list-card .card-header {
+      padding: 0.75rem 0.75rem 0;
+    }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+{% if perms.farmer_loans.add_farmerloan %}
+<a href="{% url 'farmer-loan-add' %}" class="btn btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Create new loan
+</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card card-table loan-list-card">
+  <div class="card-header bg-transparent border-bottom-0 pb-0">
+    <form method="get" class="row g-2 g-md-3 mb-3 align-items-end loan-filter-form">
+      {% if selected_status %}
+      <input type="hidden" name="status" value="{{ selected_status }}">
+      {% endif %}
+      <div class="col-12 col-md-8 col-lg-5 loan-filter-branch-col">
+        <label class="form-label" for="loan-filter-branches">Branches</label>
+        <select id="loan-filter-branches" name="branches" class="form-select loan-branch-select" multiple size="1">
+          {% for b in branches %}
+          <option value="{{ b.pk }}" {% if b.pk|stringformat:"s" in selected_branches %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-1 filter-actions">
+        <button type="submit" class="btn btn-outline-secondary" title="Apply filters" aria-label="Apply filters"><i class="bi bi-funnel"></i></button>
+        <a href="{% url 'farmer-loan-list' %}{% if selected_status %}?status={{ selected_status }}{% endif %}" class="btn btn-outline-secondary" title="Clear branch filter" aria-label="Clear branch filter"><i class="bi bi-arrow-counterclockwise"></i></a>
+      </div>
+    </form>
+
+    <ul class="nav nav-tabs loan-status-tabs milk-collection-tabs border-0 gap-1 flex-wrap mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if not selected_status %}active{% endif %}"
+          href="{% url 'farmer-loan-list' %}{% if selected_branches %}?{% for branch_id in selected_branches %}branches={{ branch_id }}{% if not forloop.last %}&amp;{% endif %}{% endfor %}{% endif %}"
+          role="tab"
+        >All <span class="badge rounded-pill text-bg-light">{{ status_counts.all }}</span></a>
+      </li>
+      {% for value, label in status_choices %}
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if selected_status == value %}active{% endif %}"
+          href="{% url 'farmer-loan-list' %}?status={{ value }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+          role="tab"
+        >{{ label }} <span class="badge rounded-pill text-bg-light">{{ status_counts|get_item:value }}</span></a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card-body table-wrap">
+    <p class="small text-muted d-md-none mb-2">Tap a row to expand details. Paid and balance are from recorded instalment payments.</p>
+    <table class="table table-hover datatable loan-table mb-0 w-100" data-page-length="25" data-empty-table="No loans yet.">
+      <thead>
+        <tr>
+          <th class="min-tablet-l">ID</th>
+          <th class="min-tablet-l">Branch</th>
+          <th class="all">Farmer</th>
+          <th class="all text-end">Loan amount</th>
+          <th class="all text-end">Paid</th>
+          <th class="all text-end">Balance</th>
+          <th class="min-tablet-l">Status</th>
+          <th class="min-desktop">Instalments</th>
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in object_list %}
+        <tr>
+          <td class="min-tablet-l fw-medium">#{{ loan.pk }}</td>
+          <td class="min-tablet-l">{{ loan.branch.name }}</td>
+          <td class="all">{{ loan.farmer }}</td>
+          <td class="all text-end loan-amount">{{ loan.loan_amount|money }}</td>
+          <td class="all text-end loan-amount">{{ loan.paid_total|money }}</td>
+          <td class="all text-end loan-amount">{{ loan.balance_total|money }}</td>
+          <td class="min-tablet-l">{{ loan.get_status_display }}</td>
+          <td class="min-desktop">{{ loan.installment_count }}</td>
+          <td class="all text-end loan-actions-cell loan-actions">
+            {% if perms.farmer_loans.view_farmerloan or perms.farmer_loans.change_farmerloan %}
+            <div class="dropdown d-inline-block">
+              <button
+                class="btn btn-sm btn-outline-secondary dropdown-toggle loan-actions-trigger"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="bi bi-three-dots-vertical me-1"></i><span class="loan-actions-label">Actions</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end loan-actions-menu">
+                {% if perms.farmer_loans.view_farmerloan %}
+                <li><a class="dropdown-item" href="{% url 'farmer-loan-detail' loan.pk %}"><i class="bi bi-eye me-2"></i>View</a></li>
+                {% endif %}
+                {% if loan.can_edit and perms.farmer_loans.change_farmerloan %}
+                <li><a class="dropdown-item" href="{% url 'farmer-loan-edit' loan.pk %}"><i class="bi bi-pencil-square me-2"></i>Edit</a></li>
+                {% endif %}
+                {% if loan.can_delete and perms.farmer_loans.change_farmerloan %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a
+                    href="{% url 'farmer-loan-delete' loan.pk %}"
+                    class="dropdown-item text-danger js-swal-delete-post"
+                    data-swal-title="Delete loan #{{ loan.pk }}?"
+                    data-swal-text="This cannot be undone. The deletion will be recorded in the audit log."
+                  ><i class="bi bi-trash3 me-2"></i>Delete</a>
+                </li>
+                {% elif user.is_superuser and loan.status == "approved" and perms.farmer_loans.change_farmerloan %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a
+                    href="{% url 'farmer-loan-delete' loan.pk %}"
+                    class="dropdown-item text-danger js-swal-delete-post"
+                    data-swal-title="Delete approved loan #{{ loan.pk }}?"
+                    data-swal-text="This approved loan and its repayment schedule will be permanently removed."
+                  ><i class="bi bi-trash3 me-2"></i>Delete</a>
+                </li>
+                {% endif %}
+              </ul>
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "farmer_loans/_loan_list_table_footer.html" %}
+    </table>
+  </div>
+</div>
+{% endblock %}

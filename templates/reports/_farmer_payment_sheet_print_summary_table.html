@@ -1,0 +1,49 @@
+<table class="payment-sheet-print-table payment-sheet-print-table--summary">
+  <thead>
+    <tr>
+      <th class="ps-print-col-point">Farmer</th>
+      <th class="text-end">Total L</th>
+      <th class="text-end">Gross</th>
+      {% if can_view_payment_settlement %}
+      <th class="text-end">Advance</th>
+      <th class="text-end">Goods Ded.</th>
+      <th class="text-end">Bank Loan</th>
+      <th class="text-end">Net</th>
+      <th class="text-end">Paid</th>
+      <th class="text-end">Balance</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in print_rows %}
+    <tr{% if forloop.counter|divisibleby:2 %} class="payment-sheet-print-row--alt"{% endif %}>
+      <td class="ps-print-col-point">{{ r.farmer.common_name|default:r.farmer.full_name }}</td>
+      <td class="text-end">{% if r.total_liters %}{{ r.total_liters|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.gross_amount %}{{ r.gross_amount|money }}{% else %}—{% endif %}</td>
+      {% if can_view_payment_settlement %}
+      <td class="text-end">{% if r.advance_amount %}{{ r.advance_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.goods_deduction %}{{ r.goods_deduction|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.loan_deduction_calculated %}{{ r.loan_deduction_calculated|money }}{% elif r.loan_deduction %}{{ r.loan_deduction|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.net_amount %}{{ r.net_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.paid_amount %}{{ r.paid_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.balance_amount %}{{ r.balance_amount|money }}{% else %}—{% endif %}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="payment-sheet-print-total-row">
+      <th class="ps-print-col-point">Total</th>
+      <td class="text-end">{{ print_totals.total_liters|money }}</td>
+      <td class="text-end">{{ print_totals.gross_amount|money }}</td>
+      {% if can_view_payment_settlement %}
+      <td class="text-end">{{ print_totals.advance_amount|money }}</td>
+      <td class="text-end">{{ print_totals.goods_deduction|money }}</td>
+      <td class="text-end">{{ print_totals.loan_deduction|money }}</td>
+      <td class="text-end">{{ print_totals.net_amount|money }}</td>
+      <td class="text-end">{{ print_totals.paid_amount|money }}</td>
+      <td class="text-end">{{ print_totals.balance_amount|money }}</td>
+      {% endif %}
+    </tr>
+  </tfoot>
+</table>

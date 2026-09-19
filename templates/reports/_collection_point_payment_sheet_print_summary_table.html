@@ -1,0 +1,67 @@
+<table class="payment-sheet-print-table payment-sheet-print-table--summary">
+  <thead>
+    <tr>
+      <th class="ps-print-col-point">Collection point</th>
+      <th class="text-end">Total Qty</th>
+      <th class="text-end">Gross</th>
+      {% if can_view_payment_settlement %}
+      <th class="text-end">Advance</th>
+      <th class="text-end">Goods Ded.</th>
+      <th class="text-end">Bank Loan</th>
+      <th class="text-end">Prev. Outstanding</th>
+      <th class="text-end">Pay. Corrections</th>
+      <th class="text-end">Collector Fee</th>
+      {% if sheet_totals.show_additional_column %}
+      <th class="text-end">Additional</th>
+      {% endif %}
+      <th class="text-end">Net</th>
+      <th class="text-end">Paid</th>
+      <th class="text-end">Balance</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in print_rows %}
+    <tr{% if forloop.counter|divisibleby:2 %} class="payment-sheet-print-row--alt"{% endif %}>
+      <td class="ps-print-col-point">{{ r.point.number }} — {{ r.point.name }}</td>
+      <td class="text-end">{% if print_totals.mixed_units or not r.total_quantity %}—{% else %}{{ r.total_quantity|money }}{% endif %}</td>
+      <td class="text-end">{% if r.gross_amount %}{{ r.gross_amount|money }}{% else %}—{% endif %}</td>
+      {% if can_view_payment_settlement %}
+      <td class="text-end">{% if r.advance_amount %}{{ r.advance_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.goods_deduction %}{{ r.goods_deduction|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.loan_deduction_calculated %}{{ r.loan_deduction_calculated|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.previous_outstanding_amount %}{{ r.previous_outstanding_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end{% if r.payment_correction_amount < 0 %} is-negative{% endif %}">{% if r.payment_correction_amount %}{{ r.payment_correction_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.collector_fee_amount %}{{ r.collector_fee_amount|money }}{% else %}—{% endif %}</td>
+      {% if sheet_totals.show_additional_column %}
+      <td class="text-end">{% if r.additional_amount %}{{ r.additional_amount|money }}{% else %}—{% endif %}</td>
+      {% endif %}
+      <td class="text-end">{% if r.net_amount %}{{ r.net_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.paid_amount %}{{ r.paid_amount|money }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if r.balance_amount %}{{ r.balance_amount|money }}{% else %}—{% endif %}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="payment-sheet-print-total-row">
+      <th class="ps-print-col-point">Total</th>
+      <td class="text-end">{% if print_totals.mixed_units or not print_totals.total_quantity %}—{% else %}{{ print_totals.total_quantity|money }}{% endif %}</td>
+      <td class="text-end">{{ print_totals.gross_amount|money }}</td>
+      {% if can_view_payment_settlement %}
+      <td class="text-end">{{ print_totals.advance_amount|money }}</td>
+      <td class="text-end">{{ print_totals.goods_deduction|money }}</td>
+      <td class="text-end">{{ print_totals.loan_deduction|money }}</td>
+      <td class="text-end">{{ print_totals.previous_outstanding_amount|money }}</td>
+      <td class="text-end{% if print_totals.payment_correction_amount < 0 %} is-negative{% endif %}">{{ print_totals.payment_correction_amount|money }}</td>
+      <td class="text-end">{{ print_totals.collector_fee_amount|money }}</td>
+      {% if sheet_totals.show_additional_column %}
+      <td class="text-end">{{ print_totals.additional_amount|money }}</td>
+      {% endif %}
+      <td class="text-end">{{ print_totals.net_amount|money }}</td>
+      <td class="text-end">{{ print_totals.paid_amount|money }}</td>
+      <td class="text-end">{{ print_totals.balance_amount|money }}</td>
+      {% endif %}
+    </tr>
+  </tfoot>
+</table>

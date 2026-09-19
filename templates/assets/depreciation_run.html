@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Run depreciation · Assets{% endblock %}
+{% block page_heading %}Depreciation journal{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-policy-list' %}" class="btn btn-outline-secondary">Policies</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Depreciation summary">
+    <div class="smart-stat-card asset-kpi--count">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Recent entries</span>
+        <span class="smart-stat-card__value">{{ run_stats.entries }}</span>
+        <span class="smart-stat-card__hint">Last 50 postings</span>
+      </span>
+    </div>
+    <div class="smart-stat-card asset-kpi--written">
+      <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Posted amount</span>
+        <span class="smart-stat-card__value">{{ run_stats.amount|money }}</span>
+        <span class="smart-stat-card__hint">In the recent journal</span>
+      </span>
+    </div>
+  </div>
+
+  <article class="asset-voucher mb-3">
+    <header class="asset-voucher__head">
+      <div>
+        <span class="asset-statement__kicker">Journal voucher</span>
+        <h2 class="asset-statement__title">Run monthly depreciation</h2>
+        <p class="asset-statement__meta">Posts depreciation for active assets with a policy. Skips periods already posted.</p>
+      </div>
+      <span class="asset-statement__account">JV-DEP</span>
+    </header>
+    <div class="asset-voucher__body">
+      <section class="asset-voucher__section">
+        <h3 class="asset-voucher__section-title"><span class="asset-voucher__no">01</span> Period</h3>
+        <form method="post" class="row g-3 align-items-end">
+          {% csrf_token %}
+          <div class="col-md-4">
+            <label class="form-label" for="id_period_month">Accounting period</label>
+            <input type="month" name="period_month" id="id_period_month" class="form-control"
+                   value="{{ form.period_month.value|default:'' }}">
+            {{ form.period_month.errors }}
+          </div>
+          <div class="col-md-4">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Post depreciation</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </article>
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Ledger</span>
+            <h2 class="asset-statement__title">Depreciation journal</h2>
+            <p class="asset-statement__meta">Recent write-down entries · {% now "j M Y" %}</p>
+          </div>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No entries yet."
+          data-smart-order="1,desc"
+          data-footer-sum-cols="3"
+          data-print-title="Depreciation journal"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Asset</th>
+              <th class="all">Period</th>
+              <th class="all text-end">Amount</th>
+              <th class="min-tablet-l text-end">Book after</th>
+              <th class="min-desktop">Posted by</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in recent_entries %}
+            <tr>
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all">
+                <div class="smart-dt-name-row">
+                  <a href="{% url 'asset-detail' e.asset_id %}#depreciation" class="asset-tag-code">{{ e.asset.asset_tag }}</a>
+                </div>
+                <span class="asset-row-meta">{{ e.asset.name }}</span>
+              </td>
+              <td class="all text-nowrap" data-order="{{ e.period_start|date:'Y-m-d' }}">{{ e.period_start }} – {{ e.period_end }}</td>
+              <td class="all text-end dt-num asset-amt-cost" data-order="{{ e.amount }}">{{ e.amount|money }}</td>
+              <td class="min-tablet-l text-end dt-num asset-amt-book">{{ e.book_value_after|money }}</td>
+              <td class="min-desktop dt-muted">{% if e.run_by %}{{ e.run_by }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th class="min-tablet-l"></th>
+              <th class="all"></th>
+              <th class="all text-end">Total</th>
+              <th class="all text-end dt-foot-total"></th>
+              <th class="min-tablet-l"></th>
+              <th class="min-desktop"></th>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="asset-statement__disclaimer">This is a computer-generated depreciation journal and does not require a signature.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% endblock %}

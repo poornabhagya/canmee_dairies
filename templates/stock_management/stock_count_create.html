@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}New stock count{% endblock %}
+{% block page_heading %}New stock count{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">New physical stock count</h1>
+      <p class="page-subtitle">Choose the branch and count date. Products with Available or on-hand stock are loaded automatically.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-outline-secondary" href="{% url 'stock-count-list' %}">Cancel</a>
+    </div>
+  </div>
+
+  <div class="module-card">
+    <div class="module-card-body">
+      <form method="post" class="row g-3" style="max-width: 540px;">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="col-12">
+          <div class="alert alert-danger mb-0">{{ form.non_field_errors }}</div>
+        </div>
+        {% endif %}
+        <div class="col-12">
+          <label class="form-label" for="{{ form.branch.id_for_label }}">Branch</label>
+          {{ form.branch }}
+          {% if form.branch.errors %}<div class="text-danger small">{{ form.branch.errors }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ form.date.id_for_label }}">Count date</label>
+          {{ form.date }}
+          {% if form.date.errors %}<div class="text-danger small">{{ form.date.errors }}</div>{% endif %}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="{{ form.remarks.id_for_label }}">Remarks</label>
+          {{ form.remarks }}
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Create draft &amp; enter counts</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

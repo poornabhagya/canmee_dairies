@@ -1,0 +1,64 @@
+{% extends "attendance/base_portal.html" %}
+{% load static %}
+{% block title %}Attendance login · Canmee Dairies{% endblock %}
+{% block shell_class %}att-shell--auth{% endblock %}
+{% block portal_header %}{% endblock %}
+{% block portal_nav %}{% endblock %}
+{% block content %}
+<div class="att-card">
+  <img
+    class="att-auth-logo"
+    src="{% static 'img/logo-512.png' %}"
+    srcset="{% static 'img/logo-256.png' %} 256w, {% static 'img/logo-512.png' %} 512w"
+    sizes="64px"
+    width="64"
+    height="64"
+    alt="Canmee Dairies"
+    decoding="async"
+  >
+  <p class="att-auth-brand">Canmee Dairies</p>
+  <p class="att-subtitle text-center">Employee attendance</p>
+  <p class="att-subtitle text-center" style="margin-top:-0.55rem">Sign in with your NIC. First time? Leave password blank to set one.</p>
+  <form method="post" class="att-form js-enter-next">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.nic.id_for_label }}">NIC</label>
+      {{ form.nic }}
+      {% if form.nic.errors %}<div class="text-danger small">{{ form.nic.errors }}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+      {% if form.password.errors %}<div class="text-danger small">{{ form.password.errors }}</div>{% endif %}
+    </div>
+    <button type="submit" class="att-btn mt-1">Continue</button>
+  </form>
+  <p class="text-center small text-muted mt-3 mb-0">
+    <a href="{% url 'login' %}">Staff sign in</a>
+  </p>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll("form.js-enter-next").forEach(function (form) {
+    var fields = Array.prototype.slice.call(
+      form.querySelectorAll("input.form-control:not([type='hidden']):not([disabled])")
+    );
+    fields.forEach(function (field, index) {
+      field.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") return;
+        var next = fields[index + 1];
+        if (!next) return;
+        event.preventDefault();
+        next.focus();
+        if (typeof next.select === "function") next.select();
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}

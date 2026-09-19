@@ -1,0 +1,37 @@
+{# Continuation inside the same slip as milk — no second card wrapper #}
+<div class="point-receipt-issue-goods">
+  <div class="issue-goods-heading receipt-text-12">
+    සම්බන්ධිත භාණ්ඩ නිකුතු (Farmer goods)
+  </div>
+  {% for section in issue_receipt_sections %}
+  <div class="issue-goods-batch">
+    <div class="issue-ref-row receipt-text-12">
+      <strong>නිකුතු අංකය / Issue ref:</strong>
+      <span class="receipt-text-14 font-monospace">{{ section.ref_display }}</span>
+    </div>
+    <table class="receipt-grid issue-goods-mini">
+      <thead>
+        <tr>
+          <th class="receipt-text-12">භාණ්ඩය</th>
+          <th class="receipt-text-12">ප්‍රමාණය</th>
+          <th class="receipt-text-12">මිල</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in section.lines %}
+        <tr>
+          <td class="receipt-text-14" style="text-align:left;">{{ row.name }}</td>
+          <td class="num receipt-text-14">{{ row.qty }}</td>
+          <td class="num receipt-text-14">{{ row.price_display }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td class="receipt-text-14" style="text-align:right;"><strong>Total</strong></td>
+          <td class="num receipt-text-14">-</td>
+          <td class="num receipt-text-14"><strong>{{ section.total_price_display }}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>

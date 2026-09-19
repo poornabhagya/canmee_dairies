@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% load static %}
+{% block page_heading %}{% if object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}{% endblock %}
+{% block extra_css %}
+<style>
+  .dispatch-form-shell {
+    max-width: none;
+    margin: 0;
+  }
+  .dispatch-form-section {
+    background: #fff;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 14px;
+    padding: 1rem 1rem 0.35rem;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .dispatch-form-section__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.85rem;
+  }
+  .dispatch-form-section__title i {
+    color: #059669;
+    font-size: 1rem;
+  }
+  .dispatch-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+  .dispatch-form-grid .quality-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+  .dispatch-segment {
+    display: inline-flex;
+    width: 100%;
+    padding: 3px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 3px;
+  }
+  .dispatch-to-segment {
+    width: auto;
+    margin-left: auto;
+    border-radius: 10px;
+    gap: 2px;
+    flex: 0 0 auto;
+  }
+  .dispatch-segment__option {
+    flex: 1 1 0;
+    position: relative;
+  }
+  .dispatch-to-segment .dispatch-segment__option {
+    flex: 0 0 auto;
+  }
+  .dispatch-segment__option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .dispatch-segment__option label {
+    display: block;
+    margin: 0;
+    padding: 0.65rem 0.75rem;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .dispatch-to-segment .dispatch-segment__option label {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8125rem;
+    border-radius: 8px;
+    line-height: 1.2;
+  }
+  .dispatch-segment__option input:checked + label {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+  .qty-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: #64748b;
+    cursor: pointer;
+  }
+  .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .dispatch-snf-auto {
+    background: #f8fafc !important;
+    color: #334155;
+    font-weight: 600;
+  }
+  .dispatch-snf-hint {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+  }
+  .dispatch-buyer-wrap .form-select {
+    min-width: 0;
+  }
+  /* Mobile: full-width app-style, large touch targets */
+  .dispatch-form-shell .form-control,
+  .dispatch-form-shell .form-select {
+    min-height: 48px;
+    font-size: 1rem;
+    border-radius: 10px;
+  }
+  .dispatch-form-shell textarea.form-control {
+    min-height: 6rem;
+  }
+  .dispatch-form-shell select[name="branch"] + .select2,
+  .dispatch-form-shell select#id_destination_branch + .select2,
+  .dispatch-form-shell select#id_buyer + .select2 {
+    width: 100% !important;
+  }
+  .dispatch-form-shell select[name="branch"] + .select2 .select2-selection--single,
+  .dispatch-form-shell select#id_destination_branch + .select2 .select2-selection--single,
+  .dispatch-form-shell select#id_buyer + .select2 .select2-selection--single {
+    min-height: 48px !important;
+    height: 48px !important;
+    border-color: var(--color-border, #e2e8f0);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+  }
+  .dispatch-form-shell select[name="branch"] + .select2 .select2-selection--single .select2-selection__rendered,
+  .dispatch-form-shell select#id_destination_branch + .select2 .select2-selection--single .select2-selection__rendered,
+  .dispatch-form-shell select#id_buyer + .select2 .select2-selection--single .select2-selection__rendered {
+    line-height: 46px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 2rem !important;
+    font-size: 1rem;
+  }
+  .dispatch-form-shell select[name="branch"] + .select2 .select2-selection--single .select2-selection__arrow,
+  .dispatch-form-shell select#id_destination_branch + .select2 .select2-selection--single .select2-selection__arrow,
+  .dispatch-form-shell select#id_buyer + .select2 .select2-selection--single .select2-selection__arrow {
+    height: 46px !important;
+  }
+  .dispatch-form-shell .input-group .btn {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  .dispatch-form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    gap: 0.65rem;
+    padding: 0.85rem 0 0.25rem;
+    margin-top: 0.25rem;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, #f8fafc 24%, #f8fafc 100%);
+  }
+  .dispatch-form-actions .btn {
+    min-height: 48px;
+    flex: 1 1 0;
+    font-weight: 600;
+  }
+  .dispatch-form-actions .btn-outline-secondary {
+    flex: 0 0 auto;
+    min-width: 6.5rem;
+  }
+  .dispatch-buyer-modal .modal-content {
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .dispatch-buyer-form-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    margin-bottom: 0.8rem;
+  }
+  @media (min-width: 768px) {
+    .dispatch-form-shell {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .dispatch-form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem 0.75rem;
+    }
+    .dispatch-form-grid .full {
+      grid-column: 1 / -1;
+    }
+    .dispatch-form-grid .quality-grid {
+      grid-column: 1 / -1;
+    }
+    .dispatch-form-shell .form-control,
+    .dispatch-form-shell .form-select {
+      min-height: 38px;
+      font-size: 0.875rem;
+      border-radius: var(--radius-sm, 0.375rem);
+    }
+    .dispatch-form-shell textarea.form-control {
+      min-height: 5rem;
+    }
+    .dispatch-form-shell select[name="branch"] + .select2 .select2-selection--single,
+    .dispatch-form-shell select#id_destination_branch + .select2 .select2-selection--single,
+    .dispatch-form-shell select#id_buyer + .select2 .select2-selection--single {
+      min-height: 38px !important;
+      height: 38px !important;
+      border-radius: var(--radius-sm, 0.375rem);
+    }
+    .dispatch-form-shell select[name="branch"] + .select2 .select2-selection--single .select2-selection__rendered,
+    .dispatch-form-shell select#id_destination_branch + .select2 .select2-selection--single .select2-selection__rendered,
+    .dispatch-form-shell select#id_buyer + .select2 .select2-selection--single .select2-selection__rendered {
+      line-height: 36px !important;
+      font-size: 0.875rem;
+    }
+    .dispatch-form-shell select[name="branch"] + .select2 .select2-selection--single .select2-selection__arrow,
+    .dispatch-form-shell select#id_destination_branch + .select2 .select2-selection--single .select2-selection__arrow,
+    .dispatch-form-shell select#id_buyer + .select2 .select2-selection--single .select2-selection__arrow {
+      height: 36px !important;
+    }
+    .dispatch-form-shell .input-group .btn {
+      min-height: 38px;
+      min-width: 38px;
+    }
+    .dispatch-form-actions .btn {
+      min-height: 42px;
+    }
+  }
+  @media (max-width: 767.98px) {
+    .page-header {
+      margin-bottom: 0.75rem;
+    }
+    .dispatch-form-section {
+      border-radius: 12px;
+      padding: 0.95rem 0.95rem 0.25rem;
+    }
+    .dispatch-form-actions {
+      padding-bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    }
+    .dispatch-buyer-form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if view_only %}View{% elif object %}Edit{% else %}Add{% endif %} {{ model_verbose_name|title }}</h1>
+    <p class="page-subtitle">{% if view_only %}This dispatch is paid and cannot be edited.{% else %}Step through trip, destination, quantity, then quality readings.{% endif %}</p>
+  </div>
+</div>
+
+<div class="dispatch-form-shell">
+  <form method="post" class="js-distribution-form{% if view_only %} is-view-only{% endif %}" data-buyer-rate-url="{% url 'dispatch-buyer-rate' %}" data-view-only="{% if view_only %}1{% else %}0{% endif %}" {% if view_only %}onsubmit="return false;"{% endif %}>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger swal-flash mb-3">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    {% include "dispatch/_distribution_form_fields.html" %}
+
+    <div class="dispatch-form-actions">
+      {% if view_only %}
+      <a href="javascript:history.back()" class="btn btn-primary">Back</a>
+      {% else %}
+      <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save dispatch</button>
+      <a href="javascript:history.back()" class="btn btn-outline-secondary">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+{% if perms.masters.add_buyer and buyer_quick_add_form %}
+<div class="modal fade dispatch-buyer-modal" id="dispatchBuyerQuickAddModal" tabindex="-1" aria-labelledby="dispatchBuyerQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="dispatch-buyer-quick-add-form" method="post" action="{% url 'buyer-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="dispatchBuyerQuickAddModalLabel">New buyer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Creates a buyer and selects it on this dispatch form.</p>
+          <div class="dispatch-buyer-form-row">
+            <label class="form-label" for="{{ buyer_quick_add_form.name.id_for_label }}">Name</label>
+            <div>
+              {{ buyer_quick_add_form.name }}
+              <div class="invalid-feedback" data-dispatch-buyer-error="name"></div>
+            </div>
+          </div>
+          <div class="dispatch-buyer-form-row">
+            <label class="form-label" for="{{ buyer_quick_add_form.contact_person.id_for_label }}">Contact</label>
+            <div>
+              {{ buyer_quick_add_form.contact_person }}
+              <div class="invalid-feedback" data-dispatch-buyer-error="contact_person"></div>
+            </div>
+          </div>
+          <div class="dispatch-buyer-form-row">
+            <label class="form-label" for="{{ buyer_quick_add_form.phone.id_for_label }}">Phone</label>
+            <div>
+              {{ buyer_quick_add_form.phone }}
+              <div class="invalid-feedback" data-dispatch-buyer-error="phone"></div>
+            </div>
+          </div>
+          <div class="dispatch-buyer-form-row">
+            <label class="form-label" for="{{ buyer_quick_add_form.email.id_for_label }}">Email</label>
+            <div>
+              {{ buyer_quick_add_form.email }}
+              <div class="invalid-feedback" data-dispatch-buyer-error="email"></div>
+            </div>
+          </div>
+          <div class="dispatch-buyer-form-row mb-0">
+            <label class="form-label" for="{{ buyer_quick_add_form.address.id_for_label }}">Address</label>
+            <div>
+              {{ buyer_quick_add_form.address }}
+              <div class="invalid-feedback" data-dispatch-buyer-error="address"></div>
+            </div>
+          </div>
+          <div class="dispatch-buyer-form-row mb-0 mt-2">
+            <label class="form-label" for="{{ buyer_quick_add_form.branches.id_for_label }}">Branches</label>
+            <div>
+              {{ buyer_quick_add_form.branches }}
+              <div class="invalid-feedback" data-dispatch-buyer-error="branches"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save &amp; select</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ buyer_branch_options|default:"[]"|json_script:"buyer-branch-options" }}
+<script id="distribution-form-config" type="application/json">{"kgToLiters":"{{ MILK_LITER_FACTOR_JS }}"}</script>
+<script src="{% static 'js/distribution-form.js' %}"></script>
+{% endblock %}

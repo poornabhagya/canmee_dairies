@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Stock & price{% endblock %}
+{% block page_heading %}Stock & price{% endblock %}
+{% block extra_css %}
+<style>
+  .goods-check-section .form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+  }
+  .goods-check-section .form-select,
+  .goods-check-section .form-control {
+    height: 38px;
+    min-height: 38px;
+  }
+  .goods-check-section .flatpickr-range-wrap .form-control,
+  .goods-check-section .flatpickr-range-wrap .input-group-text {
+    height: 38px;
+    min-height: 38px;
+  }
+  .product-lookup-wrap {
+    position: relative;
+  }
+  .product-lookup-dropdown {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 2px);
+    z-index: 30;
+    max-height: 240px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    display: none;
+  }
+  .product-lookup-dropdown.is-open {
+    display: block;
+  }
+  .product-lookup-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.875rem;
+    color: #0f172a;
+  }
+  .product-lookup-option:hover,
+  .product-lookup-option.is-active {
+    background: #ecfdf5;
+  }
+  .product-lookup-result {
+    border: 1px solid #a7f3d0;
+    background: #ecfdf5;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-top: 0.75rem;
+    display: none;
+  }
+  .product-lookup-result.is-visible {
+    display: block;
+  }
+  .product-lookup-result__name {
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    color: #0f172a;
+  }
+  .product-lookup-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .product-lookup-metrics strong {
+    color: #0f172a;
+  }
+  .goods-check-type-tabs .nav-link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+  }
+  .goods-check-type-tabs .nav-link.active {
+    color: #0f172a;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+  }
+  .goods-check-target-panel {
+    display: none;
+  }
+  .goods-check-target-panel.is-active {
+    display: block;
+  }
+  .issued-products-table .money-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .issued-products-table tfoot th {
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    font-weight: 700;
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions">
+  {% if can_issue_goods %}
+  <a class="btn btn-primary" href="{% url 'farmer-goods-issue' %}">New issue</a>
+  {% endif %}
+  <a class="btn btn-outline-secondary" href="{% url 'farmer-goods-issue-list' %}">All issues</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="module-card goods-check-section mb-3">
+    <div class="module-card-header">
+      <div>
+        <h5 class="module-card-title">Product availability & price</h5>
+        <p class="text-muted small mb-0">Type a product name to see available quantity and selling price at the selected branch.</p>
+      </div>
+    </div>
+    <div class="module-card-body px-3 pb-3">
+      <div class="row g-3 align-items-end" id="product-lookup-panel">
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label" for="lookup-branch">Branch</label>
+          <select id="lookup-branch" class="form-select no-global-select2">
+            <option value="">Select branch</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}" {% if b.id|stringformat:'d' == lookup_selected_branch %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-8 col-lg-5">
+          <label class="form-label" for="lookup-product-input">Product</label>
+          <div class="product-lookup-wrap">
+            <input
+              type="text"
+              id="lookup-product-input"
+              class="form-control"
+              placeholder="Start typing product name…"
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-controls="lookup-product-dropdown"
+            >
+            <input type="hidden" id="lookup-product-id" value="">
+            <div id="lookup-product-dropdown" class="product-lookup-dropdown" role="listbox"></div>
+          </div>
+        </div>
+      </div>
+      <div id="lookup-product-result" class="product-lookup-result" aria-live="polite">
+        <p class="product-lookup-result__name" id="lookup-result-name"></p>
+        <div class="product-lookup-metrics">
+          <span>Available: <strong id="lookup-result-available"></strong></span>
+          <span>Unit price: <strong id="lookup-result-price"></strong> LKR</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="module-card goods-check-section">
+    <div class="module-card-header">
+      <div>
+        <h5 class="module-card-title">Issued products</h5>
+        <p class="text-muted small mb-0">Filter by branch, route, period, and collection point or farmer.</p>
+      </div>
+    </div>
+    <div class="module-card-body pb-0 px-3">
+      <form method="get" class="row g-2 g-md-3 mb-3 align-items-end" id="issued-list-form">
+        <input type="hidden" name="show" value="1">
+        <input type="hidden" name="issue_to_type" id="issued-issue-to-type" value="{{ selected_issue_to_type }}">
+
+        <div class="col-12 col-md-6 col-lg-2">
+          <label class="form-label" for="issued-branch">Branch</label>
+          <select id="issued-branch" name="branch" class="form-select no-global-select2">
+            <option value="">All branches</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}" {% if b.id|stringformat:'d' == issued_selected_branch %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-2">
+          <label class="form-label" for="issued-route">Route</label>
+          <select id="issued-route" name="route" class="form-select no-global-select2">
+            <option value="">All routes</option>
+            {% for ro in filter_routes %}
+            <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == selected_route %}selected{% endif %}>{{ ro.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-lg-3">
+          <label class="form-label d-block">Issue to</label>
+          <ul class="nav goods-check-type-tabs border-0 gap-1 flex-wrap mb-2" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button
+                type="button"
+                class="nav-link {% if selected_issue_to_type == 'collection_point' %}active{% endif %}"
+                data-issue-to-type="collection_point"
+                role="tab"
+              >Collection point</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button
+                type="button"
+                class="nav-link {% if selected_issue_to_type == 'farmer' %}active{% endif %}"
+                data-issue-to-type="farmer"
+                role="tab"
+              >Farmer</button>
+            </li>
+          </ul>
+          <div class="goods-check-target-panel {% if selected_issue_to_type == 'collection_point' %}is-active{% endif %}" data-target-panel="collection_point">
+            <select id="issued-point" name="collection_point" class="form-select no-global-select2" {% if selected_issue_to_type == 'collection_point' %}required{% endif %}>
+              <option value="">Select collection point</option>
+              {% for p in filter_points %}
+              <option value="{{ p.id }}" data-branch-id="{{ p.route.branch_id }}" data-route-id="{{ p.route_id }}" {% if p.id|stringformat:'d' == selected_collection_point %}selected{% endif %}>{{ p.number }} — {{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="goods-check-target-panel {% if selected_issue_to_type == 'farmer' %}is-active{% endif %}" data-target-panel="farmer">
+            <select id="issued-farmer" name="farmer" class="form-select no-global-select2" {% if selected_issue_to_type == 'farmer' %}required{% endif %}>
+              <option value="">Select farmer</option>
+              {% for f in filter_farmers %}
+              <option value="{{ f.id }}" data-branch-id="{{ f.branch_id }}" data-route-id="{{ f.route_id }}" {% if f.id|stringformat:'d' == selected_farmer %}selected{% endif %}>{{ f.common_name|default:f.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="issued-date-range">Period</label>
+          <div class="input-group flatpickr-range-wrap">
+            <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+            <input
+              type="text"
+              id="issued-date-range"
+              class="form-control border-start-0 js-datepicker-range"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="All dates"
+              autocomplete="off"
+              readonly
+              aria-label="Date range"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ date_from }}">
+          <input type="hidden" name="date_to" value="{{ date_to }}">
+        </div>
+
+        <div class="col-auto d-flex gap-1">
+          <button type="submit" class="btn btn-primary">Show</button>
+          <a href="{% url 'farmer-goods-check' %}" class="btn btn-outline-secondary" title="Reset"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+      </form>
+    </div>
+
+    <div class="module-card-body table-wrap pt-0 px-3 pb-3">
+      {% if not request.GET.show %}
+      <div class="empty-state p-4 text-muted">Select filters and a collection point or farmer, then click <strong>Show</strong>.</div>
+      {% elif not list_ready %}
+      <div class="empty-state p-4 text-muted">Choose a collection point or farmer to list issued products.</div>
+      {% elif not issued_rows %}
+      <div class="empty-state p-4 text-muted">No issued products match these filters.</div>
+      {% else %}
+      <table class="table table-hover issued-products-table mb-0 w-100">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th class="money-col">Qty</th>
+            <th class="money-col">Unit price</th>
+            <th class="money-col">Amount</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in issued_rows %}
+          <tr>
+            <td class="text-nowrap">{{ row.date|date:"Y-m-d" }}</td>
+            <td>{{ row.product_name }}{% if row.unit %} <span class="text-muted small">({{ row.unit }})</span>{% endif %}</td>
+            <td class="money-col">{{ row.quantity|money }}</td>
+            <td class="money-col">{{ row.unit_price|money }}</td>
+            <td class="money-col">{{ row.line_amount|money }}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'farmer-goods-issue-print' row.batch_ref %}">View</a>
+              {% if can_change_issue %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'farmer-goods-issue-edit' row.batch_ref %}">Edit</a>
+              {% endif %}
+              {% if can_delete_issue %}
+              <form method="post" action="{% url 'farmer-goods-issue-delete' row.batch_ref %}" class="d-inline js-swal-submit-guard">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ return_url }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="4" class="text-end">Total</th>
+            <th class="money-col">{{ issued_total|money }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var searchUrl = "{% url 'api-farmer-goods-products' %}";
+  var checkUrl = "{% url 'api-farmer-goods-check' %}";
+  var branchSel = document.getElementById("lookup-branch");
+  var input = document.getElementById("lookup-product-input");
+  var productIdInput = document.getElementById("lookup-product-id");
+  var dropdown = document.getElementById("lookup-product-dropdown");
+  var resultBox = document.getElementById("lookup-product-result");
+  var debounceTimer = null;
+  var activeIndex = -1;
+  var latestResults = [];
+
+  function formatMoney(value) {
+    var n = Number(value);
+    if (!isFinite(n)) return "0.00";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function hideDropdown() {
+    if (dropdown) dropdown.classList.remove("is-open");
+    activeIndex = -1;
+  }
+
+  function hideResult() {
+    if (resultBox) resultBox.classList.remove("is-visible");
+  }
+
+  function renderDropdown(results) {
+    if (!dropdown) return;
+    latestResults = results || [];
+    dropdown.innerHTML = "";
+    if (!latestResults.length) {
+      hideDropdown();
+      return;
+    }
+    latestResults.forEach(function (item, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "product-lookup-option";
+      btn.setAttribute("role", "option");
+      btn.textContent = item.name + (item.unit ? " (" + item.unit + ")" : "");
+      btn.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        selectProduct(item);
+      });
+      dropdown.appendChild(btn);
+    });
+    dropdown.classList.add("is-open");
+  }
+
+  function selectProduct(item) {
+    if (!input || !productIdInput) return;
+    input.value = item.name;
+    productIdInput.value = String(item.id);
+    hideDropdown();
+    loadProductCheck();
+  }
+
+  function loadProductCheck() {
+    var branchId = branchSel ? branchSel.value : "";
+    var productId = productIdInput ? productIdInput.value : "";
+    if (!branchId || !productId) {
+      hideResult();
+      return;
+    }
+    fetch(checkUrl + "?branch=" + encodeURIComponent(branchId) + "&product=" + encodeURIComponent(productId), {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (payload) {
+        if (!payload.ok) throw new Error(payload.data.detail || "Could not load product details.");
+        var data = payload.data;
+        document.getElementById("lookup-result-name").textContent = data.product_name;
+        document.getElementById("lookup-result-available").textContent =
+          formatMoney(data.effective_available) + (data.unit ? " " + data.unit : "");
+        document.getElementById("lookup-result-price").textContent = formatMoney(data.unit_price);
+        resultBox.classList.add("is-visible");
+      })
+      .catch(function () {
+        hideResult();
+      });
+  }
+
+  function searchProducts(query) {
+    var branchId = branchSel ? branchSel.value : "";
+    if (!query || query.length < 1) {
+      hideDropdown();
+      return;
+    }
+    var url = searchUrl + "?q=" + encodeURIComponent(query);
+    if (branchId) url += "&branch=" + encodeURIComponent(branchId);
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }, credentials: "same-origin" })
+      .then(function (res) { return res.json(); })
+      .then(function (data) { renderDropdown(data.results || []); })
+      .catch(function () { hideDropdown(); });
+  }
+
+  if (input) {
+    input.addEventListener("input", function () {
+      if (productIdInput) productIdInput.value = "";
+      hideResult();
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () { searchProducts(input.value.trim()); }, 250);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (!dropdown || !dropdown.classList.contains("is-open")) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, latestResults.length - 1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+      } else if (e.key === "Enter" && activeIndex >= 0) {
+        e.preventDefault();
+        selectProduct(latestResults[activeIndex]);
+        return;
+      } else if (e.key === "Escape") {
+        hideDropdown();
+        return;
+      } else {
+        return;
+      }
+      Array.prototype.forEach.call(dropdown.querySelectorAll(".product-lookup-option"), function (el, idx) {
+        el.classList.toggle("is-active", idx === activeIndex);
+      });
+    });
+    input.addEventListener("blur", function () {
+      window.setTimeout(hideDropdown, 150);
+    });
+  }
+
+  if (branchSel) {
+    branchSel.addEventListener("change", function () {
+      if (productIdInput && productIdInput.value) {
+        loadProductCheck();
+      } else if (input && input.value.trim()) {
+        searchProducts(input.value.trim());
+      }
+    });
+  }
+
+  var issuedForm = document.getElementById("issued-list-form");
+  if (!issuedForm) return;
+
+  var issuedBranchSel = issuedForm.querySelector("#issued-branch");
+  var issuedRouteSel = issuedForm.querySelector("#issued-route");
+  var issuedPointSel = issuedForm.querySelector("#issued-point");
+  var issuedFarmerSel = issuedForm.querySelector("#issued-farmer");
+  var issueToTypeInput = issuedForm.querySelector("#issued-issue-to-type");
+  var typeButtons = issuedForm.querySelectorAll("[data-issue-to-type]");
+  var targetPanels = issuedForm.querySelectorAll("[data-target-panel]");
+
+  function applyDestinationBranchRoute(sel) {
+    if (!sel || !sel.value) return;
+    var opt = sel.selectedOptions[0];
+    if (!opt) return;
+    var bid = opt.getAttribute("data-branch-id");
+    var rid = opt.getAttribute("data-route-id");
+    if (issuedBranchSel && bid) {
+      issuedBranchSel.value = bid;
+    }
+    if (issuedRouteSel && rid) {
+      issuedRouteSel.value = rid;
+    }
+    syncIssuedRoutePointOptions();
+  }
+
+  function syncIssuedRoutePointOptions() {
+    var explicitBranch = issuedBranchSel ? String(issuedBranchSel.value || "") : "";
+    var routeId = issuedRouteSel ? String(issuedRouteSel.value || "") : "";
+    if (issuedRouteSel) {
+      Array.prototype.forEach.call(issuedRouteSel.options, function (opt) {
+        if (!opt.value) return;
+        var bid = String(opt.getAttribute("data-branch-id") || "");
+        var show = !explicitBranch || bid === explicitBranch;
+        opt.hidden = !show;
+        opt.disabled = !show;
+      });
+      if (issuedRouteSel.selectedOptions.length && issuedRouteSel.selectedOptions[0].hidden) {
+        issuedRouteSel.value = "";
+        routeId = "";
+      }
+    }
+    [issuedPointSel, issuedFarmerSel].forEach(function (sel) {
+      if (!sel) return;
+      Array.prototype.forEach.call(sel.options, function (opt) {
+        if (!opt.value) return;
+        var bid = String(opt.getAttribute("data-branch-id") || "");
+        var rid = String(opt.getAttribute("data-route-id") || "");
+        var branchOk = !explicitBranch || bid === explicitBranch;
+        var routeOk = !routeId || rid === routeId;
+        var show = branchOk && routeOk;
+        opt.hidden = !show;
+        opt.disabled = !show;
+      });
+      if (sel.selectedOptions.length && sel.selectedOptions[0].hidden) {
+        sel.value = "";
+      }
+    });
+  }
+
+  function onIssuedRouteChange() {
+    if (issuedPointSel && issuedPointSel.value) {
+      var pointOpt = issuedPointSel.selectedOptions[0];
+      var pointRoute = pointOpt ? String(pointOpt.getAttribute("data-route-id") || "") : "";
+      var routeId = issuedRouteSel ? String(issuedRouteSel.value || "") : "";
+      if (routeId && pointRoute && pointRoute !== routeId) {
+        issuedPointSel.value = "";
+      }
+    }
+    if (issuedFarmerSel && issuedFarmerSel.value) {
+      var farmerOpt = issuedFarmerSel.selectedOptions[0];
+      var farmerRoute = farmerOpt ? String(farmerOpt.getAttribute("data-route-id") || "") : "";
+      var routeIdFarmer = issuedRouteSel ? String(issuedRouteSel.value || "") : "";
+      if (routeIdFarmer && farmerRoute && farmerRoute !== routeIdFarmer) {
+        issuedFarmerSel.value = "";
+      }
+    }
+    syncIssuedRoutePointOptions();
+  }
+
+  typeButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var value = btn.getAttribute("data-issue-to-type");
+      if (!value || !issueToTypeInput) return;
+      issueToTypeInput.value = value;
+      typeButtons.forEach(function (other) {
+        other.classList.toggle("active", other === btn);
+      });
+      targetPanels.forEach(function (panel) {
+        var active = panel.getAttribute("data-target-panel") === value;
+        panel.classList.toggle("is-active", active);
+      });
+      if (issuedPointSel) issuedPointSel.required = value === "collection_point";
+      if (issuedFarmerSel) issuedFarmerSel.required = value === "farmer";
+    });
+  });
+
+  if (issuedBranchSel) issuedBranchSel.addEventListener("change", syncIssuedRoutePointOptions);
+  if (issuedRouteSel) issuedRouteSel.addEventListener("change", onIssuedRouteChange);
+  if (issuedPointSel) {
+    issuedPointSel.addEventListener("change", function () {
+      applyDestinationBranchRoute(issuedPointSel);
+    });
+    if (issuedPointSel.value) {
+      syncIssuedRoutePointOptions();
+    }
+  }
+  if (issuedFarmerSel) {
+    issuedFarmerSel.addEventListener("change", function () {
+      applyDestinationBranchRoute(issuedFarmerSel);
+    });
+    if (issuedFarmerSel.value) {
+      syncIssuedRoutePointOptions();
+    }
+  }
+  issuedForm.addEventListener("submit", function () {
+    var rangeInput = document.getElementById("issued-date-range");
+    var fp = rangeInput && (rangeInput._flatpickr || rangeInput._flatpickrInstance);
+    if (!fp) return;
+    var startEl = issuedForm.querySelector('input[name="date_from"]');
+    var endEl = issuedForm.querySelector('input[name="date_to"]');
+    if (!fp.selectedDates || !fp.selectedDates.length || !startEl || !endEl) return;
+    if (fp.selectedDates.length === 1) {
+      var day = fp.formatDate(fp.selectedDates[0], "Y-m-d");
+      startEl.value = day;
+      endEl.value = day;
+    } else if (fp.selectedDates.length === 2) {
+      startEl.value = fp.formatDate(fp.selectedDates[0], "Y-m-d");
+      endEl.value = fp.formatDate(fp.selectedDates[1], "Y-m-d");
+    }
+  });
+  syncIssuedRoutePointOptions();
+})();
+</script>
+{% endblock %}

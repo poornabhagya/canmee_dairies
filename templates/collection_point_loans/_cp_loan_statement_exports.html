@@ -1,0 +1,14 @@
+{# Expects `loan` and `section` (`payments`, `schedule`, or empty for full account). #}
+<div class="cp-loan-statement__exports loan-account-no-print">
+  <button type="button" class="btn btn-outline-primary js-cp-loan-print-section" data-print-section="{% if section %}{{ section }}{% else %}summary{% endif %}" title="Print this section">
+    <i class="bi bi-printer me-1"></i>Print
+  </button>
+  {% if not print_only %}
+  <a class="btn btn-outline-success" href="{% url 'cp-loan-account-export-excel' loan.pk %}{% if section %}?section={{ section }}{% endif %}" title="Export Excel">
+    <i class="bi bi-file-earmark-excel me-1"></i>Excel
+  </a>
+  <a class="btn btn-outline-danger" href="{% url 'cp-loan-account-export-pdf' loan.pk %}{% if section %}?section={{ section }}{% endif %}" title="Export PDF">
+    <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+  </a>
+  {% endif %}
+</div>

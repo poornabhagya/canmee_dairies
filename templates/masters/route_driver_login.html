@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Driver access · Canmee Dairies{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <div class="auth-brand">
+    <img
+      src="{% static 'img/logo-512.png' %}"
+      srcset="{% static 'img/logo-256.png' %} 256w, {% static 'img/logo-512.png' %} 512w"
+      sizes="84px"
+      alt="Canmee Dairies"
+      class="auth-brand-logo"
+      width="84"
+      height="84"
+      decoding="async"
+    >
+    <p class="auth-brand-name">Canmee Dairies</p>
+    <p class="auth-brand-tag">Driver portal</p>
+  </div>
+
+  <h1 class="auth-title">Driver access</h1>
+  <p class="auth-subtitle">Enter your route access code to view assigned reports.</p>
+
+  {% if error %}
+  <div class="alert alert-danger py-2 small">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" class="auth-form" novalidate>
+    {% csrf_token %}
+    <div class="auth-field">
+      <label class="form-label" for="id_access_code">Access code</label>
+      <div class="auth-input">
+        <i class="bi bi-key" aria-hidden="true"></i>
+        <input
+          type="text"
+          name="access_code"
+          id="id_access_code"
+          class="form-control text-uppercase"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          required
+          maxlength="32"
+          placeholder="Enter access code"
+        >
+      </div>
+    </div>
+    <button type="submit" class="auth-submit">
+      Continue
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </button>
+  </form>
+
+  <p class="auth-footer-link">
+    <a href="{% url 'login' %}">Back to staff sign in</a>
+  </p>
+</div>
+{% endblock %}

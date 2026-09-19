@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Asset labels · Batch #{{ batch.pk }}</title>
+  <style>
+    @page { margin: 10mm; }
+    body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; color: #0f172a; background: #f8fafc; }
+    .toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #fff;
+    }
+    .toolbar strong { letter-spacing: 0.04em; font-size: 0.82rem; text-transform: uppercase; color: #64748b; }
+    .toolbar button, .toolbar a {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.38rem 0.75rem; border: 1px solid #dbe3ef; border-radius: 999px;
+      background: #fff; text-decoration: none; color: #0f172a; font-size: 0.8125rem;
+      font-weight: 600; cursor: pointer;
+    }
+    .toolbar button.primary { background: #059669; border-color: #059669; color: #fff; }
+    .sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px; }
+    .label {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px 14px;
+      min-height: 98px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: #fff;
+      position: relative;
+    }
+    .label::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: #059669;
+      border-radius: 10px 0 0 10px;
+    }
+    .kicker { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; }
+    .tag { font-size: 18px; font-weight: 800; letter-spacing: 0.04em; font-family: ui-monospace, Consolas, monospace; margin-top: 4px; }
+    .name { font-size: 13px; margin-top: 4px; font-weight: 600; }
+    .meta { font-size: 11px; color: #64748b; margin-top: 6px; font-weight: 600; }
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none; }
+      .sheet { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <strong>Label batch</strong>
+    <span>#{{ batch.pk }} · {{ batch.label_count }} labels</span>
+    <button type="button" class="primary" onclick="window.print()">Print</button>
+    <a href="{% url 'asset-label-generate' %}">Back</a>
+  </div>
+  <div class="sheet">
+    {% for asset in assets %}
+    <div class="label">
+      <div class="kicker">Canmee Dairies · Asset</div>
+      <div class="tag">{{ asset.asset_tag }}</div>
+      <div class="name">{{ asset.name }}</div>
+      <div class="meta">
+        {% if asset.asset_type %}{{ asset.asset_type.name }}{% endif %}
+        {% if asset.category %} · {{ asset.category.name }}{% endif %}
+        · {{ asset.branch_label }}
+        {% if asset.location %} · {{ asset.location.name }}{% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <p>No assets in this batch.</p>
+    {% endfor %}
+  </div>
+</body>
+</html>

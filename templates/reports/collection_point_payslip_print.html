@@ -1,0 +1,884 @@
+{% extends "base.html" %}
+{% load loan_extras %}
+{% block title %}PaySlip · {{ point_display_name }}{% endblock %}
+{% block page_heading %}Collection Point PaySlip{% endblock %}
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  .payslip-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    background: #fff;
+  }
+  .payslip-card .card-body {
+    padding: 1rem 1.1rem;
+  }
+  .payslip-card__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.75rem;
+  }
+  .payslip-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .payslip-header__meta {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+  }
+  .payslip-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .payslip-copy-menu .btn {
+    white-space: nowrap;
+  }
+  @media (max-width: 767.98px) {
+    .payslip-actions {
+      width: 100%;
+    }
+    .payslip-copy-menu {
+      display: flex;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .payslip-copy-menu .btn {
+      flex: 1 1 calc(33.333% - 0.35rem);
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    .payslip-copy-menu .btn .copy-label {
+      display: none;
+    }
+    .payslip-actions > .btn-outline-secondary,
+    .payslip-actions > .btn-primary {
+      flex: 1 1 auto;
+    }
+  }
+  .payslip-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  @media (min-width: 768px) {
+    .payslip-stat-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+  .payslip-stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    background: #f8fafc;
+  }
+  .payslip-stat__label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+  }
+  .payslip-stat__value {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+  .payslip-daily-scroll {
+    max-height: 18rem;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+  }
+  .payslip-table {
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+  }
+  .payslip-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    white-space: nowrap;
+    border-bottom-width: 1px;
+  }
+  .payslip-table .money-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .payslip-table .payslip-recovery-col {
+    width: 1%;
+  }
+  .payslip-table tr.payslip-row--settled td {
+    background: #f0fdf4;
+  }
+  .payslip-deduction-legend {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+  }
+  .payslip-daily-scroll .payslip-table tfoot th,
+  .payslip-daily-scroll .payslip-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: #f8fafc;
+    font-weight: 700;
+    color: #0f172a;
+    border-top: 2px solid #e2e8f0;
+    box-shadow: 0 -1px 0 #e2e8f0;
+  }
+  .payslip-summary-table th {
+    font-weight: 600;
+    color: #475569;
+    width: 55%;
+  }
+  .payslip-summary-table td {
+    font-variant-numeric: tabular-nums;
+  }
+  .payslip-net-row th,
+  .payslip-net-row td {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #059669;
+    border-top: 2px solid #e2e8f0;
+    padding-top: 0.65rem;
+  }
+  .payslip-section + .payslip-section {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e7edf5;
+  }
+  .payslip-section__title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.65rem;
+  }
+  .payslip-section-scroll {
+    max-height: 14rem;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+  }
+  .payslip-embed-link {
+    text-decoration: none;
+  }
+  .payslip-embed-link:hover {
+    text-decoration: underline;
+  }
+  .payslip-print-a5 {
+    display: none;
+  }
+  .payslip-print-lang-si {
+    display: none !important;
+  }
+  .payslip-a5-sheet--si {
+    font-family: "Noto Sans Sinhala", Arial, Helvetica, sans-serif;
+  }
+  .payslip-a5-sheet--si .payslip-a5-company,
+  .payslip-a5-sheet--si .payslip-a5-meta__period {
+    text-transform: none;
+  }
+  .payslip-a5-footer {
+    margin: 0.35rem 0 0;
+    text-align: center;
+    font-size: 9pt;
+    font-weight: 700;
+  }
+  .payslip-a5-signature {
+    margin-top: 1.25rem;
+    text-align: right;
+    padding-right: 0.25rem;
+  }
+  .payslip-a5-signature__space {
+    height: 2.5rem;
+    width: 58%;
+    margin-left: auto;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid #000;
+  }
+  .payslip-a5-signature__label {
+    margin: 0;
+    font-size: 8pt;
+    font-weight: 600;
+  }
+  .payslip-a5-sheet__closing {
+    margin-top: 0.15rem;
+  }
+  .payslip-a5-sheet {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    color: #000;
+    line-height: 1.25;
+  }
+  .payslip-a5-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0 0 0.4rem;
+  }
+  .payslip-a5-logo {
+    display: block;
+    width: 104px;
+    height: 104px;
+    margin: 0;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
+  .payslip-a5-brand__text {
+    flex: 1;
+    min-width: 0;
+  }
+  .payslip-a5-company {
+    text-align: left;
+    font-size: 11pt;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .payslip-a5-phone {
+    margin: 0.2rem 0 0;
+    font-size: 8.5pt;
+    font-weight: 600;
+  }
+  .payslip-a5-address {
+    margin: 0.15rem 0 0;
+    font-size: 7.5pt;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .payslip-a5-point-meta td {
+    border: 1px solid #000;
+    padding: 0.12rem 0.25rem;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .payslip-a5-point-meta__label {
+    width: 34%;
+  }
+  .payslip-a5-point-meta__value {
+    width: 36%;
+    text-align: left;
+    font-weight: 700;
+    text-transform: none;
+  }
+  .payslip-a5-point-meta__period {
+    width: 30%;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .payslip-a5-farmers th,
+  .payslip-a5-farmers td {
+    font-size: 7.5pt;
+    padding: 0.1rem 0.2rem;
+  }
+  .payslip-a5-farmers th:nth-child(1),
+  .payslip-a5-farmers td:nth-child(1) {
+    width: 6%;
+  }
+  .payslip-a5-farmers th:nth-child(2),
+  .payslip-a5-farmers td.name-col {
+    width: 18%;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .payslip-a5-farmers th:nth-child(3),
+  .payslip-a5-farmers th:nth-child(4),
+  .payslip-a5-farmers th:nth-child(5),
+  .payslip-a5-farmers th:nth-child(6),
+  .payslip-a5-farmers th:nth-child(7),
+  .payslip-a5-farmers th:nth-child(8) {
+    width: 9%;
+  }
+  .payslip-a5-farmers th:nth-child(9),
+  .payslip-a5-farmers td.sig-col {
+    width: 12%;
+    min-height: 1.1em;
+  }
+  .payslip-a5-farmers tfoot td:first-child {
+    text-align: left;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .payslip-a5-farmers tfoot tr.bold td,
+  .payslip-a5-farmers tfoot tr.shaded td {
+    font-weight: 700;
+  }
+  .payslip-a5-sheet--page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+  .payslip-a5-sheet--attachment {
+    page-break-before: auto;
+    break-before: auto;
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid #94a3b8;
+  }
+  .payslip-a5-attachment-title {
+    margin: 0 0 0.3rem;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .payslip-a5-goods-summary th,
+  .payslip-a5-goods-summary td {
+    font-size: 7.5pt;
+    padding: 0.1rem 0.2rem;
+  }
+  .payslip-a5-goods-summary td.product-col {
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .payslip-a5-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.35rem;
+    font-size: 9pt;
+  }
+  .payslip-a5-meta__farmer {
+    flex: 1;
+    min-width: 0;
+  }
+  .payslip-a5-meta__period {
+    flex-shrink: 0;
+    font-weight: 700;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .payslip-a5-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 0.35rem;
+    table-layout: fixed;
+  }
+  .payslip-a5-table th,
+  .payslip-a5-table td {
+    border: 1px solid #000;
+    padding: 0.12rem 0.25rem;
+    vertical-align: middle;
+  }
+  .payslip-a5-table thead th {
+    background: #e0e0e0 !important;
+    font-weight: 700;
+    text-align: center;
+    font-size: 8pt;
+    text-transform: uppercase;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .payslip-a5-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payslip-a5-table tr.shaded td {
+    background: #e0e0e0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .payslip-a5-table tr.bold td {
+    font-weight: 700;
+  }
+  .payslip-a5-daily thead th:first-child,
+  .payslip-a5-daily td:first-child {
+    text-align: left;
+    white-space: nowrap;
+  }
+  .payslip-a5-summary td:first-child {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 8pt;
+  }
+  @media print {
+    @page {
+      size: A5 portrait;
+      margin: 5mm;
+    }
+    .payslip-a5-logo {
+      width: 76px;
+      height: 76px;
+    }
+    .payslip-no-print,
+    .payslip-screen,
+    .sidebar,
+    .topbar,
+    .sidebar-backdrop,
+    #sidebarToggle {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    .app-main {
+      margin-left: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .content-wrap {
+      padding: 0 !important;
+      max-width: none !important;
+    }
+    .payslip-print-a5 {
+      display: block !important;
+    }
+    .payslip-print-a5.payslip-print-lang-en {
+      display: block !important;
+    }
+    .payslip-print-a5.payslip-print-lang-si {
+      display: none !important;
+    }
+    body.payslip-print-sinhala .payslip-print-a5.payslip-print-lang-en {
+      display: none !important;
+    }
+    body.payslip-print-sinhala .payslip-print-a5.payslip-print-lang-si {
+      display: block !important;
+    }
+    .payslip-a5-sheet {
+      width: 100%;
+      max-width: 138mm;
+      margin: 0 auto;
+    }
+    .payslip-a5-farmers th,
+    .payslip-a5-farmers td {
+      font-size: 6.5pt;
+      padding: 0.06rem 0.15rem;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="payslip-print-a5 payslip-print-lang-en" aria-hidden="true">
+  {% include "reports/_collection_point_payslip_a5_sheet.html" with ps=ps pl=payslip_labels_en sheet_period=ps.payment_sheet_period %}
+  {% if has_goods_attachment %}
+  {% include "reports/_collection_point_payslip_goods_a5_sheet.html" with ps=ps pl=payslip_labels_en sheet_period=ps.payment_sheet_period %}
+  {% endif %}
+</div>
+<div class="payslip-print-a5 payslip-print-lang-si" aria-hidden="true">
+  {% include "reports/_collection_point_payslip_a5_sheet.html" with ps=ps pl=payslip_labels_si sheet_period=ps.payment_sheet_period_si %}
+  {% if has_goods_attachment %}
+  {% include "reports/_collection_point_payslip_goods_a5_sheet.html" with ps=ps pl=payslip_labels_si sheet_period=ps.payment_sheet_period_si %}
+  {% endif %}
+</div>
+
+<div class="payslip-screen">
+<div class="payslip-header payslip-no-print">
+  <div>
+    <h1 class="page-title mb-0">{{ point_display_name }}</h1>
+    <p class="payslip-header__meta mb-0">
+      Collection point PaySlip · {{ start|date:"Y-m-d" }} → {{ end|date:"Y-m-d" }}
+      {% if branch %} · {{ branch.code }}{% endif %}
+    </p>
+  </div>
+  <div class="payslip-actions">
+    <a class="btn btn-outline-secondary" href="{{ back_url }}"><i class="bi bi-arrow-left me-1"></i>Back to payment sheet</a>
+    <div class="btn-group payslip-copy-menu" role="group" aria-label="Copy to clipboard">
+      <button type="button" class="btn btn-outline-primary js-copy-point-payslip" data-copy-section="full" title="Copy full payment sheet">
+        <i class="bi bi-file-earmark-text"></i><span class="copy-label ms-1">Full sheet</span>
+      </button>
+      <button type="button" class="btn btn-outline-primary js-copy-point-payslip" data-copy-section="farmers" title="Copy farmer milk summary">
+        <i class="bi bi-table"></i><span class="copy-label ms-1">Farmers</span>
+      </button>
+      <button type="button" class="btn btn-outline-primary js-copy-point-payslip" data-copy-section="summary" title="Copy payment summary">
+        <i class="bi bi-calculator"></i><span class="copy-label ms-1">Summary</span>
+      </button>
+    </div>
+    <div class="btn-group payslip-print-menu" role="group" aria-label="Print options">
+      <button type="button" class="btn btn-primary" onclick="payslipPrint('en')"><i class="bi bi-printer me-1"></i>Print</button>
+      <button type="button" class="btn btn-outline-primary" onclick="payslipPrint('si')"><i class="bi bi-printer me-1"></i>Print (සිංහල)</button>
+    </div>
+    {% if can_view_payment_settlement %}
+    {% if can_record_payment %}
+    <button
+      type="button"
+      class="btn btn-success js-open-period-payment"
+      data-payment-type="collection_point"
+      data-entity-id="{{ point.pk }}"
+      data-entity-name="{{ point_display_name }}"
+      data-amount="{{ payment_amount }}"
+      data-payment-basis="balance"
+      data-carry-forward="{% if needs_carry_forward %}1{% else %}0{% endif %}"
+      data-carry-amount="{{ carry_forward_amount|default:'0' }}"
+      data-return-url="{{ request.get_full_path }}"
+    ><i class="bi bi-cash-stack me-1"></i>{% if needs_carry_forward %}Settle & carry forward{% else %}Make payment{% endif %}</button>
+    {% elif paid_amount > 0 %}
+    <span class="badge text-bg-success-subtle text-success-emphasis align-self-center" title="Paid collection point milk in this period">Settled · Paid collections {{ paid_amount|money }}</span>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="card payslip-card mb-3">
+  <div class="card-body">
+    <div class="payslip-card__title">Collection point details</div>
+    <div class="payslip-stat-grid">
+      <div class="payslip-stat">
+        <span class="payslip-stat__label">Collection point</span>
+        <span class="payslip-stat__value">{{ point_display_name }}</span>
+      </div>
+      <div class="payslip-stat">
+        <span class="payslip-stat__label">Unit</span>
+        <span class="payslip-stat__value">{{ unit_label }}</span>
+      </div>
+      <div class="payslip-stat">
+        <span class="payslip-stat__label">Fee / unit</span>
+        <span class="payslip-stat__value">{{ collector_fee_rate|money }}</span>
+      </div>
+      <div class="payslip-stat">
+        <span class="payslip-stat__label">Avg farmer rate</span>
+        <span class="payslip-stat__value">{{ rate|money }}</span>
+      </div>
+      <div class="payslip-stat">
+        <span class="payslip-stat__label">Total {{ unit_label }}</span>
+        <span class="payslip-stat__value">{{ total_quantity|money }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card payslip-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+          <div class="payslip-card__title mb-0">Farmer milk summary</div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted">{{ farmer_rows|length }} farmer{{ farmer_rows|length|pluralize }}</span>
+            <button type="button" class="btn btn-sm btn-outline-primary js-copy-point-payslip payslip-no-print" data-copy-section="farmers" title="Copy farmer milk summary" aria-label="Copy farmer milk summary">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          </div>
+        </div>
+        <div class="table-responsive payslip-daily-scroll">
+          <table class="table table-sm table-hover payslip-table mb-0">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Name</th>
+                <th class="text-end">Kg</th>
+                <th class="text-end">Ltr</th>
+                <th class="text-end">Fat</th>
+                <th class="text-end">Snf</th>
+                <th class="text-end">Rate</th>
+                <th class="text-end">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in farmer_rows %}
+              <tr>
+                <td>{{ row.number }}</td>
+                <td>{{ row.name }}</td>
+                <td class="money-col">{% if row.kg > 0 %}{{ row.kg|money }}{% else %}—{% endif %}</td>
+                <td class="money-col">{% if row.liters > 0 %}{{ row.liters|money }}{% else %}—{% endif %}</td>
+                <td class="money-col">{% if row.fat is not None %}{{ row.fat|money }}{% else %}—{% endif %}</td>
+                <td class="money-col">{% if row.snf is not None %}{{ row.snf|money }}{% else %}—{% endif %}</td>
+                <td class="money-col">{{ row.rate|money }}</td>
+                <td class="money-col">{{ row.amount|money }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="8" class="text-center text-muted py-3">No farmer milk in this period.</td></tr>
+              {% endfor %}
+            </tbody>
+            {% if farmer_rows %}
+            <tfoot>
+              <tr>
+                <th colspan="2">Total</th>
+                <td class="money-col">{{ farmer_totals.kg|money }}</td>
+                <td class="money-col">{{ farmer_totals.liters|money }}</td>
+                <td></td>
+                <td></td>
+                <td class="money-col">{{ farmer_totals.rate|money }}</td>
+                <td class="money-col">{{ farmer_totals.amount|money }}</td>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card payslip-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+          <div class="payslip-card__title mb-0">Payment summary</div>
+          <button type="button" class="btn btn-sm btn-outline-primary js-copy-point-payslip payslip-no-print" data-copy-section="summary" title="Copy payment summary" aria-label="Copy payment summary">
+            <i class="bi bi-clipboard"></i>
+          </button>
+        </div>
+        <table class="table table-sm payslip-summary-table mb-0 payslip-a5-summary">
+          <tbody>
+            <tr>
+              <th>Total amount</th>
+              <td class="text-end">{{ farmer_totals.amount|money }}</td>
+            </tr>
+            {% if can_view_payment_settlement %}
+            {% if advance_amount > 0 %}
+            <tr>
+              <th>Advance</th>
+              <td class="text-end">{{ advance_amount|money }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+              <th>Goods deduction</th>
+              <td class="text-end">{{ goods_deduction|money }}</td>
+            </tr>
+            {% if loan_total > 0 %}
+            <tr>
+              <th>Bank Loan</th>
+              <td class="text-end">{{ loan_total|money }}</td>
+            </tr>
+            {% endif %}
+            {% if previous_outstanding_amount > 0 %}
+            <tr class="text-danger">
+              <th>Previous outstanding</th>
+              <td class="text-end fw-bold">{{ previous_outstanding_amount|money }}</td>
+            </tr>
+            {% endif %}
+            {% if payment_correction_amount > 0 %}
+            <tr>
+              <th>Payment corrections</th>
+              <td class="text-end">{{ payment_correction_amount|money }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+              <th>Collector fee</th>
+              <td class="text-end">{{ collector_fee_amount|money }}</td>
+            </tr>
+            {% if additional_amount > 0 %}
+            <tr>
+              <th>Additional</th>
+              <td class="text-end">{{ additional_amount|money }}</td>
+            </tr>
+            {% endif %}
+            <tr class="payslip-net-row">
+              <th>Net payable</th>
+              <td class="text-end">{{ balance_payment|money }}</td>
+            </tr>
+            {% if paid_amount > 0 %}
+            <tr>
+              <th>Paid <span class="text-muted fw-normal small d-block">settled toward period net</span></th>
+              <td class="text-end">{{ paid_amount|money }}</td>
+            </tr>
+            {% endif %}
+            {% if balance_amount is not None %}
+            <tr class="payslip-net-row{% if balance_amount > 0 %} is-negative{% endif %}">
+              <th>Balance due <span class="text-muted fw-normal small d-block">remaining unpaid</span></th>
+              <td class="text-end">{{ balance_amount|money }}</td>
+            </tr>
+            {% endif %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if can_view_payment_settlement %}
+<div class="card payslip-card">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="payslip-section h-100">
+          <div class="payslip-section__title">Advance entries</div>
+          <p class="payslip-deduction-legend mb-2">Recovered = deducted from a payment; Pending = still owed.</p>
+          <div class="payslip-section-scroll">
+            <table class="table table-sm payslip-table mb-0">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Farmer</th>
+                  <th>Note</th>
+                  <th class="text-end">Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for a in advances %}
+                <tr class="{% if a.is_recovered %}payslip-row--settled{% endif %}">
+                  <td>
+                    <a href="#" class="js-payslip-embed-link payslip-embed-link"
+                       data-embed-url="{% url 'farmer-advance-embed' a.pk %}"
+                       data-embed-title="Advance · {{ a.date|date:'Y-m-d' }}">{{ a.date|date:"Y-m-d" }}</a>
+                  </td>
+                  <td>{{ a.farmer.common_name|default:a.farmer.full_name }}</td>
+                  <td>{{ a.note|default:"—" }}</td>
+                  <td class="money-col">{{ a.amount|money }}</td>
+                  {% include "reports/_payslip_recovery_status.html" with is_recovered=a.is_recovered recovered_at=a.recovered_at %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-3">No advances in this period.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="payslip-section h-100">
+          <div class="payslip-section__title">Loan deductions</div>
+          <p class="payslip-deduction-legend mb-2">Paid = instalment settled; Pending = still due.</p>
+          <div class="payslip-section-scroll">
+            <table class="table table-sm payslip-table mb-0">
+              <thead>
+                <tr>
+                  <th>Farmer</th>
+                  <th>Loan #</th>
+                  <th>Installment</th>
+                  <th>Due date</th>
+                  <th class="text-end">Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in loan_items %}
+                <tr class="{% if l.is_paid %}payslip-row--settled{% endif %}">
+                  <td>{{ l.farmer_name }}</td>
+                  <td>
+                    {% if perms.farmer_loans.view_farmerloan %}
+                    <a href="#" class="js-payslip-embed-link payslip-embed-link font-monospace"
+                       data-embed-url="{% url 'farmer-loan-detail' l.loan_id %}?embed=1"
+                       data-embed-title="Loan #{{ l.loan_id }}">#{{ l.loan_id }}</a>
+                    {% else %}
+                    #{{ l.loan_id }}
+                    {% endif %}
+                  </td>
+                  <td>{{ l.installment_number }}</td>
+                  <td>{{ l.due_date|date:"Y-m-d" }}</td>
+                  <td class="money-col">{{ l.amount|money }}</td>
+                  {% include "reports/_payslip_recovery_status.html" with is_paid=l.is_paid paid_on=l.paid_on %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-3">No loan deductions in this period.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="payslip-section mt-3">
+      {% if has_goods_attachment %}
+      <div class="payslip-section__title">Goods deduction summary by product</div>
+      <div class="table-responsive mb-3">
+        <table class="table table-sm payslip-table mb-0">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Unit price</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in goods_by_product %}
+            <tr>
+              <td>{{ row.product_name }}</td>
+              <td class="money-col">{{ row.quantity|money }}</td>
+              <td class="money-col">{{ row.unit_price|money }}</td>
+              <td class="money-col">{{ row.amount|money }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="3">Total</th>
+              <td class="money-col">{{ goods_by_product_total|money }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% endif %}
+      <div class="payslip-section__title">Goods deductions</div>
+      <p class="payslip-deduction-legend mb-2">Settled = deducted from a payment; Pending = still owed.</p>
+      <div class="table-responsive">
+        <table class="table table-sm payslip-table mb-0">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Farmer</th>
+              <th>Receipt #</th>
+              <th>Product</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Unit price</th>
+              <th class="text-end">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in goods_items %}
+            <tr class="{% if g.is_settled %}payslip-row--settled{% endif %}">
+              <td>{{ g.date|date:"Y-m-d H:i" }}</td>
+              <td>{{ g.farmer_name }}</td>
+              <td>
+                {% if g.batch_ref and perms.suppliers.view_farmergoodsissue %}
+                <a href="#" class="js-payslip-embed-link payslip-embed-link font-monospace"
+                   data-embed-url="{% url 'farmer-goods-issue-print' g.batch_ref %}?embed=1"
+                   data-embed-title="Receipt {{ g.batch_ref|slice:':8'|upper }}">{{ g.batch_ref|slice:":8"|upper }}</a>
+                {% elif g.batch_ref %}
+                <span class="font-monospace text-muted">{{ g.batch_ref|slice:":8"|upper }}</span>
+                {% else %}
+                —
+                {% endif %}
+              </td>
+              <td>{{ g.product_name }}</td>
+              <td class="money-col">{{ g.quantity|money }}</td>
+              <td class="money-col">{{ g.unit_price|money }}</td>
+              <td class="money-col">{{ g.amount|money }}</td>
+              {% include "reports/_payslip_recovery_status.html" with is_settled=g.is_settled settled_at=g.settled_at %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-3">No goods deductions in this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% include "reports/_payslip_embed_modal.html" %}
+{% if can_record_payment %}
+{% include "reports/_period_payment_modal.html" %}
+{% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+{% include "reports/_farmer_payslip_print_script.html" %}
+{% include "reports/_collection_point_payslip_copy_script.html" %}
+{% include "reports/_payslip_embed_script.html" %}
+{% if can_record_payment %}
+{% include "reports/_period_payment_modal_script.html" %}
+{% endif %}
+{% endblock %}

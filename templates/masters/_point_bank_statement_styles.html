@@ -1,0 +1,172 @@
+<style>
+  .point-bank-sheet {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 1.1rem 1.15rem 1.25rem;
+    background: #fff;
+    color: #111;
+    border: 1px solid #dbe3ef;
+    border-radius: 8px;
+  }
+  .point-bank-sheet .cp-loan-bank-doc {
+    margin: 0 0 1rem;
+    padding: 0 0 0.75rem;
+    border-bottom: 2px solid #111;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__company {
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__line {
+    font-size: 0.78rem;
+    color: #333;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__issued {
+    margin-left: auto;
+    text-align: right;
+    font-size: 0.78rem;
+    color: #333;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__issued strong {
+    display: block;
+    color: #111;
+    font-size: 0.82rem;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__subtitle {
+    margin: 0.2rem 0 0.7rem;
+    font-size: 0.82rem;
+    color: #333;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__id {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__id th,
+  .point-bank-sheet .cp-loan-bank-doc__id td {
+    border: 1px solid #222;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .point-bank-sheet .cp-loan-bank-doc__id th {
+    width: 14%;
+    background: #f3f3f3;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #333;
+  }
+  .point-bank-sheet .farmer-statement-section-title,
+  .point-bank-sheet .farmer-financial-block__title,
+  .point-bank-sheet .farmer-financial-block__subtitle {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #111;
+    margin: 1rem 0 0.4rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1.5px solid #111;
+  }
+  .point-bank-sheet .farmer-financial-block {
+    margin-bottom: 0.35rem;
+  }
+  .point-bank-sheet .farmer-statement-table,
+  .point-bank-sheet .farmer-financial-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+  .point-bank-sheet .farmer-statement-table th,
+  .point-bank-sheet .farmer-statement-table td,
+  .point-bank-sheet .farmer-financial-table th,
+  .point-bank-sheet .farmer-financial-table td {
+    border: 1px solid #222;
+    padding: 0.3rem 0.45rem;
+    vertical-align: top;
+  }
+  .point-bank-sheet .farmer-statement-table thead th,
+  .point-bank-sheet .farmer-financial-table thead th {
+    background: #f3f3f3;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .point-bank-sheet .farmer-statement-totals,
+  .point-bank-sheet .farmer-financial-table tfoot th {
+    font-weight: 700;
+    background: #f8f8f8;
+  }
+  .point-bank-sheet__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #888;
+    font-size: 0.72rem;
+    color: #444;
+    font-style: italic;
+  }
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 14mm 14mm 16mm;
+    }
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .no-print,
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    .page-header,
+    .module-shell {
+      display: none !important;
+    }
+    .app-shell,
+    .app-main,
+    .content-wrap,
+    .main-content {
+      display: block !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+      background: #fff !important;
+    }
+    .point-bank-sheet {
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+</style>

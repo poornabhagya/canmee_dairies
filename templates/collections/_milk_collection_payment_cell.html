@@ -1,0 +1,7 @@
+<td class="milk-collection-payment-col">
+  {% if o.is_paid %}
+  <span class="badge text-bg-success-subtle text-success-emphasis"{% if o.paid_at %} title="Paid {{ o.paid_at|date:'Y-m-d H:i' }}"{% endif %}>Paid</span>
+  {% else %}
+  <span class="badge text-bg-warning-subtle text-warning-emphasis" title="Not yet included in a farmer payment">Unpaid</span>
+  {% endif %}
+</td>

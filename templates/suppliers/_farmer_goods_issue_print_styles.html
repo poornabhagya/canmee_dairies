@@ -1,0 +1,179 @@
+<style>
+  .goods-issue-sheet {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: var(--radius, 0.5rem);
+    padding: 1.25rem 1.5rem;
+  }
+  .goods-issue-sheet-header {
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.85rem;
+  }
+  .goods-issue-sheet-title {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+  .goods-issue-meta {
+    font-size: 0.8125rem;
+    margin-bottom: 0.85rem;
+  }
+  .goods-issue-meta dt {
+    color: #64748b;
+    font-weight: 600;
+  }
+  .goods-issue-lines {
+    width: 100%;
+    font-size: 0.8125rem;
+    table-layout: fixed;
+    margin-bottom: 0;
+  }
+  .goods-issue-lines th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .goods-issue-lines th,
+  .goods-issue-lines td {
+    padding: 0.4rem 0.5rem;
+    vertical-align: middle;
+  }
+  .goods-issue-lines .col-idx { width: 6%; }
+  .goods-issue-lines .col-product { width: 34%; }
+  .goods-issue-lines .col-qty { width: 10%; }
+  .goods-issue-lines .col-unit { width: 10%; }
+  .goods-issue-lines .col-price { width: 14%; }
+  .goods-issue-lines .col-amount { width: 14%; }
+  .goods-issue-lines .col-status { width: 12%; }
+  .goods-issue-lines .col-actions { width: 72px; }
+  .goods-issue-lines .goods-issue-col-amount,
+  .goods-issue-lines tfoot .goods-issue-col-amount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .goods-issue-lines tfoot th,
+  .goods-issue-lines tfoot td {
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    font-weight: 700;
+  }
+  .goods-issue-lines tr.goods-line--settled td {
+    background: #f0fdf4;
+  }
+  .goods-issue-lines tr.goods-line--editing td {
+    background: #eff6ff;
+  }
+  .goods-line-view--editable {
+    display: inline;
+    margin: 0;
+    padding: 0.1rem 0.2rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    max-width: 100%;
+    cursor: pointer;
+  }
+  .goods-line-view--editable:hover,
+  .goods-line-view--editable:focus-visible {
+    background: #e8f1ff;
+    outline: none;
+  }
+  .goods-line-product-select,
+  .goods-line-qty-input {
+    display: none;
+    font-size: 0.78rem;
+  }
+  .goods-line-qty-input {
+    width: 4.75rem;
+    margin-left: auto;
+    text-align: right;
+    padding: 0.2rem 0.35rem;
+  }
+  .goods-line-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.2rem;
+    white-space: nowrap;
+  }
+  .goods-line-actions .btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .goods-issue-lines .goods-line-edit-only {
+    display: none;
+  }
+  .goods-issue-lines tr.goods-line--editing .goods-line-view,
+  .goods-issue-lines tr.goods-line--editing .goods-line-view-only {
+    display: none !important;
+  }
+  .goods-issue-lines tr.goods-line--editing .goods-line-product-select,
+  .goods-issue-lines tr.goods-line--editing .goods-line-qty-input {
+    display: block;
+  }
+  .goods-issue-lines tr.goods-line--editing .goods-line-edit-only.btn {
+    display: inline-flex;
+  }
+  .goods-issue-lines--editable .col-product { width: 28%; }
+  .goods-issue-lines--editable .col-qty { width: 12%; }
+  .goods-issue-lines--editable .col-unit { width: 8%; }
+  .goods-issue-lines--editable .col-price { width: 13%; }
+  .goods-issue-lines--editable .col-amount { width: 13%; }
+  .goods-issue-lines--editable .col-status { width: 10%; }
+  @media print {
+    @page {
+      margin: 12mm;
+    }
+    .no-print,
+    .sidebar,
+    .topbar,
+    .sidebar-backdrop {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    .app-main {
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .content-wrap,
+    .goods-receipt-embed {
+      padding: 0 !important;
+      background: #fff !important;
+    }
+    .goods-issue-sheet {
+      max-width: 100% !important;
+      box-shadow: none !important;
+    }
+    .goods-issue-meta-recovery,
+    .goods-issue-col-status,
+    .goods-line-actions-col,
+    .goods-line-add-row,
+    .goods-issue-header-save {
+      display: none !important;
+    }
+    .goods-issue-lines thead th,
+    .goods-issue-lines tfoot th,
+    .goods-issue-lines tfoot td,
+    .goods-issue-lines tr.goods-line--settled td,
+    .goods-issue-lines .badge {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>

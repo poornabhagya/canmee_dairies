@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ form_title }} · Canmee Dairies{% endblock %}
+{% block page_heading %}{{ form_title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ form_title }}</h1>
+    <p class="page-subtitle">Role name as shown when assigning to users.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card" style="max-width: 28rem;">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field.errors }}
+        {{ field }}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
+      <a href="{% url 'user_management:group-list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

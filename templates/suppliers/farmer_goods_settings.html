@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}Farmer goods settings · Canmee Dairies{% endblock %}
+{% block page_heading %}Farmer goods settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Farmer goods settings</h1>
+    <p class="page-subtitle">Superuser only. Control whether collection-point issues wait for Accept.</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card" style="max-width: 40rem;">
+      {% csrf_token %}
+      <div class="form-check form-switch mb-3">
+        {% render_field form.enable_accept_notifications class="form-check-input" %}
+        <label class="form-check-label" for="{{ form.enable_accept_notifications.id_for_label }}">Enable Farmer Goods accept notifications</label>
+        <div class="form-text">
+          When on, collection-point issues stay pending until Accept (stock and payment wait).
+          When off, issues apply immediately — no accept notifications, no Pending accept queue.
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Save settings</button>
+      <a href="{% url 'farmer-goods-issue-list' %}" class="btn btn-outline-secondary mt-2 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

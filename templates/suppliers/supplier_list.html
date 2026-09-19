@@ -1,0 +1,860 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Suppliers · Canmee Dairies{% endblock %}
+{% block page_heading %}Suppliers{% endblock %}
+{% block topbar_actions %}
+{% if perms.suppliers.add_supplier %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supplierQuickAddModal"><i class="bi bi-plus-lg me-1"></i>Add supplier</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .supplier-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+    overflow: visible;
+  }
+  .supplier-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+  .supplier-list-card .table-wrap,
+  .supplier-list-card .dataTables_wrapper,
+  .supplier-list-card div.dt-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .supplier-list-card .supplier-table {
+    width: 100% !important;
+    table-layout: fixed;
+  }
+  .supplier-list-card .supplier-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+  }
+  .supplier-list-card .supplier-table tbody td {
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .supplier-list-card .supplier-table th:nth-child(1),
+  .supplier-list-card .supplier-table td:nth-child(1) { width: 14%; }
+  .supplier-list-card .supplier-table th:nth-child(2),
+  .supplier-list-card .supplier-table td:nth-child(2) {
+    width: 16%;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .supplier-list-card .supplier-table th:nth-child(3),
+  .supplier-list-card .supplier-table td:nth-child(3) { width: 11%; }
+  .supplier-list-card .supplier-table th:nth-child(4),
+  .supplier-list-card .supplier-table td:nth-child(4) { width: 11%; }
+  .supplier-list-card .supplier-table th:nth-child(5),
+  .supplier-list-card .supplier-table td:nth-child(5) { width: 16%; }
+  .supplier-list-card .supplier-table th:nth-child(6),
+  .supplier-list-card .supplier-table td:nth-child(6) { width: 8%; }
+  .supplier-list-card .supplier-table th:nth-child(7),
+  .supplier-list-card .supplier-table td:nth-child(7) { width: 5.5rem; }
+  .supplier-list-card .supplier-table td:last-child,
+  .supplier-list-card .supplier-table th:last-child {
+    white-space: nowrap;
+  }
+  .supplier-list-card .supplier-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .supplier-list-card .supplier-table tbody td.supplier-actions-cell {
+    overflow: visible;
+  }
+  a.smart-dt-chip {
+    text-decoration: none;
+  }
+  .supplier-rate-inline {
+    display: flex;
+    align-items: center;
+    min-height: 1.75rem;
+  }
+  .supplier-rate-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0.35rem;
+    margin: 0;
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+    max-width: 100%;
+  }
+  .supplier-rate-display:hover,
+  .supplier-rate-display:focus {
+    background: rgba(5, 150, 105, 0.08);
+    outline: none;
+  }
+  .supplier-rate-display .supplier-rate-edit-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .supplier-rate-display:hover .supplier-rate-edit-icon,
+  .supplier-rate-display:focus .supplier-rate-edit-icon,
+  tr:hover .supplier-rate-display .supplier-rate-edit-icon {
+    opacity: 1;
+  }
+  .supplier-rate-display.is-empty {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .supplier-rate-editor {
+    display: none;
+    align-items: center;
+    gap: 0.3rem;
+    width: 100%;
+  }
+  .supplier-rate-inline.is-editing .supplier-rate-display { display: none; }
+  .supplier-rate-inline.is-editing .supplier-rate-editor { display: inline-flex; }
+  .supplier-rate-editor .js-supplier-rate-input {
+    width: 5.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .supplier-rate-editor .js-supplier-rate-unit {
+    width: auto;
+    min-width: 4.25rem;
+    border-radius: 8px;
+    padding: 0.22rem 1.5rem 0.22rem 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+  .supplier-rate-inline.is-saving { opacity: 0.65; pointer-events: none; }
+  .supplier-rate-inline.is-saved .supplier-rate-display {
+    background: rgba(5, 150, 105, 0.12);
+  }
+  .supplier-rate-inline.is-error .js-supplier-rate-input {
+    border-color: #f87171;
+  }
+  .supplier-actions-trigger {
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .supplier-actions-trigger.dropdown-toggle::after {
+    display: none;
+  }
+  .supplier-actions-menu {
+    min-width: 10rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+    padding: 0.35rem;
+    z-index: 1080;
+  }
+  .supplier-actions-menu .dropdown-item {
+    border-radius: 8px;
+    font-size: 0.86rem;
+    padding: 0.45rem 0.6rem;
+  }
+  .supplier-actions-menu .dropdown-item.text-danger:hover,
+  .supplier-actions-menu .dropdown-item.text-danger:focus {
+    background: #fef2f2;
+    color: #b91c1c !important;
+  }
+  .supplier-modal .modal-content {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+  }
+  .supplier-modal .modal-dialog { max-width: 760px; }
+  .supplier-modal .modal-header {
+    border-bottom: 1px solid #edf2f7;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 0.95rem 1rem;
+  }
+  .supplier-modal .modal-title { font-weight: 700; color: #0f172a; }
+  .supplier-modal .modal-body { padding: 1rem; }
+  .supplier-modal .modal-footer {
+    border-top: 1px solid #edf2f7;
+    padding: 0.8rem 1rem 1rem;
+  }
+  .supplier-form-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    margin-bottom: 0.8rem;
+  }
+  .supplier-form-row .form-label {
+    margin: 0;
+    font-weight: 600;
+    color: #334155;
+    padding-top: 0.35rem;
+  }
+  .supplier-form-row .invalid-feedback {
+    grid-column: 2 / 3;
+    margin-top: 0.2rem;
+  }
+  .supplier-modal .select2-container { width: 100% !important; }
+  .supplier-modal .select2-container .select2-selection--multiple {
+    min-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.2rem 0.35rem;
+  }
+  .supplier-modal .select2-container .select2-selection.is-invalid {
+    border-color: #dc3545;
+  }
+  @media (max-width: 992px) {
+    .supplier-list-card .card-body.table-wrap {
+      overflow-x: auto;
+    }
+    .supplier-list-card .supplier-table {
+      min-width: 980px;
+      table-layout: auto;
+    }
+  }
+  @media (max-width: 576px) {
+    .supplier-form-row { grid-template-columns: 1fr; }
+    .supplier-form-row .invalid-feedback { grid-column: auto; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table supplier-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats" aria-label="Supplier summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Suppliers</span>
+        <span class="smart-dt-stat-value">{{ supplier_summary.count }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Active</span>
+        <span class="smart-dt-stat-value">{{ supplier_summary.active }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Raw milk</span>
+        <span class="smart-dt-stat-value">{{ supplier_summary.raw_milk }}</span>
+      </div>
+    </div>
+
+    <div id="supplierDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter suppliers">
+      <a class="smart-dt-chip {% if not selected_category %}is-active{% endif %}" href="{% url 'supplier-list' %}">
+        All<span class="smart-dt-chip-count">{{ supplier_summary.count }}</span>
+      </a>
+      {% for chip in category_chips %}
+      <a class="smart-dt-chip {% if selected_category == chip.code %}is-active{% endif %}" href="?category={{ chip.code }}">
+        {{ chip.label }}<span class="smart-dt-chip-count">{{ chip.count }}</span>
+      </a>
+      {% endfor %}
+    </div>
+
+    <table
+      class="table table-hover datatable datatable-smart supplier-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No suppliers yet."
+      data-filters-target="supplierDtFilters"
+    >
+      <thead>
+        <tr>
+          <th class="all">Name</th>
+          <th class="min-tablet-l">Category</th>
+          <th class="min-tablet-l">Rate</th>
+          <th class="min-tablet-l">Contact</th>
+          <th class="min-tablet-l">Branches</th>
+          <th class="min-tablet-l">Status</th>
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in object_list %}
+        <tr>
+          <td class="all fw-medium">
+            {% if s.category == "raw_milk_supplier" and perms.suppliers.view_supplier %}
+            <a href="{% url 'raw-milk-supplier-detail' s.pk %}" class="smart-dt-name-link">{{ s.name }}</a>
+            {% else %}
+            <span class="smart-dt-name-text">{{ s.name }}</span>
+            {% endif %}
+          </td>
+          <td class="min-tablet-l">{{ s.get_category_display }}</td>
+          <td class="min-tablet-l supplier-rate-cell" data-order="{{ s.rate|default_if_none:'0' }}">
+            {% if s.category == "raw_milk_supplier" %}
+              {% if perms.suppliers.change_supplierrate or perms.suppliers.change_supplier %}
+              <div
+                class="supplier-rate-inline"
+                data-supplier-id="{{ s.pk }}"
+                data-rate="{{ s.rate|default_if_none:'0' }}"
+                data-rate-unit="{{ s.rate_unit|default:'liter' }}"
+              >
+                <button type="button" class="supplier-rate-display js-supplier-rate-edit {% if not s.rate %}is-empty{% endif %}" title="Edit rate">
+                  <span class="js-supplier-rate-label">
+                    {% if s.rate %}
+                      {{ s.rate|money }} <span class="text-muted small">/ {{ s.get_rate_unit_display|cut:"Per "|lower }}</span>
+                    {% else %}
+                      Set rate
+                    {% endif %}
+                  </span>
+                  <i class="bi bi-pencil supplier-rate-edit-icon" aria-hidden="true"></i>
+                </button>
+                <div class="supplier-rate-editor">
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    class="form-control form-control-sm js-supplier-rate-input no-global-select2"
+                    value="{% if s.rate %}{{ s.rate }}{% endif %}"
+                    aria-label="Rate for {{ s.name }}"
+                  >
+                  <select class="form-select form-select-sm js-supplier-rate-unit no-global-select2" aria-label="Rate unit">
+                    <option value="liter" {% if s.rate_unit == 'liter' or not s.rate_unit %}selected{% endif %}>liter</option>
+                    <option value="kg" {% if s.rate_unit == 'kg' %}selected{% endif %}>kg</option>
+                  </select>
+                </div>
+              </div>
+              {% elif s.rate %}
+                {{ s.rate|money }}
+                <span class="text-muted small">/ {{ s.get_rate_unit_display|cut:"Per "|lower }}</span>
+              {% else %}
+                —
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="min-tablet-l">{{ s.contact_number|default:"—" }}</td>
+          <td class="min-tablet-l">{% for b in s.branches.all %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+          <td class="min-tablet-l">{{ s.get_status_display }}</td>
+          <td class="all text-end text-nowrap supplier-actions-cell">
+            {% if perms.suppliers.view_supplier or perms.suppliers.change_supplier or perms.suppliers.delete_supplier %}
+            <div class="dropdown dropstart supplier-actions-dropdown d-inline-block">
+              <button
+                class="btn btn-sm btn-outline-secondary dropdown-toggle supplier-actions-trigger"
+                type="button"
+                data-bs-toggle="dropdown"
+                data-bs-boundary="viewport"
+                aria-expanded="false"
+                aria-label="Supplier actions"
+              >
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu supplier-actions-menu">
+                {% if s.category == "raw_milk_supplier" and perms.suppliers.view_supplier %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'raw-milk-supplier-detail' s.pk %}"><i class="bi bi-eye me-2"></i>View</a>
+                </li>
+                <li>
+                  <a class="dropdown-item" href="{% url 'raw-milk-supplier-account' s.pk %}"><i class="bi bi-wallet2 me-2"></i>Account</a>
+                </li>
+                {% endif %}
+                {% if perms.suppliers.change_supplier %}
+                <li>
+                  <a class="dropdown-item js-supplier-edit" href="#" data-supplier-id="{{ s.pk }}"><i class="bi bi-pencil-square me-2"></i>Edit</a>
+                </li>
+                {% endif %}
+                {% if perms.suppliers.delete_supplier %}
+                {% if s.category == "raw_milk_supplier" and perms.suppliers.view_supplier or perms.suppliers.change_supplier %}<li><hr class="dropdown-divider"></li>{% endif %}
+                <li>
+                  <a
+                    href="{% url 'supplier-delete' s.pk %}"
+                    class="dropdown-item text-danger js-swal-delete-post"
+                    data-swal-title="Delete supplier {{ s.name }}?"
+                    data-swal-text="This action cannot be undone."
+                  ><i class="bi bi-trash3 me-2"></i>Delete</a>
+                </li>
+                {% endif %}
+              </ul>
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if perms.suppliers.add_supplier %}
+<div class="modal fade supplier-modal" id="supplierQuickAddModal" tabindex="-1" aria-labelledby="supplierQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="supplier-quick-add-form" method="post" action="{% url 'supplier-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="supplierQuickAddModalLabel">Add supplier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_create_form.name.id_for_label }}">Name</label>
+            {{ supplier_create_form.name }}
+            <div class="invalid-feedback" data-add-error-for="name"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_create_form.category.id_for_label }}">Category</label>
+            {{ supplier_create_form.category }}
+            <div class="invalid-feedback" data-add-error-for="category"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_create_form.contact_number.id_for_label }}">Contact</label>
+            {{ supplier_create_form.contact_number }}
+            <div class="invalid-feedback" data-add-error-for="contact_number"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_create_form.email.id_for_label }}">Email</label>
+            {{ supplier_create_form.email }}
+            <div class="invalid-feedback" data-add-error-for="email"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_create_form.status.id_for_label }}">Status</label>
+            {{ supplier_create_form.status }}
+            <div class="invalid-feedback" data-add-error-for="status"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_create_form.address.id_for_label }}">Address</label>
+            {{ supplier_create_form.address }}
+            <div class="invalid-feedback" data-add-error-for="address"></div>
+          </div>
+          <div class="supplier-form-row mb-0">
+            <label class="form-label" for="{{ supplier_create_form.branches.id_for_label }}">Branches</label>
+            <div>
+              {{ supplier_create_form.branches }}
+              <div class="form-text">Supplier will appear only for users and transactions linked to these branches.</div>
+              <div class="invalid-feedback" data-add-error-for="branches"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save supplier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.suppliers.change_supplier %}
+{{ supplier_edit_rows|json_script:"supplier-edit-data" }}
+<div class="modal fade supplier-modal" id="supplierQuickEditModal" tabindex="-1" aria-labelledby="supplierQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="supplier-quick-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="supplierQuickEditModalLabel">Edit supplier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_edit_form.name.id_for_label }}">Name</label>
+            {{ supplier_edit_form.name }}
+            <div class="invalid-feedback" data-edit-error-for="name"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_edit_form.category.id_for_label }}">Category</label>
+            {{ supplier_edit_form.category }}
+            <div class="invalid-feedback" data-edit-error-for="category"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_edit_form.contact_number.id_for_label }}">Contact</label>
+            {{ supplier_edit_form.contact_number }}
+            <div class="invalid-feedback" data-edit-error-for="contact_number"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_edit_form.email.id_for_label }}">Email</label>
+            {{ supplier_edit_form.email }}
+            <div class="invalid-feedback" data-edit-error-for="email"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_edit_form.status.id_for_label }}">Status</label>
+            {{ supplier_edit_form.status }}
+            <div class="invalid-feedback" data-edit-error-for="status"></div>
+          </div>
+          <div class="supplier-form-row">
+            <label class="form-label" for="{{ supplier_edit_form.address.id_for_label }}">Address</label>
+            {{ supplier_edit_form.address }}
+            <div class="invalid-feedback" data-edit-error-for="address"></div>
+          </div>
+          <div class="supplier-form-row mb-0">
+            <label class="form-label" for="{{ supplier_edit_form.branches.id_for_label }}">Branches</label>
+            <div>
+              {{ supplier_edit_form.branches }}
+              <div class="form-text">Supplier will appear only for users and transactions linked to these branches.</div>
+              <div class="invalid-feedback" data-edit-error-for="branches"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update supplier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% if perms.suppliers.change_supplierrate or perms.suppliers.change_supplier %}
+<script>
+(function () {
+  var saveUrl = "{% url 'raw-milk-supplier-rate-cell-save' %}";
+  var csrfToken = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "{{ csrf_token }}";
+  var inFlight = Object.create(null);
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getEditors() {
+    return Array.prototype.slice.call(document.querySelectorAll(".supplier-rate-inline"));
+  }
+
+  function closeEditor(wrap, restore) {
+    if (!wrap) return;
+    var input = wrap.querySelector(".js-supplier-rate-input");
+    var unit = wrap.querySelector(".js-supplier-rate-unit");
+    if (restore && input) {
+      var original = wrap.getAttribute("data-rate") || "";
+      input.value = original === "0" || original === "0.00" ? "" : original;
+    }
+    if (restore && unit) {
+      unit.value = wrap.getAttribute("data-rate-unit") || "liter";
+    }
+    wrap.classList.remove("is-editing", "is-error");
+  }
+
+  function openEditor(wrap) {
+    getEditors().forEach(function (other) {
+      if (other !== wrap) closeEditor(other, true);
+    });
+    wrap.classList.add("is-editing");
+    wrap.classList.remove("is-error", "is-saved");
+    var input = wrap.querySelector(".js-supplier-rate-input");
+    if (input) {
+      input.focus();
+      if (typeof input.select === "function") input.select();
+    }
+  }
+
+  function setLabel(wrap, rateDisplay, unitLabel, hasRate) {
+    var label = wrap.querySelector(".js-supplier-rate-label");
+    var btn = wrap.querySelector(".supplier-rate-display");
+    if (!label) return;
+    if (hasRate) {
+      label.innerHTML = rateDisplay + ' <span class="text-muted small">/ ' + unitLabel + "</span>";
+      if (btn) btn.classList.remove("is-empty");
+    } else {
+      label.textContent = "Set rate";
+      if (btn) btn.classList.add("is-empty");
+    }
+  }
+
+  function nextEditor(wrap) {
+    var editors = getEditors().filter(function (el) {
+      return el.offsetParent !== null;
+    });
+    var idx = editors.indexOf(wrap);
+    if (idx < 0) return null;
+    return editors[idx + 1] || null;
+  }
+
+  function saveEditor(wrap, options) {
+    options = options || {};
+    var supplierId = wrap.getAttribute("data-supplier-id");
+    if (!supplierId || inFlight[supplierId]) return Promise.resolve();
+    var input = wrap.querySelector(".js-supplier-rate-input");
+    var unit = wrap.querySelector(".js-supplier-rate-unit");
+    if (!input || !unit) return Promise.resolve();
+
+    var rate = String(input.value || "").replace(/,/g, "").trim();
+    var rateUnit = unit.value;
+    var originalRate = wrap.getAttribute("data-rate") || "0";
+    var originalUnit = wrap.getAttribute("data-rate-unit") || "liter";
+    if (!rate) {
+      closeEditor(wrap, true);
+      return Promise.resolve();
+    }
+    if (rate === originalRate && rateUnit === originalUnit) {
+      closeEditor(wrap, false);
+      if (options.moveNext) {
+        var nxtSame = nextEditor(wrap);
+        if (nxtSame) openEditor(nxtSame);
+      }
+      return Promise.resolve();
+    }
+
+    inFlight[supplierId] = true;
+    wrap.classList.add("is-saving");
+    wrap.classList.remove("is-error");
+    var body = new FormData();
+    body.append("supplier_id", supplierId);
+    body.append("rate", rate);
+    body.append("rate_unit", rateUnit);
+    body.append("csrfmiddlewaretoken", csrfToken);
+
+    return fetch(saveUrl, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return { ok: r.ok, data: d };
+        });
+      })
+      .then(function (res) {
+        wrap.classList.remove("is-saving");
+        delete inFlight[supplierId];
+        if (!res.ok || !res.data || !res.data.ok) {
+          wrap.classList.add("is-error");
+          if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Could not save rate",
+              text: (res.data && res.data.error) || "Please try again.",
+              timer: 2200,
+              showConfirmButton: false,
+              toast: true,
+              position: "top-end",
+            });
+          }
+          return;
+        }
+        var data = res.data;
+        wrap.setAttribute("data-rate", data.rate);
+        wrap.setAttribute("data-rate-unit", data.rate_unit);
+        input.value = data.rate;
+        unit.value = data.rate_unit;
+        setLabel(wrap, data.rate_display || formatMoney(data.rate), data.rate_unit_label || data.rate_unit, parseFloat(data.rate) > 0);
+        var cell = wrap.closest("td");
+        if (cell) cell.setAttribute("data-order", data.rate);
+        wrap.classList.remove("is-editing");
+        wrap.classList.add("is-saved");
+        window.setTimeout(function () {
+          wrap.classList.remove("is-saved");
+        }, 900);
+        if (options.moveNext) {
+          var nxt = nextEditor(wrap);
+          if (nxt) openEditor(nxt);
+        }
+      })
+      .catch(function () {
+        wrap.classList.remove("is-saving");
+        delete inFlight[supplierId];
+        wrap.classList.add("is-error");
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var editBtn = ev.target.closest(".js-supplier-rate-edit");
+    if (editBtn) {
+      ev.preventDefault();
+      openEditor(editBtn.closest(".supplier-rate-inline"));
+      return;
+    }
+    var inside = ev.target.closest(".supplier-rate-inline.is-editing");
+    if (!inside) {
+      getEditors().forEach(function (wrap) {
+        if (wrap.classList.contains("is-editing")) saveEditor(wrap);
+      });
+    }
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var wrap = ev.target.closest(".supplier-rate-inline.is-editing");
+    if (!wrap) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor(wrap, { moveNext: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor(wrap, true);
+    }
+  });
+})();
+</script>
+{% endif %}
+{% if perms.suppliers.add_supplier or perms.suppliers.change_supplier %}
+<script>
+(function () {
+  var addForm = document.getElementById("supplier-quick-add-form");
+  var editForm = document.getElementById("supplier-quick-edit-form");
+  var addModalEl = document.getElementById("supplierQuickAddModal");
+  var editModalEl = document.getElementById("supplierQuickEditModal");
+  var addModal = addModalEl ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  var supplierEditDataEl = document.getElementById("supplier-edit-data");
+  var supplierRows = {};
+  if (supplierEditDataEl) {
+    try {
+      (JSON.parse(supplierEditDataEl.textContent || "[]") || []).forEach(function (r) {
+        supplierRows[String(r.id)] = r;
+      });
+    } catch (e) {}
+  }
+
+  function initSupplierBranchesSelect2(selectEl) {
+    if (!selectEl || !window.jQuery || !window.jQuery.fn.select2) return;
+    var $el = window.jQuery(selectEl);
+    if ($el.hasClass("select2-hidden-accessible")) {
+      $el.select2("destroy");
+    }
+    var modalParent = $el.closest(".modal");
+    $el.select2({
+      width: "100%",
+      closeOnSelect: false,
+      allowClear: true,
+      placeholder: selectEl.getAttribute("data-placeholder") || "Select one or more branches",
+      dropdownParent: modalParent.length ? modalParent : window.jQuery("body"),
+    });
+  }
+
+  function initAllSupplierBranchesSelect2() {
+    document.querySelectorAll(".js-supplier-branches-select").forEach(initSupplierBranchesSelect2);
+  }
+
+  function setMultiBranchValues(selectEl, branchIds) {
+    if (!selectEl) return;
+    var ids = (branchIds || []).map(String);
+    Array.from(selectEl.options).forEach(function (opt) {
+      opt.selected = ids.indexOf(String(opt.value)) >= 0;
+    });
+    if (window.jQuery) {
+      var $el = window.jQuery(selectEl);
+      if ($el.hasClass("select2-hidden-accessible")) {
+        $el.val(ids).trigger("change");
+      }
+    }
+  }
+
+  function clearMultiBranchValues(selectEl) {
+    setMultiBranchValues(selectEl, []);
+  }
+
+  function clearErrors(form, attrName) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[" + attrName + "]").forEach(function (el) { el.textContent = ""; });
+    form.querySelectorAll(".select2-selection").forEach(function (el) { el.classList.remove("is-invalid"); });
+  }
+
+  function setErrors(form, attrName, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector("[" + attrName + '="' + field + '"]');
+      if (input) {
+        input.classList.add("is-invalid");
+        if (window.jQuery && window.jQuery(input).hasClass("select2-hidden-accessible")) {
+          window.jQuery(input).next(".select2-container").find(".select2-selection").addClass("is-invalid");
+        }
+      }
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  function submitAjax(form, attrName, done) {
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErrors(form, attrName, (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: "Could not save supplier." });
+          }
+          return;
+        }
+        done();
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save supplier." });
+      });
+  }
+
+  function setFieldValue(form, name, value) {
+    var input = form.querySelector('[name="' + name + '"]');
+    if (!input) return;
+    input.value = value || "";
+  }
+
+  initAllSupplierBranchesSelect2();
+
+  if (addModalEl) {
+    addModalEl.addEventListener("shown.bs.modal", function () {
+      initSupplierBranchesSelect2(addForm ? addForm.querySelector(".js-supplier-branches-select") : null);
+    });
+  }
+  if (editModalEl) {
+    editModalEl.addEventListener("shown.bs.modal", function () {
+      initSupplierBranchesSelect2(editForm ? editForm.querySelector(".js-supplier-branches-select") : null);
+    });
+  }
+
+  if (addForm && addModalEl) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(addForm, "data-add-error-for");
+      submitAjax(addForm, "data-add-error-for", function () { addModal.hide(); window.location.reload(); });
+    });
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      addForm.reset();
+      clearMultiBranchValues(addForm.querySelector(".js-supplier-branches-select"));
+      clearErrors(addForm, "data-add-error-for");
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(editForm, "data-edit-error-for");
+      submitAjax(editForm, "data-edit-error-for", function () { editModal.hide(); window.location.reload(); });
+    });
+
+    document.querySelectorAll(".js-supplier-edit").forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = a.getAttribute("data-supplier-id");
+        var row = supplierRows[String(id)];
+        if (!row) return;
+        editForm.action = "{% url 'supplier-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + id + "/quick-edit/");
+        setFieldValue(editForm, "name", row.name);
+        setFieldValue(editForm, "category", row.category);
+        setFieldValue(editForm, "contact_number", row.contact_number);
+        setFieldValue(editForm, "email", row.email);
+        setFieldValue(editForm, "status", row.status);
+        setFieldValue(editForm, "address", row.address);
+        setMultiBranchValues(editForm.querySelector(".js-supplier-branches-select"), row.branch_ids || []);
+        clearErrors(editForm, "data-edit-error-for");
+        editModal.show();
+      });
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

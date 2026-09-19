@@ -1,0 +1,122 @@
+{% load loan_extras static %}
+<div class="payslip-a5-sheet{% if pl.lang == 'si' %} payslip-a5-sheet--si{% endif %}">
+  <div class="payslip-a5-brand">
+    <img src="{% static 'img/logo.png' %}" alt="Canmee Dairies" class="payslip-a5-logo">
+    <div class="payslip-a5-brand__text">
+      <h1 class="payslip-a5-company">{{ pl.company }}</h1>
+      <p class="payslip-a5-phone">{{ pl.phone }}</p>
+    </div>
+  </div>
+  <div class="payslip-a5-meta-row payslip-a5-meta">
+    <span class="payslip-a5-meta__farmer"><strong>{{ pl.farmer }} :</strong> {{ ps.farmer_display_name }}</span>
+    <span class="payslip-a5-meta__period">{{ sheet_period }}</span>
+  </div>
+
+  <table class="payslip-a5-table payslip-a5-daily">
+    <thead>
+      <tr>
+        <th>{{ pl.date }}</th>
+        <th>{{ pl.ltr }}</th>
+        <th>{{ pl.rate }}</th>
+        <th>{{ pl.amount }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in ps.day_rows %}
+      <tr>
+        <td>{{ row.date|date:"n/j/Y" }}</td>
+        <td class="num">{% if row.liters > 0 %}{{ row.liters|money }}{% else %}-{% endif %}</td>
+        <td class="num">{% if row.liters > 0 %}{{ ps.rate|money }}{% else %}-{% endif %}</td>
+        <td class="num">{% if row.liters > 0 and row.amount is not None %}{{ row.amount|money }}{% else %}-{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table class="payslip-a5-table payslip-a5-summary">
+    <tbody>
+      <tr>
+        <td>{{ pl.total_ltrs }}</td>
+        <td class="num">{{ ps.total_liters|money }}</td>
+      </tr>
+      <tr class="shaded">
+        <td>{{ pl.total_payment }}</td>
+        <td class="num">{{ ps.gross_amount|money }}</td>
+      </tr>
+      {% if ps.goods_feed_total > 0 %}
+      <tr>
+        <td>{{ pl.feed_deduction }}</td>
+        <td class="num">{{ ps.goods_feed_total|money }}</td>
+      </tr>
+      {% endif %}
+      {% if ps.goods_vitamin_total > 0 %}
+      <tr>
+        <td>{{ pl.vitamin }}</td>
+        <td class="num">{{ ps.goods_vitamin_total|money }}</td>
+      </tr>
+      {% endif %}
+      {% if ps.goods_omi_total > 0 %}
+      <tr>
+        <td>{{ pl.omi }}</td>
+        <td class="num">{{ ps.goods_omi_total|money }}</td>
+      </tr>
+      {% endif %}
+      {% if ps.goods_minerals_total > 0 %}
+      <tr>
+        <td>{{ pl.minerals }}</td>
+        <td class="num">{{ ps.goods_minerals_total|money }}</td>
+      </tr>
+      {% endif %}
+      {% if ps.goods_others_total > 0 %}
+      <tr>
+        <td>{{ pl.other_goods }}</td>
+        <td class="num">{{ ps.goods_others_total|money }}</td>
+      </tr>
+      {% endif %}
+      {% if ps.advance_total > 0 %}
+      <tr>
+        <td>{{ pl.advance }}</td>
+        <td class="num">{{ ps.advance_total|money }}</td>
+      </tr>
+      {% endif %}
+      {% if ps.loan_total > 0 %}
+      <tr>
+        <td>{{ pl.loan }}</td>
+        <td class="num">{{ ps.loan_total|money }}</td>
+      </tr>
+      {% endif %}
+      <tr class="shaded bold">
+        <td>{{ pl.balance_payment }}</td>
+        <td class="num">{{ ps.net_amount|money }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if ps.print_loan_amount > 0 %}
+  <table class="payslip-a5-table payslip-a5-loan">
+    <tbody>
+      <tr>
+        <td>{{ pl.loan_amount }}</td>
+        <td class="num">{{ ps.print_loan_amount|money }}</td>
+      </tr>
+      <tr>
+        <td>{{ pl.paid }}</td>
+        <td class="num">{% if ps.print_loan_paid > 0 %}{{ ps.print_loan_paid|money }}{% else %}-{% endif %}</td>
+      </tr>
+      <tr class="shaded bold">
+        <td>{{ pl.loan_balance }}</td>
+        <td class="num">{% if ps.print_loan_balance > 0 %}{{ ps.print_loan_balance|money }}{% else %}-{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+  {% endif %}
+  <div class="payslip-a5-sheet__closing">
+  <div class="payslip-a5-signature">
+    <div class="payslip-a5-signature__space" aria-hidden="true"></div>
+    <p class="payslip-a5-signature__label">{{ pl.authorized_signature }}</p>
+  </div>
+  {% if pl.footer %}
+  <p class="payslip-a5-footer">{{ pl.footer }}</p>
+  {% endif %}
+  </div>
+</div>

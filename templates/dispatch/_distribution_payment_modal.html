@@ -1,0 +1,53 @@
+<div class="modal fade" id="dispatchPaymentModal" tabindex="-1" aria-labelledby="dispatchPaymentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="dispatchPaymentForm" action="">
+        {% csrf_token %}
+        <input type="hidden" name="next" id="dispatchPaymentNext" value="{{ request.get_full_path }}">
+        <div id="dispatchPaymentBulkIds"></div>
+        <div class="modal-header">
+          <h5 class="modal-title" id="dispatchPaymentModalLabel">Receive payment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="dispatchPaymentSubtitle"></p>
+          <p class="text-muted small mb-3 d-none" id="dispatchPaymentBulkHint">Allocated oldest first across the selected unpaid dispatches.</p>
+          <div id="dispatchPaymentFormErrors" class="alert alert-danger d-none" role="alert"></div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <div class="small text-muted">Total billed</div>
+              <div class="fw-semibold" id="dispatchPaymentTotal">—</div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted">Outstanding</div>
+              <div class="fw-semibold" id="dispatchPaymentOutstanding">—</div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="dispatchPaymentDate">Date</label>
+            <input type="text" class="form-control js-datepicker" name="date" id="dispatchPaymentDate" placeholder="Payment date" autocomplete="off" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="dispatchPaymentAmount">Amount</label>
+            <input type="text" class="form-control js-money-input" name="amount" id="dispatchPaymentAmount" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="dispatchPaymentReference">Reference</label>
+            <input type="text" class="form-control" name="reference" id="dispatchPaymentReference" maxlength="80" placeholder="Receipt / ref (optional)" autocomplete="off">
+          </div>
+          <div class="mb-0">
+            <label class="form-label" for="dispatchPaymentNote">Note</label>
+            <input type="text" class="form-control" name="note" id="dispatchPaymentNote" maxlength="255" placeholder="Note (optional)" autocomplete="off">
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <a href="#" class="btn btn-link px-0" id="dispatchPaymentAccountLink" target="_blank" rel="noopener">Open buyer account</a>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-cash-coin me-1"></i>Record payment</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

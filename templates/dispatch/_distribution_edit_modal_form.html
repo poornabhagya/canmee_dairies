@@ -1,0 +1,41 @@
+<form
+  method="post"
+  action="{% url 'distribution-edit' object.pk %}"
+  class="js-distribution-form{% if view_only %} is-view-only{% endif %}"
+  data-buyer-rate-url="{% url 'dispatch-buyer-rate' %}"
+  data-view-only="{% if view_only %}1{% else %}0{% endif %}"
+  {% if view_only %}onsubmit="return false;"{% endif %}
+>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="">
+  <div class="modal-header">
+    <div>
+      <h5 class="modal-title" id="dispatchEditModalLabel">{% if view_only %}View dispatch{% else %}Edit dispatch{% endif %}</h5>
+      <p class="text-muted small mb-0">
+        {{ object.dispatch_no }}{% if object.buyer %} · {{ object.buyer }}{% elif object.destination_branch %} · {{ object.destination_branch.name }}{% endif %}
+        {% if view_only %}<span class="dispatch-modal-paid-badge">Paid</span>{% endif %}
+      </p>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  </div>
+  <div class="modal-body">
+    {% if view_only %}
+    <div class="alert alert-light border dispatch-modal-view-note mb-3" role="status">This dispatch is paid and cannot be edited.</div>
+    {% endif %}
+    <div id="dispatchEditFormErrors" class="alert alert-danger d-none" role="alert"></div>
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger mb-3">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% include "dispatch/_distribution_modal_fields.html" %}
+    {{ buyer_branch_options|json_script:"buyer-branch-options" }}
+    <script id="distribution-form-config" type="application/json">{"kgToLiters":"{{ MILK_LITER_FACTOR_JS }}"}</script>
+  </div>
+  <div class="modal-footer">
+    {% if view_only %}
+    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+    {% else %}
+    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save dispatch</button>
+    {% endif %}
+  </div>
+</form>

@@ -1,0 +1,569 @@
+{% extends "masters/route_driver_base.html" %}
+{% block title %}Goods request · {{ route.name }}{% endblock %}
+{% block extra_css %}
+<style>
+  .driver-smart-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  }
+  .driver-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0f766e;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.5rem;
+  }
+  .driver-request-card .driver-request-form {
+    max-width: none;
+    margin: 0;
+    width: 100%;
+  }
+  .driver-request-card .milk-form-row-two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    align-items: end;
+  }
+  .driver-request-card .milk-form-row-two .form-col {
+    min-width: 0;
+  }
+  .driver-request-card .milk-form-row-two .form-label {
+    margin-bottom: 0.35rem;
+  }
+  .driver-request-card .milk-form-row-two .select2-container .select2-selection--single {
+    min-height: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+  }
+  .driver-request-card .milk-form-row-two .select2-container .select2-selection__rendered {
+    line-height: 38px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 2rem !important;
+  }
+  .driver-request-card .milk-form-row-two .select2-container .select2-selection__arrow {
+    height: 38px !important;
+  }
+  .driver-request-card .driver-request-lines-table .transfer-line-price,
+  .driver-request-card .driver-request-lines-table .transfer-line-amount {
+    width: 7.25rem;
+    text-align: right;
+    white-space: nowrap;
+    color: #334155;
+    font-variant-numeric: tabular-nums;
+  }
+  .driver-request-card .driver-request-lines-table .transfer-line-amount {
+    font-weight: 650;
+  }
+  .driver-request-card .driver-request-total-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-top: 1px solid #dbe1ea;
+  }
+  .driver-request-card .driver-request-total-bar__label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 700;
+  }
+  .driver-request-card .driver-request-total-bar__value {
+    font-size: 1.05rem;
+    font-weight: 750;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+  }
+  .driver-request-card .driver-request-note {
+    display: flex;
+    gap: 0.45rem;
+    align-items: flex-start;
+    margin: 0.85rem 0 0;
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+  .driver-request-card .driver-request-note i {
+    color: #059669;
+    margin-top: 0.1rem;
+  }
+  .driver-request-card .driver-request-note .si-line {
+    display: block;
+    margin-top: 0.15rem;
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+  .driver-request-card .milk-collection-actions .btn-lg {
+    min-height: 2.75rem;
+  }
+  .driver-request-card .driver-recent-requests {
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid #e2e8f0;
+  }
+  .driver-request-card .driver-recent-requests .table thead th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    font-weight: 700;
+    background: #f8fafc;
+  }
+  .driver-request-card .driver-request-line-results li {
+    margin-bottom: 0.2rem;
+  }
+  .driver-request-card .driver-request-line-results li:last-child {
+    margin-bottom: 0;
+  }
+  .driver-request-card .driver-request-shortfall {
+    color: #b45309;
+    font-weight: 650;
+  }
+  @media (max-width: 767.98px) {
+    .driver-request-card .milk-form-row-two {
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+    }
+    .driver-request-card .driver-request-lines-table .transfer-line-price,
+    .driver-request-card .driver-request-lines-table .transfer-line-amount {
+      width: 5.75rem;
+    }
+    .driver-request-card .milk-collection-actions .btn {
+      flex: 1 1 calc(50% - 0.25rem);
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header mb-3 d-flex flex-wrap justify-content-between align-items-start gap-2">
+  <div>
+    <span class="driver-chip"><i class="bi bi-box-seam"></i>Goods request</span>
+    <h1 class="page-title h3 mb-1">Request farmer goods</h1>
+    <p class="page-subtitle text-muted mb-0">
+      {% if route.branch %}{{ route.branch.name }}{% endif %}
+      {% if route.name %} · {{ route.name }}{% endif %}
+    </p>
+  </div>
+  <a href="{{ back_url }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to dashboard
+  </a>
+</div>
+
+<div class="card mb-3 driver-smart-card driver-request-card milk-collection-card">
+  <div class="card-body">
+    <p class="text-muted small mb-3">Ask branch staff for products you need. When they issue from your request, stock is applied immediately — you will not need to accept.</p>
+    <form method="post" action="{% url 'route-driver-goods-request-add' %}" id="driver-goods-request-form" class="milk-collection-form driver-request-form">
+      {% csrf_token %}
+      <div class="milk-collection-panel">
+        <div class="milk-collection-panel__title">Destination</div>
+        <div class="milk-form-row-two">
+          <div class="form-col">
+            <label class="form-label fw-semibold" for="request-point"><i class="bi bi-geo-alt me-1"></i>Collection point</label>
+            <select class="form-select no-global-select2" id="request-point" name="collection_point" required>
+              <option value="">Select point</option>
+              {% for point in point_options %}
+              <option value="{{ point.id }}">{{ point.number }} — {{ point.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-col">
+            <label class="form-label fw-semibold" for="request-note">Note (optional)</label>
+            <input type="text" class="form-control" id="request-note" name="note" maxlength="255" placeholder="e.g. Needed for tomorrow morning">
+          </div>
+        </div>
+      </div>
+
+      <div class="milk-collection-panel mb-0">
+        <div class="milk-collection-panel__title">Products &amp; quantity</div>
+        <div class="transfer-products-toolbar mb-2">
+          <span class="transfer-products-hint"><i class="bi bi-keyboard"></i>Search product · Enter in Qty adds next line</span>
+        </div>
+        <div class="transfer-inline-wrap transfer-products-shell">
+          <div class="table-responsive">
+            <table class="table transfer-inline-table transfer-products-table driver-request-lines-table mb-0" id="driver-request-lines">
+              <thead>
+                <tr>
+                  <th class="transfer-line-num">#</th>
+                  <th class="transfer-line-product">Product</th>
+                  <th class="transfer-line-qty text-end">Qty</th>
+                  <th class="transfer-line-price">Unit price</th>
+                  <th class="transfer-line-amount">Amount</th>
+                  <th class="transfer-line-actions"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="transfer-inline-add">
+            <button type="button" class="btn btn-link text-success p-0 d-inline-flex align-items-center gap-1" id="driver-request-add-line">
+              <i class="bi bi-plus-circle"></i> Add line
+            </button>
+          </div>
+          <div class="driver-request-total-bar">
+            <span class="driver-request-total-bar__label">Est. total</span>
+            <span class="driver-request-total-bar__value" id="driver-request-est-total">0.00</span>
+          </div>
+        </div>
+        <p class="driver-request-note">
+          <i class="bi bi-info-circle"></i>
+          <span>
+            Only products with stock at your branch are listed. Prices are indicative from latest branch rates; final amount is set when stock is issued.
+            <span class="si-line" lang="si">ඔබේ ශාඛාවේ තොග ඇති නිෂ්පාදන පමණක් ලැයිස්තුගත කර ඇත. මිල ගණන් නවතම ශාඛා මිල අනුව ඇස්තමේන්තු වේ; අවසාන මුදල තොග නිකුත් කිරීමේදී තීරණය වේ.</span>
+          </span>
+        </p>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 milk-collection-actions mt-3">
+        <button type="submit" class="btn btn-primary btn-lg flex-grow-1 flex-sm-grow-0">
+          <i class="bi bi-send me-1"></i>Send request
+        </button>
+        <a href="{{ back_url }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+      </div>
+    </form>
+    {{ driver_request_products_json|json_script:"driver-request-products" }}
+
+    {% if driver_goods_requests %}
+    <div class="driver-recent-requests">
+      <h3 class="h6 mb-2"><i class="bi bi-clock-history me-1"></i>Recent requests</h3>
+      <div class="table-responsive rounded border">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Point</th>
+              <th>Lines</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for req in driver_goods_requests %}
+            <tr>
+              <td class="small">{{ req.requested_at|timesince }} ago</td>
+              <td class="small">{{ req.collection_point.number }} — {{ req.collection_point.name }}</td>
+              <td class="small">
+                {% if req.status == 'issued' %}
+                  <ul class="list-unstyled mb-0 driver-request-line-results">
+                    {% for line in req.lines.all %}
+                    <li>
+                      <span class="fw-semibold">{{ line.product.name }}</span>
+                      · asked {{ line.quantity }}{% if line.product.unit %} {{ line.product.unit }}{% endif %}
+                      → issued <strong>{{ line.issued_quantity }}</strong>
+                      {% if line.has_shortfall %}
+                      <span class="driver-request-shortfall"> (−{{ line.shortfall_quantity }})</span>
+                      {% endif %}
+                    </li>
+                    {% empty %}
+                    <li>—</li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  {% for line in req.lines.all %}
+                  {{ line.product.name }} × {{ line.quantity }}{% if not forloop.last %}; {% endif %}
+                  {% empty %}—{% endfor %}
+                {% endif %}
+              </td>
+              <td>
+                {% if req.status == 'pending' %}
+                <span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+                {% elif req.status == 'issued' %}
+                <span class="badge text-bg-success-subtle text-success-emphasis">Issued</span>
+                {% if req.has_issue_variance %}
+                <div class="small text-warning-emphasis mt-1">Partial vs request</div>
+                {% endif %}
+                {% else %}
+                <span class="badge text-bg-secondary">{{ req.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if req.status == 'pending' %}
+                <form method="post" action="{% url 'route-driver-goods-request-cancel' req.pk %}" class="d-inline js-swal-submit-guard">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger js-swal-submit-trigger" data-swal-title="Cancel this request?" data-swal-text="The pending goods request will be cancelled.">Cancel</button>
+                </form>
+                {% endif %}
+              </td>            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var productsEl = document.getElementById("driver-request-products");
+  var products = [];
+  try {
+    products = productsEl ? JSON.parse(productsEl.textContent) : [];
+  } catch (e) {
+    products = [];
+  }
+  var productById = {};
+  products.forEach(function (p) {
+    productById[String(p.id)] = p;
+  });
+  var form = document.getElementById("driver-goods-request-form");
+  var tbody = document.querySelector("#driver-request-lines tbody");
+  var addBtn = document.getElementById("driver-request-add-line");
+  var totalEl = document.getElementById("driver-request-est-total");
+  var pointSel = document.getElementById("request-point");
+  var noteInput = document.getElementById("request-note");
+  if (!tbody || !addBtn) return;
+
+  var $ = window.jQuery;
+  var hasSelect2 = !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2);
+
+  function formatMoney(value) {
+    var n = Number(value);
+    if (!isFinite(n)) n = 0;
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function productHasPrice(product) {
+    if (!product) return false;
+    if (product.has_price === false) return false;
+    var unit = Number(product.unit_price || 0);
+    return isFinite(unit) && unit > 0;
+  }
+
+  function productOptionsHtml(selectedId) {
+    return (
+      '<option value="">Search product…</option>' +
+      products
+        .map(function (p) {
+          var label = p.name + (p.unit ? " (" + p.unit + ")" : "");
+          var selected = String(p.id) === String(selectedId) ? " selected" : "";
+          return (
+            '<option value="' +
+            p.id +
+            '"' +
+            selected +
+            ">" +
+            label.replace(/</g, "&lt;") +
+            "</option>"
+          );
+        })
+        .join("")
+    );
+  }
+
+  function renumberRows() {
+    tbody.querySelectorAll("tr").forEach(function (tr, idx) {
+      var num = tr.querySelector(".js-line-num");
+      if (num) num.textContent = String(idx + 1);
+    });
+  }
+
+  function destroySelect2(select) {
+    if (!hasSelect2 || !select) return;
+    var $el = $(select);
+    if ($el.hasClass("select2-hidden-accessible")) {
+      $el.off("select2:select.driverFocus change.driverSync");
+      $el.select2("destroy");
+    }
+  }
+
+  function initProductSelect2(select, tr) {
+    if (!hasSelect2 || !select) return;
+    var $el = $(select);
+    destroySelect2(select);
+    $el.select2({
+      width: "100%",
+      placeholder: "Search product…",
+      allowClear: true,
+    });
+    $el.on("select2:select.driverFocus", function () {
+      syncRow(tr);
+      syncTotal();
+      var qty = tr.querySelector('input[name="quantity"]');
+      if (qty) {
+        window.setTimeout(function () {
+          qty.focus();
+          if (typeof qty.select === "function") qty.select();
+        }, 0);
+      }
+    });
+    $el.on("change.driverSync", function () {
+      syncRow(tr);
+      syncTotal();
+    });
+  }
+
+  function syncRow(tr) {
+    var select = tr.querySelector('select[name="product_id"]');
+    var qtyInput = tr.querySelector('input[name="quantity"]');
+    var unitEl = tr.querySelector(".js-line-unit-price");
+    var amountEl = tr.querySelector(".js-line-amount");
+    var product = select ? productById[String(select.value || "")] : null;
+    var hasPrice = productHasPrice(product);
+    var unit = hasPrice ? Number(product.unit_price || 0) : 0;
+    var qty = qtyInput ? Number(qtyInput.value || 0) : 0;
+    if (!isFinite(qty) || qty < 0) qty = 0;
+    tr.classList.toggle("table-warning", !!(product && !hasPrice));
+    if (unitEl) {
+      if (!product) unitEl.textContent = "—";
+      else if (!hasPrice) unitEl.innerHTML = '<span class="text-danger">No price</span>';
+      else unitEl.textContent = formatMoney(unit);
+    }
+    if (amountEl) {
+      if (!product) amountEl.textContent = "—";
+      else if (!hasPrice) amountEl.innerHTML = '<span class="text-danger">—</span>';
+      else amountEl.textContent = qty > 0 ? formatMoney(unit * qty) : "—";
+    }
+  }
+
+  function syncTotal() {
+    var total = 0;
+    tbody.querySelectorAll("tr").forEach(function (tr) {
+      var select = tr.querySelector('select[name="product_id"]');
+      var qtyInput = tr.querySelector('input[name="quantity"]');
+      var product = select ? productById[String(select.value || "")] : null;
+      if (!productHasPrice(product)) return;
+      var unit = Number(product.unit_price || 0);
+      var qty = Number(qtyInput && qtyInput.value ? qtyInput.value : 0);
+      if (!isFinite(unit) || !isFinite(qty) || qty <= 0) return;
+      total += unit * qty;
+    });
+    if (totalEl) totalEl.textContent = formatMoney(total);
+  }
+
+  function syncAll() {
+    renumberRows();
+    tbody.querySelectorAll("tr").forEach(syncRow);
+    syncTotal();
+  }
+
+  function unpricedLineNames() {
+    var names = [];
+    tbody.querySelectorAll("tr").forEach(function (tr) {
+      var select = tr.querySelector('select[name="product_id"]');
+      var product = select ? productById[String(select.value || "")] : null;
+      if (product && !productHasPrice(product)) {
+        names.push(product.name || "Unknown product");
+      }
+    });
+    return names;
+  }
+
+  function addRow(focusProduct) {
+    var tr = document.createElement("tr");
+    tr.className = "js-driver-request-line";
+    tr.innerHTML =
+      '<td class="transfer-line-num"><span class="js-line-num">1</span></td>' +
+      '<td class="transfer-line-product">' +
+      '<select class="form-select no-global-select2 js-driver-product" name="product_id" required>' +
+      productOptionsHtml("") +
+      "</select></td>" +
+      '<td class="transfer-line-qty">' +
+      '<input type="number" class="form-control transfer-qty-input" name="quantity" min="0.01" step="0.01" required placeholder="0.00" inputmode="decimal">' +
+      "</td>" +
+      '<td class="transfer-line-price js-line-unit-price">—</td>' +
+      '<td class="transfer-line-amount js-line-amount">—</td>' +
+      '<td class="transfer-line-actions">' +
+      '<button type="button" class="js-transfer-remove-line js-remove-line" title="Remove line" aria-label="Remove line"><i class="bi bi-trash"></i></button>' +
+      "</td>";
+    tbody.appendChild(tr);
+    var select = tr.querySelector('select[name="product_id"]');
+    var qtyInput = tr.querySelector('input[name="quantity"]');
+    initProductSelect2(select, tr);
+    if (qtyInput) {
+      qtyInput.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        addRow(true);
+      });
+    }
+    syncAll();
+    if (focusProduct && select) {
+      window.setTimeout(function () {
+        if (hasSelect2) $(select).select2("open");
+        else select.focus();
+      }, 0);
+    }
+  }
+
+  if (hasSelect2 && pointSel) {
+    $(pointSel).select2({
+      width: "100%",
+      placeholder: "Select point",
+      allowClear: true,
+    });
+    $(pointSel).on("select2:select", function () {
+      if (noteInput) {
+        window.setTimeout(function () {
+          noteInput.focus();
+        }, 0);
+      }
+    });
+  }
+
+  addBtn.addEventListener("click", function () {
+    addRow(true);
+  });
+  tbody.addEventListener("click", function (e) {
+    var btn = e.target.closest(".js-remove-line");
+    if (!btn) return;
+    var row = btn.closest("tr");
+    if (row) {
+      destroySelect2(row.querySelector('select[name="product_id"]'));
+      row.remove();
+    }
+    if (!tbody.children.length) addRow(false);
+    else syncAll();
+  });
+  tbody.addEventListener("change", function (e) {
+    if (e.target && (e.target.name === "product_id" || e.target.name === "quantity")) {
+      syncAll();
+    }
+  });
+  tbody.addEventListener("input", function (e) {
+    if (e.target && e.target.name === "quantity") {
+      syncAll();
+    }
+  });
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      var names = unpricedLineNames();
+      if (!names.length) return;
+      e.preventDefault();
+      var listed = names.slice(0, 5).join(", ");
+      var extra = names.length > 5 ? " (+" + (names.length - 5) + " more)" : "";
+      var message =
+        "No price available for: " +
+        listed +
+        extra +
+        ". Ask branch staff to set an issuing price, then try again.";
+      if (typeof window.appAlert === "function") {
+        window.appAlert(message, { icon: "warning", title: "Price required" });
+      } else if (typeof Swal !== "undefined") {
+        Swal.fire({ icon: "warning", title: "Price required", text: message });
+      } else {
+        window.alert(message);
+      }
+    });
+  }
+  addRow(false);
+})();
+</script>
+{% endblock %}

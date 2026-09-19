@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Fulfill driver request · Canmee Dairies{% endblock %}
+{% block page_heading %}Fulfill driver goods request{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <a href="{% url 'farmer-goods-driver-request-list' %}" class="btn btn-sm btn-outline-secondary">&larr; All requests</a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="text-muted small text-uppercase fw-semibold">Route</div>
+        <div class="fw-semibold">{{ goods_request.route.name }}</div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-muted small text-uppercase fw-semibold">Collection point</div>
+        <div class="fw-semibold">{{ goods_request.collection_point.number }} — {{ goods_request.collection_point.name }}</div>
+      </div>
+      <div class="col-md-4">
+        <div class="text-muted small text-uppercase fw-semibold">Status</div>
+        <div>
+          {% if goods_request.status == 'pending' %}
+          <span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+          {% elif goods_request.status == 'issued' %}
+          <span class="badge text-bg-success-subtle text-success-emphasis">Issued</span>
+          {% else %}
+          <span class="badge text-bg-secondary">{{ goods_request.get_status_display }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% if goods_request.note %}
+    <p class="mt-3 mb-0 small"><span class="text-muted">Driver note:</span> {{ goods_request.note }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="alert alert-info">
+  Issuing from a driver request applies stock immediately and marks the issue <strong>accepted</strong>.
+  The driver will <strong>not</strong> be asked to accept again.
+  You can edit <strong>Will issue</strong>, but it cannot exceed the requested quantity (or available stock).
+  Set a line to <strong>0</strong> to skip it.
+</div>
+
+{% if goods_request.status == 'issued' %}
+<div class="card mb-3">
+  <div class="card-body table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th class="text-end">Requested</th>
+          <th class="text-end">Available</th>
+          <th class="text-end">Issued</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in line_previews %}
+        <tr>
+          <td>{{ row.line.product.name }}</td>
+          <td class="text-end">{{ row.line.quantity }}{% if row.line.product.unit %} {{ row.line.product.unit }}{% endif %}</td>
+          <td class="text-end">{{ row.available }}</td>
+          <td class="text-end fw-semibold">{{ row.line.issued_quantity }}</td>
+          <td class="small text-muted">—</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2">
+  <div>
+    Already issued.
+    {% if goods_request.skipped_out_of_stock %}
+    <div class="small mt-1">Skipped / limited: {{ goods_request.skipped_out_of_stock }}</div>
+    {% endif %}
+  </div>
+  {% if goods_request.issued_batch_ref %}
+  <a
+    href="{% url 'farmer-goods-issue-print' goods_request.issued_batch_ref %}"
+    class="btn btn-success btn-sm js-payslip-embed-link"
+    data-embed-url="{% url 'farmer-goods-issue-print' goods_request.issued_batch_ref %}?embed=1"
+    data-open-url="{% url 'farmer-goods-issue-print' goods_request.issued_batch_ref %}"
+    data-embed-title="Receipt {{ goods_request.issued_batch_ref|slice:':8'|upper }}"
+  ><i class="bi bi-receipt me-1" aria-hidden="true"></i>Open receipt</a>
+  {% endif %}
+</div>
+{% elif can_issue %}
+<form method="post" id="driver-request-fulfill-form">
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-body table-responsive">
+      <table class="table table-sm align-middle mb-0" id="fulfill-lines-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="text-end">Requested</th>
+            <th class="text-end">Available</th>
+            <th class="text-end" style="width: 9rem">Will issue</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in line_previews %}
+          <tr class="js-fulfill-line {% if row.skip %}table-warning{% elif row.partial %}table-info{% endif %}"
+              data-requested="{{ row.line.quantity }}"
+              data-available="{{ row.available }}">
+            <td>{{ row.line.product.name }}</td>
+            <td class="text-end">{{ row.line.quantity }}{% if row.line.product.unit %} {{ row.line.product.unit }}{% endif %}</td>
+            <td class="text-end">{{ row.available }}</td>
+            <td class="text-end">
+              <input
+                type="number"
+                class="form-control form-control-sm text-end js-issue-qty"
+                name="issue_qty_{{ row.line.id }}"
+                value="{{ row.will_issue }}"
+                min="0"
+                max="{{ row.line.quantity }}"
+                step="0.01"
+                inputmode="decimal"
+                {% if row.skip %}disabled{% endif %}
+                aria-label="Will issue {{ row.line.product.name }}"
+              >
+              {% if row.skip %}
+              <input type="hidden" name="issue_qty_{{ row.line.id }}" value="0">
+              {% endif %}
+            </td>
+            <td class="small js-line-note">
+              {% if row.skip %}<span class="text-warning-emphasis">Out of stock — will skip</span>
+              {% elif row.partial %}<span class="text-info-emphasis">Limited stock — max {{ row.available }}</span>
+              {% else %}<span class="text-muted">OK</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <label class="form-label" for="fulfill-note">Note (optional)</label>
+      <input type="text" class="form-control mb-3" id="fulfill-note" name="note" maxlength="255" placeholder="e.g. Partial stock — rest next trip">
+      <div class="d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-success">
+          <i class="bi bi-check2-circle me-1"></i>Issue requested goods
+        </button>
+        {% if reject_url %}
+        <button
+          type="button"
+          class="btn btn-outline-danger js-driver-request-reject"
+          data-url="{{ reject_url }}"
+        >
+          <i class="bi bi-x-circle me-1"></i>Reject request
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</form>
+{% else %}
+<div class="card mb-3">
+  <div class="card-body table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th class="text-end">Requested</th>
+          <th class="text-end">Available</th>
+          <th class="text-end">Will issue</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in line_previews %}
+        <tr class="{% if row.skip %}table-warning{% elif row.partial %}table-info{% endif %}">
+          <td>{{ row.line.product.name }}</td>
+          <td class="text-end">{{ row.line.quantity }}{% if row.line.product.unit %} {{ row.line.product.unit }}{% endif %}</td>
+          <td class="text-end">{{ row.available }}</td>
+          <td class="text-end fw-semibold">{{ row.will_issue }}</td>
+          <td class="small">
+            {% if row.skip %}<span class="text-warning-emphasis">Out of stock — will skip</span>
+            {% elif row.partial %}<span class="text-info-emphasis">Limited stock — partial issue</span>
+            {% else %}<span class="text-muted">OK</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="alert alert-warning mb-0">You can view this request but do not have permission to issue farmer goods.</div>
+{% endif %}
+{% if goods_request.issued_batch_ref %}
+{% include "reports/_payslip_embed_modal.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if goods_request.issued_batch_ref %}
+{% include "reports/_payslip_embed_script.html" %}
+{% endif %}
+{% if can_issue and goods_request.status == 'pending' %}
+<script>
+(function () {
+  var form = document.getElementById("driver-request-fulfill-form");
+  if (!form) return;
+
+  function toNumber(value) {
+    var n = Number(value);
+    return isFinite(n) ? n : 0;
+  }
+
+  function syncLine(tr) {
+    var input = tr.querySelector(".js-issue-qty");
+    var noteEl = tr.querySelector(".js-line-note");
+    if (!input || input.disabled) return;
+    var requested = toNumber(tr.getAttribute("data-requested"));
+    var available = toNumber(tr.getAttribute("data-available"));
+    var maxAllowed = Math.min(requested, available > 0 ? available : 0);
+    input.max = String(requested);
+    var qty = toNumber(input.value);
+    if (qty < 0) {
+      qty = 0;
+      input.value = "0";
+    }
+    if (qty > requested) {
+      qty = requested;
+      input.value = String(requested);
+    }
+    tr.classList.remove("table-warning", "table-info");
+    if (available <= 0 || qty <= 0) {
+      tr.classList.add("table-warning");
+      if (noteEl) {
+        noteEl.innerHTML =
+          available <= 0
+            ? '<span class="text-warning-emphasis">Out of stock — will skip</span>'
+            : '<span class="text-muted">Will skip (0)</span>';
+      }
+    } else if (qty > available) {
+      tr.classList.add("table-info");
+      if (noteEl) {
+        noteEl.innerHTML =
+          '<span class="text-info-emphasis">Limited stock — will issue max ' +
+          available.toFixed(2) +
+          "</span>";
+      }
+    } else if (qty < requested) {
+      tr.classList.add("table-info");
+      if (noteEl) {
+        noteEl.innerHTML = '<span class="text-info-emphasis">Partial vs request</span>';
+      }
+    } else if (noteEl) {
+      noteEl.innerHTML = '<span class="text-muted">OK</span>';
+    }
+  }
+
+  form.querySelectorAll(".js-fulfill-line").forEach(function (tr) {
+    var input = tr.querySelector(".js-issue-qty");
+    if (!input) return;
+    input.addEventListener("input", function () {
+      syncLine(tr);
+    });
+    input.addEventListener("change", function () {
+      syncLine(tr);
+    });
+    syncLine(tr);
+  });
+
+  form.addEventListener("submit", function (e) {
+    var invalid = [];
+    form.querySelectorAll(".js-fulfill-line").forEach(function (tr) {
+      var input = tr.querySelector(".js-issue-qty");
+      if (!input || input.disabled) return;
+      var requested = toNumber(tr.getAttribute("data-requested"));
+      var qty = toNumber(input.value);
+      if (qty > requested) {
+        invalid.push(input);
+        syncLine(tr);
+      }
+    });
+    if (!invalid.length) return;
+    e.preventDefault();
+    var message = "Issue quantity cannot exceed the requested quantity.";
+    if (typeof window.appAlert === "function") {
+      window.appAlert(message, { icon: "warning", title: "Quantity too high" });
+    } else if (typeof Swal !== "undefined") {
+      Swal.fire({ icon: "warning", title: "Quantity too high", text: message });
+    } else {
+      window.alert(message);
+    }
+    invalid[0].focus();
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

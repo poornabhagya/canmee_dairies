@@ -1,0 +1,228 @@
+<style>
+  body.buyer-page .topbar-title,
+  body.point-page .topbar-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  body.buyer-page .topbar-actions .btn,
+  body.point-page .topbar-actions .btn {
+    font-size: 0.75rem;
+    padding: 0.28rem 0.62rem;
+  }
+  body.buyer-page .cp-loan-screen,
+  body.buyer-page .buyer-account-shell,
+  body.point-page .cp-loan-screen {
+    font-size: 0.8125rem;
+  }
+  body.buyer-page .cp-loan-kpi-grid,
+  body.point-page .cp-loan-kpi-grid {
+    margin-bottom: 0.75rem;
+    gap: 0.4rem;
+  }
+  body.buyer-page .cp-loan-kpi-grid .smart-stat-card,
+  body.point-page .cp-loan-kpi-grid .smart-stat-card {
+    min-height: 3.35rem;
+    min-width: 0;
+    padding: 0.42rem 0.5rem;
+    gap: 0.4rem;
+    border-radius: 10px;
+  }
+  body.buyer-page .cp-loan-kpi-grid .smart-stat-card__icon,
+  body.point-page .cp-loan-kpi-grid .smart-stat-card__icon {
+    width: 1.7rem;
+    height: 1.7rem;
+    font-size: 0.82rem;
+  }
+  body.buyer-page .cp-loan-kpi-grid .smart-stat-card__label,
+  body.point-page .cp-loan-kpi-grid .smart-stat-card__label {
+    font-size: 0.56rem;
+  }
+  body.buyer-page .cp-loan-kpi-grid .smart-stat-card__value,
+  body.point-page .cp-loan-kpi-grid .smart-stat-card__value {
+    display: block;
+    max-width: 100%;
+    font-size: clamp(0.7rem, 0.82vw, 0.88rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  body.buyer-page .cp-loan-kpi-grid .smart-stat-card__hint,
+  body.point-page .cp-loan-kpi-grid .smart-stat-card__hint {
+    font-size: 0.6rem;
+    margin-top: 0.06rem;
+  }
+  body.buyer-page .cp-loan-statement__kicker,
+  body.point-page .cp-loan-statement__kicker {
+    font-size: 0.62rem;
+  }
+  body.buyer-page .cp-loan-statement__title,
+  body.point-page .cp-loan-statement__title {
+    font-size: 0.92rem;
+  }
+  body.buyer-page .cp-loan-statement__meta,
+  body.point-page .cp-loan-statement__meta {
+    font-size: 0.72rem;
+  }
+  body.buyer-page .cp-loan-statement__account,
+  body.point-page .cp-loan-statement__account {
+    font-size: 0.7rem;
+    padding: 0.16rem 0.5rem;
+  }
+  body.buyer-page .cp-loan-statement__row,
+  body.point-page .cp-loan-statement__row {
+    padding: 0.38rem 0.95rem;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+  }
+  body.buyer-page .cp-loan-statement__row dt,
+  body.point-page .cp-loan-statement__row dt {
+    font-size: 0.62rem;
+  }
+  body.buyer-page .cp-loan-statement__row dd,
+  body.point-page .cp-loan-statement__row dd {
+    font-size: 0.8rem;
+  }
+  body.buyer-page .cp-loan-statement__figure,
+  body.point-page .cp-loan-statement__figure {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+  body.buyer-page .cp-loan-statement__figure-label,
+  body.point-page .cp-loan-statement__figure-label {
+    font-size: 0.58rem;
+  }
+  body.buyer-page .cp-loan-statement__figure-value,
+  body.point-page .cp-loan-statement__figure-value {
+    font-size: clamp(0.68rem, 0.88vw, 0.9rem);
+  }
+  body.buyer-page .buyer-figure-sub,
+  body.point-page .buyer-figure-sub {
+    font-size: 0.6rem;
+  }
+  body.buyer-page .farmer-milk-actions-bar__label,
+  body.point-page .farmer-milk-actions-bar__label {
+    font-size: 0.78rem;
+  }
+  body.buyer-page .farmer-milk-list-card .btn,
+  body.buyer-page .buyer-account-card .btn,
+  body.point-page .farmer-milk-list-card .btn {
+    font-size: 0.74rem;
+  }
+  body.buyer-page .buyer-dispatch-table thead th,
+  body.buyer-page .smart-dt-table thead th,
+  body.point-page .smart-dt-table thead th {
+    font-size: 0.64rem;
+  }
+  body.buyer-page .buyer-dispatch-table tbody td,
+  body.buyer-page .smart-dt-table tbody td,
+  body.point-page .smart-dt-table tbody td {
+    font-size: 0.75rem;
+  }
+  body.buyer-page .form-label,
+  body.buyer-page .form-control,
+  body.buyer-page .form-select,
+  body.point-page .form-label,
+  body.point-page .form-control,
+  body.point-page .form-select {
+    font-size: 0.78rem;
+  }
+  body.buyer-page .buyer-account-hint {
+    font-size: 0.74rem;
+  }
+  body.point-page .smart-dt-stat-value {
+    font-size: clamp(0.78rem, 0.9vw, 0.92rem);
+  }
+  body.point-page .smart-dt-stat-label {
+    font-size: 0.58rem;
+  }
+  body.point-page .point-list-card .point-table tbody td,
+  body.point-page .point-list-card .point-table thead th {
+    font-size: 0.75rem;
+  }
+  body.buyer-page .farmer-milk-list-card .card-body.table-wrap,
+  body.buyer-page .farmer-milk-list-card .dataTables_wrapper,
+  body.buyer-page .farmer-milk-list-card div.dt-container,
+  body.buyer-page .farmer-milk-list-card div.dt-scroll,
+  body.buyer-page .farmer-milk-list-card div.dt-scroll-head,
+  body.buyer-page .farmer-milk-list-card div.dt-scroll-body,
+  body.buyer-page .farmer-milk-list-card div.dt-scroll-foot,
+  body.buyer-page .farmer-milk-list-card .dt-layout-table,
+  body.buyer-page .farmer-milk-list-card .dt-layout-full,
+  body.buyer-page .buyer-dispatch-list-card .card-body.table-wrap,
+  body.buyer-page .buyer-dispatch-list-card .dataTables_wrapper,
+  body.buyer-page .buyer-dispatch-list-card div.dt-container,
+  body.point-page .farmer-milk-list-card .card-body.table-wrap,
+  body.point-page .farmer-milk-list-card .dataTables_wrapper,
+  body.point-page .farmer-milk-list-card div.dt-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  body.buyer-page .farmer-milk-list-card table.dataTable,
+  body.buyer-page .buyer-account-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+  body.buyer-page .buyer-dispatch-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+  }
+  body.buyer-page .buyer-account-table th,
+  body.buyer-page .buyer-account-table td,
+  body.buyer-page .buyer-dispatch-table th,
+  body.buyer-page .buyer-dispatch-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+  body.buyer-page .buyer-dispatch-table th.dispatch-actions-cell,
+  body.buyer-page .buyer-dispatch-table td.dispatch-actions-cell {
+    overflow: visible !important;
+    text-overflow: clip;
+    width: 3.25rem !important;
+    min-width: 3.25rem !important;
+    max-width: 3.25rem !important;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  body.buyer-page .buyer-account-table td.dt-num,
+  body.buyer-page .buyer-account-table th.dt-foot-total,
+  body.buyer-page .buyer-account-table tfoot th,
+  body.buyer-page .buyer-dispatch-table td.dt-num {
+    white-space: nowrap;
+    font-size: clamp(0.64rem, 0.78vw, 0.75rem);
+    letter-spacing: -0.03em;
+  }
+  body.buyer-page .buyer-alloc-input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 0.72rem;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+  }
+  body.buyer-page .buyer-account-pay-table th:first-child,
+  body.buyer-page .buyer-account-pay-table td:first-child {
+    width: 2.75rem;
+    text-align: center;
+    vertical-align: middle;
+    overflow: visible;
+  }
+  body.buyer-page .buyer-account-pay-table .form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+    min-width: 1.2rem;
+    min-height: 1.2rem;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    border-width: 1.5px;
+    border-color: #64748b;
+    accent-color: #059669;
+  }
+  body.buyer-page .buyer-account-ledger-table th.dt-date,
+  body.buyer-page .buyer-account-ledger-table td.dt-date {
+    width: 8.25rem;
+  }
+</style>

@@ -1,0 +1,485 @@
+{% if payment_sheet_nav_config %}
+{{ payment_sheet_nav_config|json_script:"payment-sheet-nav-config" }}
+{% endif %}
+<script>
+(function () {
+  var LOAD_KEY = "canmee.paymentSheetLoading";
+  var CP_STEPS = [
+    "Reading period and branch filters",
+    "Loading collection point milk for the period",
+    "Calculating collector fees and additional",
+    "Aggregating linked farmer advances, goods & loans",
+    "Applying paid settlements and balances",
+    "Building payment sheet rows",
+  ];
+  var FARMER_STEPS = [
+    "Reading period and branch filters",
+    "Loading farmer milk for the period",
+    "Calculating rates and gross amounts",
+    "Aggregating advances, goods & loans",
+    "Applying paid settlements and balances",
+    "Building payment sheet rows",
+  ];
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function readNavConfig() {
+    var el = document.getElementById("payment-sheet-nav-config");
+    if (!el) return null;
+    try {
+      return JSON.parse(el.textContent || "null");
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function markLoading(meta) {
+    var payload = Object.assign({ t: Date.now(), pct: 55 }, meta || {});
+    try {
+      sessionStorage.setItem(LOAD_KEY, JSON.stringify(payload));
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      sessionStorage.setItem("canmee.pageLoading", JSON.stringify(payload));
+    } catch (e2) {
+      /* ignore */
+    }
+    if (typeof window.markPageLoading === "function") {
+      window.markPageLoading(payload);
+    }
+  }
+
+  function buildUrlWithFilters(baseUrl, selection) {
+    var url;
+    try {
+      url = new URL(baseUrl, window.location.origin);
+    } catch (e) {
+      url = new URL(window.location.origin + (baseUrl || "/"));
+    }
+    url.search = "";
+    if (selection.start) url.searchParams.set("start", selection.start);
+    if (selection.end) url.searchParams.set("end", selection.end);
+    (selection.branches || []).forEach(function (id) {
+      url.searchParams.append("branches", String(id));
+    });
+    return url.pathname + url.search;
+  }
+
+  function destroyPickerWidgets() {
+    var periodEl = document.getElementById("ps-nav-period");
+    if (periodEl && periodEl._flatpickr) periodEl._flatpickr.destroy();
+    if (window.jQuery) {
+      var $branches = window.jQuery("#ps-nav-branches");
+      if ($branches.length && $branches.hasClass("select2-hidden-accessible")) {
+        $branches.select2("destroy");
+      }
+    }
+  }
+
+  function syncRangeHidden(selectedDates, instance, startEl, endEl) {
+    if (!startEl || !endEl || !instance) return;
+    if (selectedDates.length === 2) {
+      startEl.value = instance.formatDate(selectedDates[0], "Y-m-d");
+      endEl.value = instance.formatDate(selectedDates[1], "Y-m-d");
+    } else if (selectedDates.length === 1) {
+      var day = instance.formatDate(selectedDates[0], "Y-m-d");
+      startEl.value = day;
+      endEl.value = day;
+    } else {
+      startEl.value = "";
+      endEl.value = "";
+    }
+  }
+
+  function promptPeriodAndBranches(options) {
+    return new Promise(function (resolve) {
+      var config = readNavConfig();
+      if (!config || !config.branches || !config.branches.length) {
+        resolve(null);
+        return;
+      }
+      if (typeof Swal === "undefined") {
+        resolve(null);
+        return;
+      }
+
+      var sheetKind = options.sheetKind || "collection_point";
+      var isFarmer = sheetKind === "farmer";
+      var defaults =
+        (isFarmer ? config.farmer : config.collection_point) ||
+        config.defaults ||
+        {};
+      var startVal = defaults.start || (config.defaults && config.defaults.start) || "";
+      var endVal = defaults.end || (config.defaults && config.defaults.end) || "";
+      var selectedBranches = (defaults.branches || []).map(String);
+      var optionsHtml = config.branches
+        .map(function (branch) {
+          var selected =
+            selectedBranches.indexOf(String(branch.id)) !== -1 ? " selected" : "";
+          return (
+            '<option value="' +
+            escapeHtml(branch.id) +
+            '"' +
+            selected +
+            ">" +
+            escapeHtml(branch.label) +
+            "</option>"
+          );
+        })
+        .join("");
+
+      Swal.fire({
+        title: isFarmer ? "Farmer payment sheet" : "Collection point payment sheet",
+        html:
+          '<div class="text-start">' +
+          '<p class="small text-muted mb-3">Select the payment period and branches, then load the sheet.</p>' +
+          '<div class="mb-3">' +
+          '<label class="form-label small mb-1" for="ps-nav-period">Period</label>' +
+          '<div class="input-group flatpickr-range-wrap">' +
+          '<span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>' +
+          '<input type="text" id="ps-nav-period" class="form-control border-start-0" placeholder="Select period" autocomplete="off" readonly aria-label="Date range">' +
+          "</div>" +
+          '<input type="hidden" id="ps-nav-start" value="' +
+          escapeHtml(startVal) +
+          '">' +
+          '<input type="hidden" id="ps-nav-end" value="' +
+          escapeHtml(endVal) +
+          '">' +
+          "</div>" +
+          '<label class="form-label small mb-1" for="ps-nav-branches">Branches</label>' +
+          '<select id="ps-nav-branches" class="form-select" multiple size="6">' +
+          optionsHtml +
+          "</select>" +
+          "</div>",
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: "Load sheet",
+        cancelButtonText: "Cancel",
+        buttonsStyling: false,
+        reverseButtons: true,
+        customClass: {
+          popup: "app-swal-popup",
+          confirmButton: "btn btn-success",
+          cancelButton: "btn btn-outline-secondary",
+        },
+        didOpen: function () {
+          var popup = Swal.getPopup();
+          var periodEl = document.getElementById("ps-nav-period");
+          var startEl = document.getElementById("ps-nav-start");
+          var endEl = document.getElementById("ps-nav-end");
+          var branchEl = document.getElementById("ps-nav-branches");
+          if (window.flatpickr && periodEl) {
+            var defaultDate = [];
+            if (startVal) defaultDate.push(startVal);
+            if (endVal) defaultDate.push(endVal);
+            window.flatpickr(periodEl, {
+              mode: "range",
+              dateFormat: "Y-m-d",
+              allowInput: false,
+              disableMobile: true,
+              defaultDate: defaultDate.length ? defaultDate : undefined,
+              onChange: function (selectedDates, dateStr, instance) {
+                syncRangeHidden(selectedDates, instance, startEl, endEl);
+              },
+              onReady: function (selectedDates, dateStr, instance) {
+                syncRangeHidden(selectedDates, instance, startEl, endEl);
+              },
+            });
+          }
+          if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 && branchEl) {
+            window.jQuery(branchEl).select2({
+              width: "100%",
+              dropdownParent: window.jQuery(popup),
+              placeholder: "Select one or more branches",
+              closeOnSelect: false,
+            });
+          }
+        },
+        willClose: function () {
+          destroyPickerWidgets();
+        },
+        preConfirm: function () {
+          var startEl = document.getElementById("ps-nav-start");
+          var endEl = document.getElementById("ps-nav-end");
+          var branchEl = document.getElementById("ps-nav-branches");
+          var periodEl = document.getElementById("ps-nav-period");
+          var start = ((startEl && startEl.value) || "").trim();
+          var end = ((endEl && endEl.value) || "").trim();
+          if ((!start || !end) && periodEl && periodEl._flatpickr) {
+            syncRangeHidden(
+              periodEl._flatpickr.selectedDates || [],
+              periodEl._flatpickr,
+              startEl,
+              endEl
+            );
+            start = ((startEl && startEl.value) || "").trim();
+            end = ((endEl && endEl.value) || "").trim();
+          }
+          var branches = [];
+          if (branchEl) {
+            Array.prototype.forEach.call(branchEl.selectedOptions || [], function (opt) {
+              if (opt.value) branches.push(opt.value);
+            });
+          }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+            Swal.showValidationMessage("Pick a period range from the date picker.");
+            return false;
+          }
+          if (start > end) {
+            Swal.showValidationMessage("From date must be on or before To date.");
+            return false;
+          }
+          if (!branches.length) {
+            Swal.showValidationMessage("Select at least one branch.");
+            return false;
+          }
+          return { start: start, end: end, branches: branches };
+        },
+      }).then(function (result) {
+        if (result.isConfirmed && result.value) {
+          resolve(result.value);
+        } else {
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  function buildHtml(options) {
+    var steps = options.steps || [];
+    var activeIdx = options.activeIdx || 0;
+    var pct = options.pct || 0;
+    var subPct = options.subPct;
+    var lastIdx = steps.length - 1;
+    var stepsHtml = steps
+      .map(function (step, i) {
+        var stateClass = "text-muted";
+        var mark = "○";
+        if (i < activeIdx) {
+          stateClass = "text-success";
+          mark = "✓";
+        } else if (i === activeIdx) {
+          stateClass = "fw-semibold text-body";
+          mark = "●";
+        }
+        var row =
+          '<div class="' +
+          stateClass +
+          ' small mb-1 d-flex gap-2"><span>' +
+          mark +
+          "</span><span>" +
+          escapeHtml(step) +
+          "</span></div>";
+        if (
+          i === activeIdx &&
+          i === lastIdx &&
+          typeof subPct === "number" &&
+          isFinite(subPct)
+        ) {
+          row +=
+            '<div class="ms-3 mb-2 text-start">' +
+            '<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+            Math.round(subPct) +
+            '" style="height: 8px;">' +
+            '<div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: ' +
+            subPct +
+            '%;"></div></div>' +
+            '<div class="d-flex justify-content-between small text-muted mt-1">' +
+            "<span>Building rows…</span><span>" +
+            Math.round(subPct) +
+            "%</span></div></div>";
+        }
+        return row;
+      })
+      .join("");
+    return (
+      (options.subtitle
+        ? '<p class="small text-muted mb-2 text-start">' + escapeHtml(options.subtitle) + "</p>"
+        : "") +
+      '<div class="progress mb-2" role="progressbar" style="height: 12px;">' +
+      '<div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: ' +
+      pct +
+      '%;"></div></div>' +
+      '<div class="d-flex justify-content-between small text-muted mb-2"><span>' +
+      Math.round(pct) +
+      "%</span><span>" +
+      (options.elapsedSec || 0) +
+      "s elapsed</span></div>" +
+      '<div class="text-start mb-2">' +
+      stepsHtml +
+      "</div>" +
+      '<p class="small text-muted mb-0 text-start border-top pt-2">' +
+      escapeHtml(options.detail || "Please wait while the payment sheet loads.") +
+      "</p>"
+    );
+  }
+
+  function startLoadingProgress(options) {
+    options = options || {};
+    var sheetKind = options.sheetKind || "collection_point";
+    var isFarmer = sheetKind === "farmer";
+    var title =
+      options.title ||
+      (isFarmer ? "Loading farmer payment sheet…" : "Loading payment sheet…");
+    var steps = isFarmer ? FARMER_STEPS : CP_STEPS;
+    var url = options.url;
+    var startedAt = Date.now();
+    var activeIdx = 0;
+    var timer = null;
+    var lastStepStartedAt = null;
+    var lastIdx = Math.max(0, steps.length - 1);
+    var subtitle = options.subtitle || "";
+
+    markLoading({ kind: sheetKind, title: title });
+
+    function navigate() {
+      if (url) window.location.href = url;
+      else window.location.reload();
+    }
+
+    if (typeof window.navigateWithPaymentSheetProgress === "function") {
+      window.navigateWithPaymentSheetProgress({
+        sheetKind: sheetKind,
+        title: title,
+        subtitle: subtitle,
+        detail: options.detail,
+        url: url,
+      });
+      return;
+    }
+
+    if (typeof Swal === "undefined") {
+      navigate();
+      return;
+    }
+
+    function pctForStep(idx, subPct) {
+      if (steps.length <= 1) return 90;
+      var base = Math.min(92, 6 + (idx / (steps.length - 1)) * 86);
+      if (idx >= lastIdx && typeof subPct === "number") {
+        return Math.min(98, base + (subPct / 100) * 6);
+      }
+      return base;
+    }
+
+    function subPctForLastStep() {
+      if (activeIdx < lastIdx || lastStepStartedAt == null) return null;
+      var sec = (Date.now() - lastStepStartedAt) / 1000;
+      return Math.min(96, 100 * (1 - Math.exp(-sec / 28)));
+    }
+
+    function tick() {
+      if (activeIdx < lastIdx) {
+        activeIdx += 1;
+        if (activeIdx >= lastIdx && lastStepStartedAt == null) {
+          lastStepStartedAt = Date.now();
+        }
+      } else if (lastStepStartedAt == null) {
+        lastStepStartedAt = Date.now();
+      }
+      var subPct = subPctForLastStep();
+      if (Swal.isVisible()) {
+        Swal.update({
+          html: buildHtml({
+            steps: steps,
+            activeIdx: activeIdx,
+            pct: pctForStep(activeIdx, subPct),
+            subPct: subPct,
+            subtitle: subtitle,
+            detail: options.detail,
+            elapsedSec: Math.floor((Date.now() - startedAt) / 1000),
+          }),
+        });
+      }
+    }
+
+    Swal.fire({
+      title: title,
+      html: buildHtml({
+        steps: steps,
+        activeIdx: 0,
+        pct: pctForStep(0, null),
+        subtitle: subtitle,
+        detail: options.detail,
+        elapsedSec: 0,
+      }),
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      buttonsStyling: false,
+      customClass: { popup: "app-swal-popup" },
+      didOpen: function () {
+        timer = window.setInterval(tick, 900);
+        window.setTimeout(navigate, 120);
+      },
+      willClose: function () {
+        if (timer) window.clearInterval(timer);
+      },
+    });
+  }
+
+  function showNavProgress(options) {
+    options = options || {};
+    var run = function (nextOptions) {
+      startLoadingProgress(nextOptions || options);
+    };
+
+    if (!options.promptFilters) {
+      run(options);
+      return;
+    }
+
+    promptPeriodAndBranches(options).then(function (selection) {
+      if (selection === false) return;
+      if (!selection) {
+        run(options);
+        return;
+      }
+      var url = buildUrlWithFilters(options.url, selection);
+      var subtitle =
+        selection.start +
+        " → " +
+        selection.end +
+        " · " +
+        selection.branches.length +
+        " branch" +
+        (selection.branches.length === 1 ? "" : "es");
+      run({
+        sheetKind: options.sheetKind,
+        title: options.title,
+        detail: options.detail,
+        url: url,
+        subtitle: subtitle,
+      });
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest("a.js-payment-sheet-load-progress");
+    if (!link) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (event.button != null && event.button !== 0) return;
+    if (link.target && link.target !== "_self") return;
+    var href = link.getAttribute("href");
+    if (!href) return;
+
+    event.preventDefault();
+    showNavProgress({
+      sheetKind: link.dataset.sheetKind || "collection_point",
+      title: link.dataset.loadTitle || undefined,
+      subtitle: link.dataset.loadSubtitle || "",
+      url: href,
+      promptFilters: link.dataset.promptFilters === "1",
+    });
+  });
+
+  window.showPaymentSheetNavProgress = showNavProgress;
+})();
+</script>

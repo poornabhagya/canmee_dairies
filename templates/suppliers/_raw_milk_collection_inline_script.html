@@ -1,0 +1,497 @@
+<script>
+(function () {
+  function extractErrors(data) {
+    var messages = [];
+    var errors = (data && data.errors) || {};
+    Object.keys(errors).forEach(function (key) {
+      (errors[key] || []).forEach(function (msg) {
+        if (msg) messages.push(msg);
+      });
+    });
+    return messages;
+  }
+
+  function showRawMilkError(messages, title) {
+    var text = (messages && messages.length) ? messages.join(" ") : "Could not save changes.";
+    if (typeof Swal !== "undefined") {
+      Swal.fire({ icon: "error", title: title || "Could not save", text: text });
+    }
+  }
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "0.00";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function todayISODate() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function postRawMilkForm(form) {
+    return fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (response) {
+        return response.json().then(function (data) {
+          return { ok: response.ok, data: data };
+        });
+      });
+  }
+
+  document.querySelectorAll(".raw-milk-status-select").forEach(function (select) {
+    select.dataset.previousStatus = select.value;
+    select.addEventListener("change", function () {
+      var form = select.form;
+      if (!form) return;
+      var previousStatus = select.dataset.previousStatus || select.value;
+      var newValue = select.value;
+      postRawMilkForm(form)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            select.dataset.previousStatus = newValue;
+            return;
+          }
+          select.value = previousStatus;
+          showRawMilkError(extractErrors(result.data), "Could not save status");
+        })
+        .catch(function () {
+          select.value = previousStatus;
+          showRawMilkError(["Could not save status."]);
+        });
+    });
+  });
+
+  var paymentModalEl = document.getElementById("rawMilkPaymentModal");
+  var paymentModal = paymentModalEl && typeof bootstrap !== "undefined" ? new bootstrap.Modal(paymentModalEl) : null;
+  var paymentForm = document.getElementById("rawMilkPaymentForm");
+  var paymentErrorsEl = document.getElementById("rawMilkPaymentFormErrors");
+  var paymentSubtitleEl = document.getElementById("rawMilkPaymentSubtitle");
+  var paymentTotalEl = document.getElementById("rawMilkPaymentTotal");
+  var paymentOutstandingEl = document.getElementById("rawMilkPaymentOutstanding");
+  var paymentDateEl = document.getElementById("rawMilkPaymentDate");
+  var paymentAmountEl = document.getElementById("rawMilkPaymentAmount");
+  var paymentReferenceEl = document.getElementById("rawMilkPaymentReference");
+  var paymentNoteEl = document.getElementById("rawMilkPaymentNote");
+  var paymentAccountLink = document.getElementById("rawMilkPaymentAccountLink");
+  var paymentNextEl = document.getElementById("rawMilkPaymentNext");
+  var activePaymentTrigger = null;
+
+  function showPaymentErrors(messages) {
+    if (!paymentErrorsEl) return;
+    if (!messages || !messages.length) {
+      paymentErrorsEl.classList.add("d-none");
+      paymentErrorsEl.textContent = "";
+      return;
+    }
+    paymentErrorsEl.classList.remove("d-none");
+    paymentErrorsEl.innerHTML = messages.map(function (m) {
+      return "<div>" + m + "</div>";
+    }).join("");
+  }
+
+  function updatePaymentBadgeInRow(trigger, data) {
+    if (!trigger || !data) return;
+    var row = trigger.closest("tr");
+    if (!row) return;
+    var cell = row.querySelector(".raw-milk-payment-cell");
+    if (!cell) return;
+    var status = data.payment_status || "pending";
+    var badge = cell.querySelector(".raw-milk-payment-badge");
+    var meta = cell.querySelector(".raw-milk-payment-meta");
+    if (badge) {
+      badge.className = "raw-milk-payment-badge raw-milk-payment-badge--" + status;
+      badge.textContent = data.payment_status_display || status;
+    }
+    if (meta) {
+      if (status === "paid") {
+        meta.textContent = formatMoney(data.total_amount);
+      } else {
+        meta.textContent = formatMoney(data.outstanding) + " due";
+      }
+    }
+    cell.setAttribute(
+      "title",
+      "Paid " + formatMoney(data.paid_amount) + " / " + formatMoney(data.total_amount)
+    );
+  }
+
+  document.querySelectorAll(".js-raw-milk-payment-modal").forEach(function (trigger) {
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (!paymentForm || !paymentModal) return;
+      activePaymentTrigger = trigger;
+      showPaymentErrors([]);
+      var paymentUrl = trigger.getAttribute("data-payment-url") || trigger.getAttribute("href") || "";
+      var accountUrl = trigger.getAttribute("data-account-url") || "#";
+      var dispatchNo = trigger.getAttribute("data-dispatch-no") || "";
+      var supplierName = trigger.getAttribute("data-supplier-name") || "";
+      var total = trigger.getAttribute("data-total") || "0";
+      var outstanding = trigger.getAttribute("data-outstanding") || "0";
+      paymentForm.action = paymentUrl;
+      if (paymentSubtitleEl) {
+        paymentSubtitleEl.textContent = (dispatchNo ? dispatchNo + " · " : "") + supplierName;
+      }
+      if (paymentTotalEl) paymentTotalEl.textContent = formatMoney(total);
+      if (paymentOutstandingEl) paymentOutstandingEl.textContent = formatMoney(outstanding);
+      if (paymentAmountEl) paymentAmountEl.value = formatMoney(outstanding);
+      if (paymentReferenceEl) paymentReferenceEl.value = "";
+      if (paymentNoteEl) paymentNoteEl.value = "";
+      if (paymentDateEl && !paymentDateEl.value) paymentDateEl.value = todayISODate();
+      if (paymentAccountLink) paymentAccountLink.href = accountUrl;
+      if (paymentNextEl && !paymentNextEl.value) {
+        paymentNextEl.value = window.location.pathname + window.location.search;
+      }
+      paymentModal.show();
+    });
+  });
+
+  if (paymentModalEl) {
+    paymentModalEl.addEventListener("hidden.bs.modal", function () {
+      showPaymentErrors([]);
+      activePaymentTrigger = null;
+    });
+  }
+
+  function focusNextPaymentField(current) {
+    if (!paymentForm) return;
+    var fields = Array.prototype.slice.call(
+      paymentForm.querySelectorAll(".js-focus-next")
+    ).filter(function (el) {
+      return el.offsetParent !== null && !el.disabled && el.type !== "hidden";
+    });
+    var idx = fields.indexOf(current);
+    if (idx < 0) return;
+    var next = fields[idx + 1];
+    if (!next) return;
+    next.focus();
+    if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+  }
+
+  if (paymentForm) {
+    paymentForm.addEventListener("focusin", function (ev) {
+      var t = ev.target;
+      if (!t || !t.classList || !t.classList.contains("js-money-input")) return;
+      t.value = String(t.value || "").replace(/,/g, "");
+      if (typeof t.select === "function") t.select();
+    });
+    paymentForm.addEventListener("focusout", function (ev) {
+      var t = ev.target;
+      if (!t || !t.classList || !t.classList.contains("js-money-input")) return;
+      if (!String(t.value || "").trim()) return;
+      t.value = formatMoney(t.value);
+    });
+    paymentForm.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter") return;
+      var t = ev.target;
+      if (!t || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
+      if (t.tagName === "SELECT" || t.classList.contains("js-focus-next") || t.classList.contains("js-money-input")) {
+        ev.preventDefault();
+        if (t.classList.contains("js-money-input") && String(t.value || "").trim()) {
+          t.value = formatMoney(t.value);
+        }
+        focusNextPaymentField(t);
+      }
+    });
+    paymentForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showPaymentErrors([]);
+      if (paymentAmountEl) {
+        paymentAmountEl.value = String(paymentAmountEl.value || "").replace(/,/g, "").trim();
+      }
+      postRawMilkForm(paymentForm)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (paymentModal) paymentModal.hide();
+            updatePaymentBadgeInRow(activePaymentTrigger, result.data);
+            if (typeof Swal !== "undefined" && result.data.message) {
+              Swal.fire({
+                icon: "success",
+                title: "Payment recorded",
+                text: result.data.message,
+                timer: 1600,
+                showConfirmButton: false,
+              });
+            }
+            window.setTimeout(function () { window.location.reload(); }, 400);
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not record payment.");
+          showPaymentErrors(messages);
+          showRawMilkError(messages, "Could not record payment");
+        })
+        .catch(function () {
+          showPaymentErrors(["Could not record payment."]);
+          showRawMilkError(["Could not record payment."]);
+        });
+    });
+  }
+
+  var resultModalEl = document.getElementById("rawMilkResultModal");
+  var resultModal = resultModalEl && typeof bootstrap !== "undefined"
+    ? bootstrap.Modal.getOrCreateInstance(resultModalEl)
+    : null;
+  var resultForm = document.getElementById("rawMilkResultForm");
+  var resultErrorsEl = document.getElementById("rawMilkResultFormErrors");
+  var resultSubtitleEl = document.getElementById("rawMilkResultSubtitle");
+  var resultQtyEl = document.getElementById("rawMilkResultQty");
+  var resultStatusEl = document.getElementById("rawMilkResultStatus");
+  var resultAvailableEl = document.getElementById("rawMilkResultAvailableQty");
+  var resultNextEl = document.getElementById("rawMilkResultNext");
+
+  function showResultErrors(messages) {
+    if (!resultErrorsEl) return;
+    if (!messages || !messages.length) {
+      resultErrorsEl.classList.add("d-none");
+      resultErrorsEl.textContent = "";
+      return;
+    }
+    resultErrorsEl.classList.remove("d-none");
+    resultErrorsEl.innerHTML = messages.map(function (m) {
+      return "<div>" + m + "</div>";
+    }).join("");
+  }
+
+  document.querySelectorAll(".js-raw-milk-result-modal").forEach(function (trigger) {
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (!resultForm || !resultModal) return;
+      showResultErrors([]);
+      var url = trigger.getAttribute("data-result-url") || trigger.getAttribute("href") || "";
+      var dispatchNo = trigger.getAttribute("data-dispatch-no") || "";
+      var qty = trigger.getAttribute("data-result-qty") || "";
+      var status = trigger.getAttribute("data-status") || "";
+      var available = trigger.getAttribute("data-available-liters") || "";
+      resultForm.action = url;
+      if (resultSubtitleEl) resultSubtitleEl.textContent = dispatchNo || "";
+      if (resultQtyEl) resultQtyEl.value = qty || available || "";
+      if (resultStatusEl && status) resultStatusEl.value = status;
+      if (resultAvailableEl) {
+        resultAvailableEl.textContent = available
+          ? "Collected quantity: " + available + " L"
+          : "";
+      }
+      if (resultNextEl && !resultNextEl.value) {
+        resultNextEl.value = window.location.pathname + window.location.search;
+      }
+      resultModal.show();
+    });
+  });
+
+  if (resultModalEl) {
+    resultModalEl.addEventListener("hidden.bs.modal", function () {
+      showResultErrors([]);
+    });
+  }
+
+  if (resultForm) {
+    resultForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showResultErrors([]);
+      postRawMilkForm(resultForm)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (resultModal) resultModal.hide();
+            window.location.reload();
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not save result.");
+          showResultErrors(messages);
+        })
+        .catch(function () {
+          showResultErrors(["Could not save result."]);
+        });
+    });
+  }
+
+  var editModalEl = document.getElementById("rawMilkEditModal");
+  var editModal = editModalEl && typeof bootstrap !== "undefined"
+    ? bootstrap.Modal.getOrCreateInstance(editModalEl)
+    : null;
+  var editForm = document.getElementById("rawMilkEditForm");
+  var editBody = document.getElementById("rawMilkEditModalBody");
+  var editSubtitleEl = document.getElementById("rawMilkEditSubtitle");
+  var editSubmitBtn = document.getElementById("rawMilkEditSubmit");
+  var editNextEl = document.getElementById("rawMilkEditNext");
+  var KG_TO_L = editModalEl ? Number(editModalEl.dataset.kgToLiters || "0") : 0;
+  var editQtyUnit = "liters";
+
+  function showEditFormErrors(messages) {
+    var el = document.getElementById("rawMilkEditFormErrors");
+    if (!el) return;
+    if (!messages || !messages.length) {
+      el.classList.add("d-none");
+      el.textContent = "";
+      return;
+    }
+    el.classList.remove("d-none");
+    el.innerHTML = messages.map(function (m) {
+      return "<div>" + m + "</div>";
+    }).join("");
+  }
+
+  function bindEditQtyToggle() {
+    if (!editForm) return;
+    var litersInput = editForm.querySelector("#id_liters");
+    var unitField = editForm.querySelector("#id_quantity_unit");
+    var qtyLabel = editForm.querySelector("#raw-milk-qty-label");
+    var qtyUnitBtns = editForm.querySelectorAll("#raw-milk-qty-wrap .qty-segment__btn[data-qty-unit]");
+    editQtyUnit = "liters";
+
+    function formatQty2(n) {
+      return (Math.round(n * 100) / 100).toFixed(2);
+    }
+    function parseQtyVal() {
+      if (!litersInput) return NaN;
+      var n = parseFloat(String(litersInput.value || "").replace(",", "."));
+      return isNaN(n) ? NaN : n;
+    }
+    function applyQtyChrome(unit) {
+      editQtyUnit = unit;
+      qtyUnitBtns.forEach(function (btn) {
+        var on = btn.getAttribute("data-qty-unit") === unit;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      if (qtyLabel) {
+        qtyLabel.textContent = unit === "liters" ? "Quantity (liters)" : "Quantity (kg)";
+      }
+      if (unitField) unitField.value = unit;
+    }
+    function switchQtyUnit(next) {
+      if (!litersInput || next === editQtyUnit || !KG_TO_L) return;
+      var n = parseQtyVal();
+      if (!isNaN(n)) {
+        if (editQtyUnit === "kg" && next === "liters") {
+          litersInput.value = formatQty2(n * KG_TO_L);
+        } else if (editQtyUnit === "liters" && next === "kg") {
+          litersInput.value = formatQty2(n / KG_TO_L);
+        }
+      }
+      applyQtyChrome(next);
+    }
+    qtyUnitBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchQtyUnit(btn.getAttribute("data-qty-unit"));
+      });
+    });
+    applyQtyChrome("liters");
+  }
+
+  function bindEditSupplierFilter() {
+    if (!editForm) return;
+    var branchSelect = editForm.querySelector("#id_branch");
+    var supplierSelect = editForm.querySelector("#id_supplier");
+    var optionsEl = editForm.querySelector("#rawMilkEditSupplierBranchOptions");
+    var options = [];
+    if (optionsEl) {
+      try { options = JSON.parse(optionsEl.textContent || "[]"); } catch (err) { options = []; }
+    }
+    if (!branchSelect || !supplierSelect || !options.length) return;
+
+    function filterSupplierOptions() {
+      var branchId = parseInt(branchSelect.value, 10);
+      var current = supplierSelect.value;
+      supplierSelect.innerHTML = "";
+      var placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "---------";
+      supplierSelect.appendChild(placeholder);
+      options.forEach(function (supplier) {
+        if (!branchId || (supplier.branches || []).indexOf(branchId) >= 0) {
+          supplierSelect.appendChild(
+            new Option(supplier.name, supplier.id, false, String(supplier.id) === current)
+          );
+        }
+      });
+      if (current && supplierSelect.querySelector('option[value="' + current + '"]')) {
+        supplierSelect.value = current;
+      }
+    }
+    branchSelect.addEventListener("change", filterSupplierOptions);
+    filterSupplierOptions();
+  }
+
+  function syncEditLitersForSubmit() {
+    if (!editForm || editQtyUnit !== "kg" || !KG_TO_L) return;
+    var litersInput = editForm.querySelector("#id_liters");
+    if (!litersInput) return;
+    var n = parseFloat(String(litersInput.value || "").replace(",", "."));
+    if (!isNaN(n)) {
+      litersInput.value = (Math.round(n * KG_TO_L * 100) / 100).toFixed(2);
+    }
+  }
+
+  document.querySelectorAll(".js-raw-milk-edit-modal").forEach(function (trigger) {
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (!editForm || !editModal || !editBody) return;
+      var url = trigger.getAttribute("data-edit-url") || trigger.getAttribute("href") || "";
+      var dispatchNo = trigger.getAttribute("data-dispatch-no") || "";
+      editForm.action = url;
+      if (editSubtitleEl) editSubtitleEl.textContent = dispatchNo || "";
+      if (editSubmitBtn) editSubmitBtn.disabled = true;
+      if (editNextEl && !editNextEl.value) {
+        editNextEl.value = window.location.pathname + window.location.search;
+      }
+      editBody.innerHTML = '<div class="text-center text-muted py-5">Loading…</div>';
+      editModal.show();
+      fetch(url, {
+        credentials: "same-origin",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "text/html",
+        },
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error("load failed");
+          return response.text();
+        })
+        .then(function (html) {
+          editBody.innerHTML = html;
+          bindEditQtyToggle();
+          bindEditSupplierFilter();
+          if (editSubmitBtn) editSubmitBtn.disabled = false;
+          var first = editForm.querySelector("input:not([type=hidden]), select, textarea");
+          if (first) first.focus();
+        })
+        .catch(function () {
+          editBody.innerHTML = '<div class="alert alert-danger mb-0">Could not load collection for editing.</div>';
+        });
+    });
+  });
+
+  if (editForm) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showEditFormErrors([]);
+      syncEditLitersForSubmit();
+      if (editSubmitBtn) editSubmitBtn.disabled = true;
+      postRawMilkForm(editForm)
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (editModal) editModal.hide();
+            window.location.reload();
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not save collection.");
+          showEditFormErrors(messages);
+          if (editSubmitBtn) editSubmitBtn.disabled = false;
+        })
+        .catch(function () {
+          showEditFormErrors(["Could not save collection."]);
+          if (editSubmitBtn) editSubmitBtn.disabled = false;
+        });
+    });
+  }
+})();
+</script>

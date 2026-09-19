@@ -1,0 +1,307 @@
+  <div
+    class="sheet goods-issue-sheet{% if allow_goods_header_edit %} goods-issue-sheet--editable-header{% endif %}"
+    {% if allow_goods_header_edit %}
+    data-header-url="{{ goods_header_update_url }}"
+    data-add-url="{{ goods_line_add_url }}"
+    data-from-branch-id="{{ issue_head.from_branch_id }}"
+    data-issue-to-id="{{ issue_head.issue_to_id }}"
+    data-issue-date="{{ issue_head.date|date:'Y-m-d' }}"
+    data-issue-to-type="{{ issue_head.issue_to_type }}"
+    {% endif %}
+  >
+  {% if allow_goods_line_actions %}
+  {% csrf_token %}
+  {% if allow_goods_header_edit %}
+  <textarea id="goods-header-branches" hidden>{{ goods_header_branches_json }}</textarea>
+  <textarea id="goods-header-destinations" hidden>{{ goods_header_destinations_json }}</textarea>
+  {% endif %}
+  <style>
+    .goods-issue-lines tr.goods-line--editing td { background: #eff6ff; }
+    .goods-line-view--editable {
+      display: inline;
+      margin: 0;
+      padding: 0.1rem 0.25rem;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: inherit;
+      max-width: 100%;
+      cursor: pointer;
+    }
+    .goods-line-view--editable:hover,
+    .goods-line-view--editable:focus-visible { background: #e8f1ff; outline: none; }
+    .js-goods-line-qty .goods-line-view--editable { display: inline-block; width: 100%; text-align: right; }
+    .goods-line-product-select,
+    .goods-line-qty-input { display: none; font-size: 0.78rem; }
+    .goods-line-qty-input { width: 4.75rem; margin-left: auto; text-align: right; padding: 0.2rem 0.35rem; }
+    .goods-line-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.2rem;
+      white-space: nowrap;
+    }
+    .goods-line-actions .btn {
+      width: 1.75rem;
+      height: 1.75rem;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .goods-issue-lines .goods-line-edit-only { display: none; }
+    .goods-issue-lines tr.goods-line--editing .goods-line-view,
+    .goods-issue-lines tr.goods-line--editing .goods-line-view-only { display: none !important; }
+    .goods-issue-lines tr.goods-line--editing .goods-line-product-select,
+    .goods-issue-lines tr.goods-line--editing .goods-line-qty-input { display: block; }
+    .goods-issue-lines tr.goods-line--editing .goods-line-edit-only.btn { display: inline-flex; }
+    .goods-issue-lines tr.goods-line--editing .js-goods-line-price,
+    .goods-issue-lines tr.goods-line--editing .js-goods-line-amount {
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+    .goods-issue-header-input,
+    .goods-issue-meta-select {
+      display: inline-block;
+      width: auto;
+      max-width: 100%;
+      min-width: 9.5rem;
+      font-size: 0.8125rem;
+      padding: 0.2rem 0.45rem;
+    }
+    .goods-issue-header-input { width: 9.75rem; }
+    .goods-issue-meta dd.goods-issue-meta-edit { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+    .goods-issue-header-save { display: none; }
+    .goods-issue-sheet.is-header-dirty .goods-issue-header-save { display: inline-flex; }
+    .goods-issue-sheet.is-header-dirty .goods-line-add-row,
+    .goods-issue-sheet.is-header-dirty .goods-line-actions { opacity: 0.45; pointer-events: none; }
+    .goods-line-add-row td { background: #f8fafc; }
+    .js-goods-line-add-qty {
+      display: block;
+      width: 4.75rem;
+      margin-left: auto;
+      text-align: right;
+      font-size: 0.78rem;
+      padding: 0.2rem 0.35rem;
+    }
+    .goods-issue-lines tr.is-saving { opacity: 0.65; pointer-events: none; }
+  </style>
+  {% endif %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap goods-issue-sheet-header">
+    <div class="flex-grow-1 min-w-0">
+      <div class="fw-bold goods-issue-sheet-title">{% if is_branch_transfer %}Transfer Note{% else %}Issue Receipt{% endif %}</div>
+      <div class="text-muted small goods-issue-sheet-subtitle">Farmer goods movement document</div>
+    </div>
+    <div class="text-end text-sm-end flex-shrink-0">
+      <div class="fw-bold">{{ batch_ref|slice:":8"|upper }}</div>
+      {% if allow_goods_header_edit %}
+      <input
+        type="text"
+        class="form-control form-control-sm goods-issue-header-input js-datepicker js-goods-header-date"
+        value="{{ issue_head.date|date:'Y-m-d' }}"
+        placeholder="Select date"
+        autocomplete="off"
+        aria-label="Issue date"
+      >
+      {% else %}
+      <div class="small text-muted">{{ issue_head.date|date:"Y-m-d" }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <dl class="row meta goods-issue-meta g-2">
+    <dt class="col-5 col-sm-3">From branch</dt>
+    <dd class="col-7 col-sm-9{% if allow_goods_header_edit %} goods-issue-meta-edit{% endif %}">
+      {% if allow_goods_header_edit %}
+      <select class="form-select form-select-sm goods-issue-meta-select js-goods-header-branch" aria-label="From branch"></select>
+      {% else %}
+      {{ from_branch_name }}
+      {% endif %}
+    </dd>
+    <dt class="col-5 col-sm-3">Issue type</dt>
+    <dd class="col-7 col-sm-9">{{ issue_head.get_issue_to_type_display }}</dd>
+    <dt class="col-5 col-sm-3">Destination</dt>
+    <dd class="col-7 col-sm-9{% if allow_goods_header_edit %} goods-issue-meta-edit{% endif %}">
+      {% if allow_goods_header_edit %}
+      <select class="form-select form-select-sm goods-issue-meta-select js-goods-header-destination" aria-label="Destination"></select>
+      <button type="button" class="btn btn-sm btn-primary goods-issue-header-save js-goods-header-save">Save details</button>
+      {% else %}
+      {{ destination_name }}
+      {% endif %}
+    </dd>
+    {% if not is_branch_transfer %}
+    <dt class="col-5 col-sm-3 goods-issue-meta-recovery">Recovery</dt>
+    <dd class="col-7 col-sm-9 goods-issue-meta-recovery">{% include "suppliers/_goods_issue_settlement_badge.html" with settlement_status=settlement_summary.settlement_status settled_count=settlement_summary.settled_count line_count=settlement_summary.line_count settled_at=settlement_summary.settled_at %}</dd>
+    {% endif %}
+    {% if is_branch_transfer %}
+    <dt class="col-5 col-sm-3">Document mode</dt>
+    <dd class="col-7 col-sm-9">Transfer note format (branch destination)</dd>
+    {% endif %}
+  </dl>
+  <div class="goods-issue-table-wrap">
+    <table class="table table-bordered lines goods-issue-lines mb-0{% if allow_goods_line_actions %} goods-issue-lines--editable{% endif %}">
+      <thead class="table-light">
+        <tr>
+          <th class="col-idx">#</th>
+          <th class="col-product">Product</th>
+          <th class="text-end col-qty">Qty</th>
+          <th class="col-unit">Unit</th>
+          <th class="text-end col-price">Unit price</th>
+          <th class="text-end col-amount">Amount</th>
+          {% if not is_branch_transfer %}
+          <th class="col-status goods-issue-col-status">Status</th>
+          {% endif %}
+          {% if allow_goods_line_actions %}
+          <th class="col-actions goods-line-actions-col no-print"><span class="visually-hidden">Actions</span></th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in issue_lines %}
+        {% if allow_goods_line_actions and not row.issue.is_settled and row.issue.driver_status != 'rejected' %}
+        <tr
+          class="goods-line--pending"
+          data-issue-id="{{ row.issue.pk }}"
+          data-product-id="{{ row.issue.product_id }}"
+          data-product-name="{{ row.issue.product.name }}"
+          data-qty="{{ row.quantity }}"
+          data-unit="{{ row.issue.product.unit }}"
+          data-unit-price="{{ row.unit_price }}"
+          data-amount="{{ row.line_amount }}"
+          {% if can_change_farmer_goods %}data-edit-url="{% url 'farmer-goods-issue-line-edit' row.issue.pk %}"{% endif %}
+          {% if can_delete_farmer_goods %}data-delete-url="{% url 'farmer-goods-issue-line-delete' row.issue.pk %}"{% endif %}
+        >
+          <td>{{ forloop.counter }}</td>
+          <td class="js-goods-line-product">
+            {% if can_change_farmer_goods %}
+            <button type="button" class="goods-line-view goods-line-view--editable js-goods-line-start-edit">{{ row.issue.product.name }}</button>
+            <select class="form-select form-select-sm goods-line-product-select goods-line-edit-only" aria-label="Product">
+              {% for product in line_edit_products %}
+              <option value="{{ product.id }}" data-unit="{{ product.unit }}" data-unit-price="{{ product.unit_price }}"{% if product.id == row.issue.product_id %} selected{% endif %}>{{ product.name }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
+            {{ row.issue.product.name }}
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap js-goods-line-qty">
+            {% if can_change_farmer_goods %}
+            <button type="button" class="goods-line-view goods-line-view--editable js-goods-line-start-edit">{{ row.quantity|floatformat:2 }}</button>
+            <input
+              type="number"
+              class="form-control form-control-sm goods-line-qty-input goods-line-edit-only"
+              value="{{ row.quantity }}"
+              step="0.01"
+              min="0.01"
+              inputmode="decimal"
+              aria-label="Quantity"
+            >
+            {% else %}
+            {{ row.quantity|floatformat:2 }}
+            {% endif %}
+          </td>
+          <td class="col-unit-cell js-goods-line-unit">{{ row.issue.product.unit }}</td>
+          <td class="text-end text-nowrap js-goods-line-price">{{ row.unit_price|money }}</td>
+          <td class="text-end text-nowrap goods-issue-col-amount js-goods-line-amount">{{ row.line_amount|money }}</td>
+          {% if not is_branch_transfer %}
+          <td class="goods-issue-col-status payslip-recovery-col text-nowrap">
+            <span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+          </td>
+          {% endif %}
+          <td class="goods-line-actions-col no-print">
+            <span class="goods-line-actions">
+              {% if can_change_farmer_goods %}
+              <button type="button" class="btn btn-sm btn-primary goods-line-edit-only js-goods-line-save" title="Save"><i class="bi bi-check-lg" aria-hidden="true"></i><span class="visually-hidden">Save</span></button>
+              <button type="button" class="btn btn-sm btn-outline-secondary goods-line-edit-only js-goods-line-cancel" title="Cancel"><i class="bi bi-x-lg" aria-hidden="true"></i><span class="visually-hidden">Cancel</span></button>
+              <button type="button" class="btn btn-sm btn-outline-primary goods-line-view-only js-goods-line-start-edit" title="Edit product"><i class="bi bi-pencil" aria-hidden="true"></i><span class="visually-hidden">Edit</span></button>
+              {% endif %}
+              {% if can_delete_farmer_goods %}
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger goods-line-view-only js-goods-line-delete"
+                title="Delete product line"
+                data-swal-title="Delete this product line?"
+                data-swal-text="Only {{ row.issue.product.name }} will be removed from this receipt. Stock will be restored."
+              ><i class="bi bi-trash3" aria-hidden="true"></i><span class="visually-hidden">Delete</span></button>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr class="{% if not is_branch_transfer and row.issue.is_settled %}goods-line--settled{% endif %}" data-amount="{{ row.line_amount }}">
+          <td>{{ forloop.counter }}</td>
+          <td>{{ row.issue.product.name }}</td>
+          <td class="text-end text-nowrap">{{ row.quantity|floatformat:2 }}</td>
+          <td class="col-unit-cell">{{ row.issue.product.unit }}</td>
+          <td class="text-end text-nowrap">{{ row.unit_price|money }}</td>
+          <td class="text-end text-nowrap goods-issue-col-amount js-goods-line-amount">{{ row.line_amount|money }}</td>
+          {% if not is_branch_transfer %}
+          <td class="goods-issue-col-status payslip-recovery-col text-nowrap">
+            {% if row.issue.is_settled %}
+            <span class="badge text-bg-success-subtle text-success-emphasis"{% if row.issue.settled_at %} title="Settled {{ row.issue.settled_at|date:'Y-m-d H:i' }}"{% endif %}>Settled</span>
+            {% else %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% if allow_goods_line_actions %}
+          <td class="goods-line-actions-col no-print"></td>
+          {% endif %}
+        </tr>
+        {% endif %}
+        {% endfor %}
+        {% if allow_goods_header_edit %}
+        <tr class="goods-line-add-row no-print">
+          <td></td>
+          <td>
+            <select class="form-select form-select-sm js-goods-line-add-product" aria-label="New product">
+              <option value="">Add product…</option>
+              {% for product in line_edit_products %}
+              <option value="{{ product.id }}" data-unit="{{ product.unit }}" data-unit-price="{{ product.unit_price }}">{{ product.name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td class="text-end">
+            <input
+              type="number"
+              class="form-control form-control-sm js-goods-line-add-qty"
+              value="1"
+              step="0.01"
+              min="0.01"
+              inputmode="decimal"
+              aria-label="New quantity"
+            >
+          </td>
+          <td class="col-unit-cell js-goods-line-add-unit text-muted">—</td>
+          <td class="text-end text-nowrap js-goods-line-add-price text-muted">—</td>
+          <td class="text-end text-nowrap js-goods-line-add-amount text-muted">—</td>
+          {% if not is_branch_transfer %}
+          <td class="goods-issue-col-status"></td>
+          {% endif %}
+          <td class="goods-line-actions-col no-print">
+            <span class="goods-line-actions">
+              <button type="button" class="btn btn-sm btn-primary js-goods-line-add-save" title="Add product" disabled>
+                <i class="bi bi-plus-lg" aria-hidden="true"></i><span class="visually-hidden">Add</span>
+              </button>
+            </span>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="5" class="text-end">Total</th>
+          <th class="text-end goods-issue-col-amount js-goods-issue-total">{{ issue_total|money }}</th>
+          {% if not is_branch_transfer %}
+          <td class="goods-issue-col-status border-0 bg-transparent"></td>
+          {% endif %}
+          {% if allow_goods_line_actions %}
+          <td class="goods-line-actions-col no-print border-0 bg-transparent"></td>
+          {% endif %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

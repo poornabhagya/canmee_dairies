@@ -1,0 +1,376 @@
+<style>
+  .payment-sheet-period-card .card-body {
+    padding: 1.05rem 1.15rem 1.15rem;
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgba(16, 185, 129, 0.06) 0%, transparent 55%),
+      linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+  .ps-period-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.85rem;
+  }
+  .ps-period-head__main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    min-width: 0;
+  }
+  .ps-period-head__icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    color: #047857;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    font-size: 1.1rem;
+  }
+  .ps-period-head .payment-sheet-card__hint {
+    margin-top: 0.2rem;
+    max-width: 42rem;
+  }
+  .ps-period-head__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .ps-period-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #065f46;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    white-space: nowrap;
+  }
+  .ps-period-pill--muted {
+    color: #334155;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+  }
+  .ps-period-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+  }
+  .ps-period-chip {
+    appearance: none;
+    border: 1px solid #dbe3ef;
+    background: #fff;
+    color: #334155;
+    font-size: 0.7rem;
+    font-weight: 650;
+    line-height: 1;
+    padding: 0.35rem 0.55rem;
+    border-radius: 999px;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ps-period-chip:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+  .ps-period-chip.is-active {
+    color: #065f46;
+    border-color: rgba(16, 185, 129, 0.45);
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.12);
+  }
+  .ps-period-grid {
+    display: grid;
+    grid-template-columns: minmax(11rem, 0.85fr) minmax(14rem, 1.55fr) auto;
+    gap: 0.7rem 0.85rem;
+    align-items: end;
+  }
+  .ps-period-field .form-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+  }
+  .ps-period-field .flatpickr-range-wrap .form-control,
+  .ps-period-field .flatpickr-range-wrap .input-group-text {
+    height: 34px;
+    min-height: 34px;
+  }
+  .ps-period-field .flatpickr-range-wrap .input-group-text {
+    background: #fff;
+    cursor: pointer;
+    padding: 0 0.55rem;
+    font-size: 0.85rem;
+  }
+  .ps-period-field .flatpickr-range-wrap .form-control {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #0f172a;
+    letter-spacing: 0.01em;
+    padding: 0.25rem 0.55rem;
+  }
+
+  /* Branch tiles */
+  .ps-branch-picker__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+  .ps-branch-picker__tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.1rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+  }
+  .ps-branch-tool {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.22rem 0.42rem;
+    border-radius: 999px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .ps-branch-tool:hover {
+    background: #fff;
+    color: #0f172a;
+  }
+  .ps-branch-tiles {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    min-height: 34px;
+    align-items: stretch;
+    overflow: visible;
+  }
+  .ps-branch-tile {
+    appearance: none;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    height: 34px;
+    padding: 0.2rem 0.45rem 0.2rem 0.35rem;
+    border-radius: 9px;
+    border: 1px solid #dbe3ef;
+    background: #fff;
+    color: #0f172a;
+    text-align: left;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .ps-branch-tile:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  }
+  .ps-branch-tile:focus-visible {
+    outline: 2px solid rgba(16, 185, 129, 0.45);
+    outline-offset: 1px;
+  }
+  .ps-branch-tile__check {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 999px;
+    border: 1.25px solid #cbd5e1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 0.55rem;
+    color: transparent;
+    background: #fff;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .ps-branch-tile__code {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+  .ps-branch-tile__name {
+    font-size: 0.72rem;
+    font-weight: 650;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .ps-branch-tile.is-selected {
+    border-color: rgba(16, 185, 129, 0.55);
+    background: linear-gradient(180deg, #ecfdf5 0%, #f0fdf4 100%);
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.12);
+  }
+  .ps-branch-tile.is-selected .ps-branch-tile__check {
+    border-color: #059669;
+    background: #059669;
+    color: #fff;
+  }
+  .ps-branch-tile.is-selected .ps-branch-tile__code {
+    color: #047857;
+  }
+
+  /* Actions */
+  .ps-period-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .ps-period-generate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    height: 34px;
+    min-height: 34px;
+    padding: 0.2rem 0.7rem 0.2rem 0.45rem;
+    border: 0;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #059669 0%, #047857 55%, #0f766e 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.2) inset,
+      0 6px 14px rgba(4, 120, 87, 0.24);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  .ps-period-generate:hover {
+    color: #fff;
+    filter: brightness(1.03);
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.22) inset,
+      0 10px 18px rgba(4, 120, 87, 0.3);
+  }
+  .ps-period-generate:active {
+    transform: translateY(0);
+  }
+  .ps-period-generate__icon {
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 0.78rem;
+    flex: 0 0 auto;
+  }
+  .ps-period-generate__copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.05;
+    gap: 0.05rem;
+  }
+  .ps-period-generate__label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .ps-period-generate__hint {
+    font-size: 0.58rem;
+    font-weight: 600;
+    opacity: 0.82;
+  }
+  .ps-period-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid #dbe3ef;
+    background: #fff;
+    color: #475569;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .ps-period-icon-btn:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #0f172a;
+  }
+  .ps-period-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    height: 34px;
+    min-height: 34px;
+    padding: 0 0.65rem;
+    border-radius: 10px;
+    border: 1px solid #dbe3ef;
+    background: #fff;
+    color: #334155;
+    font-size: 0.72rem;
+    font-weight: 650;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .ps-period-secondary:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #0f172a;
+  }
+  .ps-period-secondary i {
+    font-size: 0.8rem;
+    opacity: 0.85;
+  }
+
+  @media (max-width: 991.98px) {
+    .ps-period-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .ps-period-actions {
+      grid-column: 1 / -1;
+      justify-content: flex-start;
+    }
+  }
+  @media (max-width: 575.98px) {
+    .ps-period-grid {
+      grid-template-columns: 1fr;
+    }
+    .ps-period-head__meta {
+      width: 100%;
+    }
+    .ps-period-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .ps-period-generate {
+      flex: 1 1 auto;
+    }
+  }
+</style>

@@ -1,0 +1,618 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Raw Milk Bulk Collection · Canmee Dairies{% endblock %}
+{% block page_heading %}Raw Milk Bulk Collection{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_inline_qty_styles.html" %}
+<style>
+  .raw-milk-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .raw-milk-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .raw-milk-list-card .table-wrap,
+  .raw-milk-list-card .dataTables_wrapper,
+  .raw-milk-list-card div.dt-container,
+  .raw-milk-list-card .dt-scroll,
+  .raw-milk-list-card .dt-scroll-head,
+  .raw-milk-list-card .dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .raw-milk-list-card table.raw-milk-table {
+    width: 100% !important;
+    max-width: 100%;
+  }
+  .raw-milk-list-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+  .raw-milk-list-card .dt-smart-filters-wrap {
+    display: flex;
+    flex: 1 0 100%;
+    min-width: 0;
+    align-items: center;
+  }
+  .raw-milk-list-card.smart-list-card div.dt-smart-toolbar .dt-smart-actions {
+    flex: 1 0 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+  }
+  .raw-milk-list-card .smart-dt-filters {
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+  .raw-milk-period-filter {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .raw-milk-period-filter .form-control,
+  .raw-milk-period-filter .form-select {
+    width: auto !important;
+    min-width: 7rem;
+    max-width: 11rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .raw-milk-period-filter .form-select {
+    min-width: 6.75rem;
+    padding-right: 1.6rem;
+  }
+  .raw-milk-period-filter .form-select.raw-milk-branch-select[multiple] {
+    min-width: 8.5rem;
+    max-width: 10rem;
+    height: auto !important;
+    min-height: 2rem !important;
+  }
+  .raw-milk-period-filter .raw-milk-branch-select + .select2 {
+    min-width: 8.5rem !important;
+    max-width: 10rem;
+    width: 8.5rem !important;
+  }
+  .raw-milk-period-filter .raw-milk-branch-select + .select2 .select2-selection--multiple {
+    min-height: 2rem !important;
+    height: auto !important;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    padding: 0.1rem 0.55rem;
+    overflow: hidden;
+  }
+  .raw-milk-period-filter .raw-milk-branch-select + .select2 .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+  }
+  .raw-milk-period-filter .raw-milk-branch-select + .select2 .select2-selection--multiple .select2-selection__choice {
+    margin: 0 !important;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+  .raw-milk-period-filter .raw-milk-branch-select + .select2 .select2-search--inline .select2-search__field {
+    margin-top: 0 !important;
+    height: 1.4rem;
+    font-size: 0.76rem;
+  }
+  .raw-milk-period-filter .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .raw-milk-period-filter .input-group {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .raw-milk-period-filter .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .raw-milk-period-filter .input-group .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 9.5rem;
+    max-width: 11rem;
+  }
+  .raw-milk-actions-cell {
+    min-width: 0;
+  }
+  .raw-milk-actions-trigger {
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .raw-milk-actions-menu {
+    min-width: 180px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+    padding: 0.35rem;
+  }
+  .raw-milk-actions-menu .dropdown-item {
+    border-radius: 8px;
+    font-size: 0.86rem;
+    padding: 0.45rem 0.6rem;
+  }
+  .raw-milk-actions-menu .dropdown-item.text-danger:hover,
+  .raw-milk-actions-menu .dropdown-item.text-danger:focus {
+    background: #fef2f2;
+    color: #b91c1c !important;
+  }
+  .raw-milk-payment-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    min-width: 5.5rem;
+  }
+  .raw-milk-payment-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.35rem;
+    line-height: 1.2;
+  }
+  .raw-milk-payment-badge--pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .raw-milk-payment-badge--partial {
+    background: #ffedd5;
+    color: #9a3412;
+  }
+  .raw-milk-payment-badge--paid {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .raw-milk-payment-meta {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+  .raw-milk-list-card .raw-milk-actions {
+    white-space: nowrap;
+    line-height: 1.35;
+  }
+  .raw-milk-list-card table.raw-milk-table tbody td.raw-milk-qty {
+    white-space: nowrap;
+    font-size: 0.78rem;
+  }
+  .raw-milk-list-card table.raw-milk-table tfoot th {
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.35rem;
+    vertical-align: middle;
+    border-top: 2px solid #e2e8f0;
+    background: #f8fafc;
+  }
+  .raw-milk-list-card .dataTables_length,
+  .raw-milk-list-card .dataTables_info,
+  .raw-milk-list-card .dataTables_paginate {
+    margin-top: 0.5rem;
+  }
+  .raw-milk-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control,
+  .raw-milk-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+    padding-left: 0.5rem;
+    cursor: pointer;
+  }
+  .raw-milk-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  .raw-milk-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    line-height: 1.2;
+    color: var(--color-primary, #059669);
+  }
+  .raw-milk-list-card table.dataTable > tbody > tr.child td {
+    padding: 0.65rem 1rem 0.75rem 2.25rem;
+    background: rgba(5, 150, 105, 0.04);
+    border-top: none;
+  }
+  .raw-milk-list-card table.dataTable > tbody > tr.child ul.dtr-details {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+  }
+  .raw-milk-list-card table.dataTable > tbody > tr.child ul.dtr-details > li {
+    border: none;
+    padding: 0.1rem 0;
+  }
+  .raw-milk-list-card table.dataTable > tbody > tr.child span.dtr-title {
+    font-weight: 600;
+    display: inline-block;
+    min-width: 5.5rem;
+    color: var(--color-text-muted, #64748b);
+  }
+  .raw-milk-list-card table.dataTable > tbody > tr.child span.dtr-data {
+    display: inline;
+  }
+  .raw-milk-list-card div.dt-container .dt-layout-row {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .raw-milk-field-inline {
+    min-width: 6.5rem;
+    max-width: 100%;
+    font-size: 0.8125rem;
+    padding: 0.2rem 1.75rem 0.2rem 0.4rem;
+  }
+  @media (max-width: 1199.98px) {
+    .raw-milk-list-card div.dt-smart-toolbar > [class*="col-"],
+    .raw-milk-list-card .smart-dt-filters,
+    .raw-milk-period-filter {
+      flex-wrap: wrap;
+    }
+  }
+  @media (max-width: 767.98px) {
+    .raw-milk-list-card .card-body.table-wrap {
+      padding: 0.75rem;
+    }
+    .raw-milk-list-card table.raw-milk-table {
+      table-layout: fixed;
+    }
+    .raw-milk-list-card table.raw-milk-table thead th,
+    .raw-milk-list-card table.raw-milk-table tbody td {
+      font-size: 0.78rem;
+      padding: 0.4rem 0.3rem;
+    }
+    .raw-milk-list-card table.raw-milk-table thead th:nth-child(1),
+    .raw-milk-list-card table.raw-milk-table tbody td:nth-child(1) {
+      width: 24%;
+    }
+    .raw-milk-list-card table.raw-milk-table thead th:nth-child(3),
+    .raw-milk-list-card table.raw-milk-table tbody td:nth-child(3) {
+      width: 30%;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .raw-milk-list-card table.raw-milk-table thead th:nth-child(7),
+    .raw-milk-list-card table.raw-milk-table tbody td:nth-child(7),
+    .raw-milk-list-card table.raw-milk-table thead th:nth-child(8),
+    .raw-milk-list-card table.raw-milk-table tbody td:nth-child(8) {
+      width: 16%;
+    }
+    .raw-milk-list-card table.raw-milk-table thead th:nth-child(9),
+    .raw-milk-list-card table.raw-milk-table tbody td:nth-child(9) {
+      width: 14%;
+    }
+    .raw-milk-actions-trigger .raw-milk-actions-label,
+    .raw-milk-actions-trigger .dropdown-toggle::after {
+      display: none;
+    }
+    .raw-milk-actions-trigger .bi-three-dots-vertical {
+      margin-right: 0 !important;
+    }
+    .raw-milk-actions-trigger {
+      padding: 0.3rem 0.45rem;
+      font-size: 0.74rem;
+    }
+    .raw-milk-list-card div.dt-container .dt-layout-row:first-child {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 0.65rem;
+    }
+    .raw-milk-list-card div.dt-container .dt-layout-row:first-child > div {
+      width: 100%;
+      max-width: 100%;
+    }
+    .raw-milk-list-card div.dt-container .dt-search {
+      width: 100%;
+    }
+    .raw-milk-list-card div.dt-container .dt-search input {
+      width: 100%;
+    }
+    .raw-milk-list-card div.dt-container .dt-bottom-row {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 0.5rem;
+      text-align: center;
+    }
+    .raw-milk-list-card div.dt-container .dt-bottom-length,
+    .raw-milk-list-card div.dt-container .dt-bottom-info,
+    .raw-milk-list-card div.dt-container .dt-bottom-pagination {
+      text-align: center;
+      width: 100%;
+    }
+    .raw-milk-list-card table.dataTable > tbody > tr.child td {
+      padding: 0.65rem 0.75rem 0.75rem 2.25rem;
+    }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+{% if perms.suppliers.add_rawmilksuppliercollection %}
+<a class="btn btn-primary" href="{% url 'raw-milk-collection-add' %}">
+  <i class="bi bi-plus-lg me-1"></i>Add bulk milk collection
+</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card card-table raw-milk-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--two" aria-label="Raw milk collection summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Collections</span>
+        <span class="smart-dt-stat-value">
+          {% if raw_milk_totals %}{{ raw_milk_totals.count }}{% elif paginator %}{{ paginator.count }}{% else %}{{ object_list|length }}{% endif %}
+        </span>
+      </div>
+      {% if raw_milk_totals %}
+      {% include "includes/_smart_stat_dual_qty.html" with label="Total quantity" kg=raw_milk_totals.total_kg liters=raw_milk_totals.total_liters %}
+      {% endif %}
+    </div>
+
+    <div id="rawMilkDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Raw milk collection filters">
+      <form method="get" class="raw-milk-period-filter" id="raw-milk-filter-form">
+        <label class="visually-hidden" for="raw-milk-filter-branches">Branches</label>
+        <select
+          id="raw-milk-filter-branches"
+          name="branches"
+          class="form-select form-select-sm raw-milk-branch-select no-global-select2"
+          multiple
+          size="1"
+          aria-label="Branches"
+        >
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' in selected_branches %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <label class="visually-hidden" for="raw-milk-filter-supplier">Supplier</label>
+        <select id="raw-milk-filter-supplier" name="supplier" class="form-select form-select-sm no-global-select2" aria-label="Supplier">
+          <option value="">All suppliers</option>
+          {% for s in raw_milk_suppliers %}
+          <option value="{{ s.id }}" {% if s.id|stringformat:'d' == selected_supplier %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+        <label class="visually-hidden" for="raw-milk-filter-status">Status</label>
+        <select id="raw-milk-filter-status" name="status" class="form-select form-select-sm no-global-select2" aria-label="Status">
+          <option value="">All statuses</option>
+          {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <label class="visually-hidden" for="raw-milk-filter-payment">Payment</label>
+        <select id="raw-milk-filter-payment" name="payment_status" class="form-select form-select-sm no-global-select2" aria-label="Payment">
+          <option value="">All payments</option>
+          {% for value, label in payment_status_choices %}
+          <option value="{{ value }}" {% if value == selected_payment_status %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text" title="Open calendar"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+          <input
+            type="text"
+            id="raw-milk-filter-date-range"
+            class="form-control js-datepicker-range"
+            data-range-start="date_from"
+            data-range-end="date_to"
+            placeholder="Period"
+            autocomplete="off"
+            readonly
+            aria-label="Date range"
+            value="{% if date_from and date_to %}{{ date_from }} to {{ date_to }}{% elif date_from %}{{ date_from }}{% elif date_to %}{{ date_to }}{% endif %}"
+          >
+        </div>
+        <input type="hidden" name="date_from" value="{{ date_from }}">
+        <input type="hidden" name="date_to" value="{{ date_to }}">
+        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters" aria-label="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+        <a href="{% url 'raw-milk-collection-list' %}" class="btn btn-sm btn-outline-secondary" title="Clear filters" aria-label="Clear filters">Clear</a>
+      </form>
+    </div>
+
+    <p class="small text-muted d-md-none mb-2">Tap a row to expand branch and dispatch. Kg, liters, and actions stay on the row; change status or payment from the table on larger screens or via Actions.</p>
+    <table
+      class="table table-hover datatable datatable-smart raw-milk-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No raw milk collections match these filters."
+      data-filters-target="rawMilkDtFilters"
+    >
+      <thead>
+      <tr>
+        <th class="all">Date</th>
+        <th class="min-tablet-l">Branch</th>
+        <th class="all">Supplier</th>
+        <th class="min-tablet-l">Dispatch</th>
+        <th class="min-tablet-l">Status</th>
+        <th class="min-tablet-l">Payment</th>
+        <th class="min-desktop text-end">Amount</th>
+        <th class="min-desktop text-end">Paid</th>
+        <th class="all">Kg</th>
+        <th class="all">Liters</th>
+        <th class="all text-end">Actions</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for o in object_list %}
+      <tr>
+        <td class="all">{{ o.date }}</td>
+        <td class="min-tablet-l">{{ o.branch.name }}</td>
+        <td class="all">
+          {% if perms.suppliers.view_supplier %}
+          <a href="{% url 'raw-milk-supplier-detail' o.supplier_id %}">{{ o.supplier }}</a>
+          {% else %}
+          {{ o.supplier }}
+          {% endif %}
+        </td>
+        <td class="min-tablet-l">{{ o.dispatch_no }}</td>
+        <td class="min-tablet-l">{% include "suppliers/_raw_milk_collection_status_controls.html" %}</td>
+        <td class="min-tablet-l">{% include "suppliers/_raw_milk_collection_payment_controls.html" %}</td>
+        <td class="min-desktop text-end">{{ o.total_amount|money }}</td>
+        <td class="min-desktop text-end">{{ o.paid_amount|money }}</td>
+        {% include "includes/_inline_qty_cell.html" with field="kg" value=o.kg record_id=o.pk url_name="raw-milk-collection-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" all raw-milk-qty" %}
+        {% include "includes/_inline_qty_cell.html" with field="liters" value=o.liters record_id=o.pk url_name="raw-milk-collection-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" all raw-milk-qty" %}
+        <td class="all text-end raw-milk-actions-cell raw-milk-actions">
+          {% if perms.suppliers.change_rawmilksuppliercollection or perms.suppliers.delete_rawmilksuppliercollection %}
+          <div class="dropdown d-inline-block">
+            <button
+              class="btn btn-sm btn-outline-secondary dropdown-toggle raw-milk-actions-trigger"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i class="bi bi-three-dots-vertical me-1"></i><span class="raw-milk-actions-label">Actions</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end raw-milk-actions-menu">
+              {% if perms.suppliers.change_rawmilksuppliercollection %}
+              <li>
+                <a
+                  class="dropdown-item js-raw-milk-edit-modal"
+                  href="{% url 'raw-milk-collection-edit' o.pk %}"
+                  data-edit-url="{% url 'raw-milk-collection-edit' o.pk %}"
+                  data-dispatch-no="{{ o.dispatch_no }}"
+                ><i class="bi bi-pencil-square me-2"></i>Edit</a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item js-raw-milk-result-modal"
+                  href="{% url 'raw-milk-collection-result' o.pk %}"
+                  data-result-url="{% url 'raw-milk-collection-result' o.pk %}"
+                  data-dispatch-no="{{ o.dispatch_no }}"
+                  data-result-qty="{{ o.supplier_result_quantity|default_if_none:'' }}"
+                  data-status="{{ o.status }}"
+                  data-available-liters="{{ o.liters|default:'0' }}"
+                ><i class="bi bi-clipboard-check me-2"></i>Result</a>
+              </li>
+              {% if o.outstanding_amount > 0 %}
+              <li>
+                <a
+                  class="dropdown-item js-raw-milk-payment-modal"
+                  href="{% url 'raw-milk-collection-payment' o.pk %}"
+                  data-payment-url="{% url 'raw-milk-collection-payment' o.pk %}"
+                  data-account-url="{% url 'raw-milk-supplier-account' o.supplier_id %}"
+                  data-dispatch-no="{{ o.dispatch_no }}"
+                  data-supplier-name="{{ o.supplier }}"
+                  data-total="{{ o.total_amount|default:'0' }}"
+                  data-paid="{{ o.paid_amount|default:'0' }}"
+                  data-outstanding="{{ o.outstanding_amount }}"
+                ><i class="bi bi-cash-coin me-2"></i>Make payment</a>
+              </li>
+              {% elif perms.suppliers.view_supplier %}
+              <li><a class="dropdown-item" href="{% url 'raw-milk-supplier-account' o.supplier_id %}"><i class="bi bi-wallet2 me-2"></i>Supplier account</a></li>
+              {% endif %}
+              {% endif %}
+              {% if perms.suppliers.delete_rawmilksuppliercollection %}
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a
+                  href="{% url 'raw-milk-collection-delete' o.pk %}"
+                  class="dropdown-item text-danger js-swal-delete-post"
+                  data-swal-title="Delete this raw milk bulk collection?"
+                  data-swal-text="This action cannot be undone."
+                ><i class="bi bi-trash3 me-2"></i>Delete</a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+          {% else %}
+          —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+      {% include "suppliers/_raw_milk_collection_table_footer.html" with totals=raw_milk_totals %}
+    </table>
+  </div>
+  {% if paginator %}
+  <div class="card-footer bg-transparent border-top py-3 d-flex flex-wrap justify-content-center align-items-center gap-2">
+    <span class="text-muted small">
+      {% if paginator.count %}
+        {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}
+      {% else %}
+        0 of 0
+      {% endif %}
+    </span>
+    <nav aria-label="Raw milk collection pages">
+      <ul class="pagination pagination-sm mb-0">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if filter_query %}{{ filter_query }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% if perms.suppliers.change_rawmilksuppliercollection %}
+{% include "suppliers/_raw_milk_collection_payment_modal.html" %}
+{% include "suppliers/_raw_milk_collection_edit_modal.html" %}
+{% include "suppliers/_raw_milk_collection_result_modal.html" %}
+{% endif %}
+{% if user.is_superuser %}
+{% include "includes/_inline_qty_editor.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.suppliers.change_rawmilksuppliercollection %}
+{% include "suppliers/_raw_milk_collection_inline_script.html" %}
+{% endif %}
+{% if user.is_superuser %}
+{% include "includes/_inline_qty_script.html" %}
+{% endif %}
+<script>
+(function () {
+  function initRawMilkBranchSelect2() {
+    var branchSelect = document.getElementById("raw-milk-filter-branches");
+    if (!branchSelect || !window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
+    var $branch = window.jQuery(branchSelect);
+    if ($branch.hasClass("select2-hidden-accessible")) {
+      $branch.select2("destroy");
+    }
+    $branch.select2({
+      width: "100%",
+      closeOnSelect: false,
+      placeholder: "Branches…",
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      window.setTimeout(initRawMilkBranchSelect2, 0);
+    });
+  } else {
+    window.setTimeout(initRawMilkBranchSelect2, 0);
+  }
+})();
+</script>
+{% endblock %}

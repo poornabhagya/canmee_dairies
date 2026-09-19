@@ -1,0 +1,184 @@
+<style>
+  .smart-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 1.75rem);
+    border: 1px solid #e8eef5;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+    background: #fff;
+  }
+  .smart-modal .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+  .smart-modal .modal-dialog {
+    max-width: 640px;
+  }
+  .smart-modal.smart-modal--wide .modal-dialog {
+    max-width: 760px;
+  }
+  .smart-modal .modal-header {
+    flex: 0 0 auto;
+    border-bottom: 1px solid #edf2f7;
+    background: #fff;
+    padding: 1.05rem 1.25rem 0.95rem;
+    align-items: flex-start;
+  }
+  .smart-modal .modal-header-brand {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .smart-modal .modal-header-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 12px;
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--color-primary, #059669);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .smart-modal .modal-title {
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.25;
+  }
+  .smart-modal .modal-subtitle {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0.2rem 0 0;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+  .smart-modal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 1.05rem 1.25rem 1.15rem;
+    overflow-y: auto;
+    background: #f8fafc;
+  }
+  .smart-modal .modal-footer {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    border-top: 1px solid #edf2f7;
+    background: #fff;
+    padding: 0.85rem 1.25rem;
+    gap: 0.55rem;
+  }
+  .smart-modal .modal-footer .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .smart-form-section {
+    margin-bottom: 1.1rem;
+    padding: 0.95rem 1rem 1rem;
+    background: #fff;
+    border: 1px solid #eef2f7;
+    border-radius: 14px;
+  }
+  .smart-form-section:last-child {
+    margin-bottom: 0;
+  }
+  .smart-form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    margin: 0 0 0.65rem;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .smart-form-section-title i {
+    color: var(--color-primary, #059669);
+    font-size: 0.85rem;
+  }
+  .smart-form-section-hint {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: -0.35rem 0 0.65rem;
+  }
+  .smart-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+  }
+  .smart-form-grid .span-2 {
+    grid-column: 1 / -1;
+  }
+  .smart-field .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.3rem;
+  }
+  .smart-field .form-control,
+  .smart-field .form-select {
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    font-size: 0.875rem;
+  }
+  .smart-field .form-control:focus,
+  .smart-field .form-select:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.12);
+  }
+  .smart-field .invalid-feedback {
+    display: block;
+    font-size: 0.78rem;
+    margin-top: 0.2rem;
+  }
+  .smart-permissions-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem 0.85rem;
+    background: #f8fafc;
+  }
+  .smart-permissions-box .smart-permission-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .smart-permissions-box .smart-permission-item:last-child {
+    margin-bottom: 0;
+  }
+  .smart-access-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .smart-modal .select2-container--default .select2-selection--single {
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    min-height: 38px;
+  }
+  @media (max-width: 576px) {
+    .smart-form-grid {
+      grid-template-columns: 1fr;
+    }
+    .smart-form-grid .span-2 {
+      grid-column: auto;
+    }
+    .smart-modal .modal-footer {
+      flex-wrap: wrap;
+    }
+    .smart-modal .modal-footer .btn {
+      flex: 1 1 auto;
+    }
+  }
+</style>

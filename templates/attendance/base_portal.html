@@ -1,0 +1,599 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b3d2e">
+  <title>{% block title %}Attendance · Canmee Dairies{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/logo.png' %}" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --att-ink: #10231c;
+      --att-muted: #5b6f66;
+      --att-primary: #0f8a5f;
+      --att-primary-deep: #0b5c41;
+      --att-accent: #c9f2a8;
+      --att-warn: #c27803;
+      --att-danger: #b42318;
+      --att-card: rgba(255, 255, 255, 0.86);
+      --att-line: rgba(15, 138, 95, 0.14);
+      --att-shadow: 0 20px 48px rgba(11, 61, 46, 0.12);
+      --att-radius: 28px;
+      --att-nav-h: 4.6rem;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      min-height: 100%;
+      margin: 0;
+      font-family: "Sora", system-ui, sans-serif;
+      color: var(--att-ink);
+      background-color: #eef7f1;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 0% 0%, rgba(201, 242, 168, 0.55), transparent 55%),
+        radial-gradient(ellipse 70% 45% at 100% 5%, rgba(15, 138, 95, 0.16), transparent 50%),
+        linear-gradient(165deg, #eaf6ef 0%, #f5faf7 42%, #fbfcfb 100%);
+      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--att-primary-deep); text-decoration: none; }
+    a:hover { color: var(--att-primary); }
+
+    .att-shell {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 0 1rem calc(var(--att-nav-h) + 1.4rem);
+      animation: att-fade-up 0.45s ease both;
+    }
+    .att-shell--auth {
+      padding-bottom: 2rem;
+      justify-content: center;
+    }
+
+    .att-top {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.05rem 0 0.2rem;
+    }
+    .att-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--att-ink);
+    }
+    .att-brand img {
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 50%;
+      object-fit: contain;
+      background: #fff;
+      box-shadow: 0 6px 16px rgba(16, 35, 28, 0.1);
+    }
+    .att-brand span { font-size: 1.02rem; }
+    .att-top-spacer { flex: 1; }
+    .att-chip-link {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--att-muted);
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.65);
+      border: 1px solid var(--att-line);
+    }
+
+    .att-messages { margin: 0.55rem 0 0; }
+    .att-messages .alert {
+      border: 0;
+      border-radius: 16px;
+      font-size: 0.88rem;
+      box-shadow: var(--att-shadow);
+      animation: att-fade-up 0.35s ease both;
+    }
+
+    .att-main { flex: 1; padding-top: 0.65rem; }
+    .att-card {
+      background: var(--att-card);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.7);
+      border-radius: var(--att-radius);
+      box-shadow: var(--att-shadow);
+      padding: 1.35rem 1.25rem 1.4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .att-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, #0f8a5f, #c9f2a8 55%, transparent);
+      opacity: 0.9;
+    }
+
+    .att-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--att-muted);
+      margin-bottom: 0.35rem;
+    }
+    .att-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin: 0 0 0.3rem;
+      line-height: 1.15;
+    }
+    .att-subtitle {
+      color: var(--att-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.15rem;
+      line-height: 1.45;
+    }
+
+    .att-hero {
+      text-align: center;
+      padding: 0.35rem 0 0.25rem;
+    }
+    .att-clock {
+      font-size: clamp(2.6rem, 12vw, 3.35rem);
+      font-weight: 800;
+      letter-spacing: -0.06em;
+      line-height: 1;
+      margin: 0.15rem 0 0.2rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .att-clock-date {
+      color: var(--att-muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+    .att-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 1.15rem;
+      background: rgba(15, 138, 95, 0.1);
+      color: var(--att-primary-deep);
+    }
+    .att-status.is-out {
+      background: rgba(194, 120, 3, 0.12);
+      color: #8a5600;
+    }
+    .att-status-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 0 currentColor;
+      animation: att-pulse 2s ease infinite;
+    }
+
+    .att-punch-wrap {
+      display: grid;
+      place-items: center;
+      margin: 0.35rem auto 1rem;
+      position: relative;
+      width: 11.5rem;
+      height: 11.5rem;
+    }
+    .att-punch-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(15, 138, 95, 0.18);
+      animation: att-ring 2.4s ease-out infinite;
+    }
+    .att-punch-ring:nth-child(2) { animation-delay: 0.8s; }
+    .att-punch-btn {
+      width: 9.5rem;
+      height: 9.5rem;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      gap: 0.2rem;
+      color: #fff;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,0.28), transparent 42%),
+        linear-gradient(160deg, #14a06d 0%, #0b5c41 100%);
+      box-shadow:
+        0 18px 36px rgba(11, 92, 65, 0.32),
+        inset 0 1px 0 rgba(255,255,255,0.25);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      cursor: pointer;
+      z-index: 1;
+    }
+    .att-punch-btn.is-out {
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,0.22), transparent 42%),
+        linear-gradient(160deg, #d97706 0%, #9a3412 100%);
+      box-shadow:
+        0 18px 36px rgba(154, 52, 18, 0.28),
+        inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    .att-punch-btn:hover:not(:disabled) { transform: scale(1.03); }
+    .att-punch-btn:active:not(:disabled) { transform: scale(0.97); }
+    .att-punch-btn:disabled { opacity: 0.55; cursor: wait; }
+    .att-punch-btn i { font-size: 1.7rem; display: block; }
+    .att-punch-btn strong {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-top: 0.15rem;
+    }
+    .att-punch-btn small {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 500;
+      opacity: 0.85;
+    }
+
+    .att-geo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      font-size: 0.8rem;
+      color: var(--att-muted);
+      min-height: 1.35rem;
+      margin: 0 0 0.35rem;
+    }
+    .att-geo.is-ok { color: var(--att-primary-deep); }
+    .att-geo.is-warn { color: var(--att-warn); }
+    .att-geo i { font-size: 0.95rem; }
+
+    .att-panel {
+      border: 1px solid var(--att-line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240, 250, 244, 0.95) 100%);
+      border-radius: 18px;
+      padding: 0.95rem 1rem;
+      margin-top: 1rem;
+    }
+    .att-panel-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--att-muted);
+      margin-bottom: 0.35rem;
+    }
+    .att-panel-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: baseline;
+      font-size: 0.92rem;
+    }
+    .att-panel-row strong { letter-spacing: -0.02em; }
+
+    .att-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 0.95rem 1.2rem;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #128f63 0%, #0b5c41 100%);
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(11, 92, 65, 0.22);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    }
+    .att-btn:hover { color: #fff; transform: translateY(-1px); }
+    .att-btn:disabled { opacity: 0.55; transform: none; }
+    .att-btn-ghost {
+      background: rgba(255,255,255,0.9);
+      color: var(--att-primary-deep);
+      border: 1px solid var(--att-line);
+      box-shadow: none;
+    }
+    .att-btn-ghost:hover { color: var(--att-primary-deep); background: #f3faf6; }
+    .att-btn-danger {
+      background: linear-gradient(135deg, #c23b2e 0%, #912018 100%);
+      box-shadow: 0 12px 28px rgba(145, 32, 24, 0.2);
+    }
+
+    .att-list { list-style: none; padding: 0; margin: 0; }
+    .att-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(16, 35, 28, 0.06);
+      font-size: 0.92rem;
+    }
+    .att-list li:last-child { border-bottom: 0; }
+    .att-timeline {
+      position: relative;
+      padding-left: 1.1rem;
+    }
+    .att-timeline::before {
+      content: "";
+      position: absolute;
+      left: 0.28rem;
+      top: 0.4rem;
+      bottom: 0.4rem;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(15,138,95,0.35), rgba(15,138,95,0.05));
+      border-radius: 2px;
+    }
+    .att-timeline li { position: relative; }
+    .att-timeline li::before {
+      content: "";
+      position: absolute;
+      left: -0.95rem;
+      top: 1.05rem;
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 50%;
+      background: var(--att-primary);
+      box-shadow: 0 0 0 3px rgba(15, 138, 95, 0.15);
+    }
+    .att-timeline li.is-out::before { background: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15); }
+
+    .att-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0.22rem 0.65rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(15, 138, 95, 0.1);
+      color: var(--att-primary-deep);
+    }
+    .att-badge--out {
+      background: rgba(217, 119, 6, 0.12);
+      color: #9a3412;
+    }
+
+    .att-day {
+      margin-top: 1rem;
+    }
+    .att-day:first-child { margin-top: 0.25rem; }
+    .att-day-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.15rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid rgba(16, 35, 28, 0.06);
+    }
+    .att-day-head strong {
+      font-size: 0.92rem;
+      letter-spacing: -0.02em;
+    }
+    .att-day-head span {
+      font-size: 0.75rem;
+      color: var(--att-muted);
+      font-weight: 600;
+    }
+
+    .att-avatar {
+      width: 3.6rem;
+      height: 3.6rem;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.03em;
+      color: #fff;
+      background: linear-gradient(145deg, #14a06d, #0b5c41);
+      box-shadow: 0 10px 24px rgba(11, 92, 65, 0.22);
+      margin: 0 auto 0.85rem;
+    }
+    .att-avatar--sm {
+      width: 2.35rem;
+      height: 2.35rem;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      margin: 0;
+    }
+    .att-profile-head {
+      text-align: center;
+      margin-bottom: 1.1rem;
+    }
+    .att-meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.78rem 0;
+      border-bottom: 1px solid rgba(16, 35, 28, 0.06);
+      font-size: 0.9rem;
+    }
+    .att-meta-row:last-child { border-bottom: 0; }
+    .att-meta-row span:first-child { color: var(--att-muted); }
+    .att-meta-row span:last-child { font-weight: 600; text-align: right; }
+
+    .att-nav {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px));
+      width: min(410px, calc(100% - 1.2rem));
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.2rem;
+      padding: 0.35rem;
+      border-radius: 22px;
+      background: rgba(16, 35, 28, 0.92);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 18px 40px rgba(16, 35, 28, 0.28);
+      z-index: 40;
+    }
+    .att-nav a {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.15rem;
+      min-height: 3.45rem;
+      border-radius: 18px;
+      color: #9aada4;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .att-nav a i { font-size: 1.2rem; }
+    .att-nav a.is-active,
+    .att-nav a:hover {
+      color: #fff;
+      background: rgba(15, 138, 95, 0.38);
+    }
+    .att-nav a.is-active { transform: translateY(-1px); }
+
+    .att-form .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #334842;
+    }
+    .att-form .form-control {
+      border-radius: 14px;
+      border-color: rgba(15, 138, 95, 0.18);
+      padding: 0.78rem 0.95rem;
+      background: rgba(255,255,255,0.92);
+    }
+    .att-form .form-control:focus {
+      border-color: rgba(15, 138, 95, 0.45);
+      box-shadow: 0 0 0 0.2rem rgba(15, 138, 95, 0.12);
+    }
+    .att-auth-logo {
+      width: 4.25rem;
+      height: 4.25rem;
+      border-radius: 50%;
+      object-fit: contain;
+      object-position: center;
+      margin: 0 auto 0.95rem;
+      display: block;
+      box-shadow: 0 12px 28px rgba(16, 35, 28, 0.12);
+      background: #fff;
+      padding: 0.12rem;
+    }
+    .att-auth-brand {
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin: 0 0 0.15rem;
+    }
+
+    .att-pager {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      gap: 0.75rem;
+    }
+    .att-pager a {
+      width: auto;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    @keyframes att-fade-up {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes att-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(15, 138, 95, 0.35); }
+      70% { box-shadow: 0 0 0 8px rgba(15, 138, 95, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(15, 138, 95, 0); }
+    }
+    @keyframes att-ring {
+      0% { transform: scale(0.92); opacity: 0.7; }
+      100% { transform: scale(1.18); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="att-shell {% block shell_class %}{% endblock %}">
+    {% block portal_header %}
+    <header class="att-top">
+      <a class="att-brand" href="{% url 'attendance:punch' %}">
+        <img src="{% static 'img/logo-128.png' %}" alt="Canmee" width="36" height="36" decoding="async">
+        <span>Canmee</span>
+      </a>
+      <div class="att-top-spacer"></div>
+      {% if user.is_authenticated %}
+      <a class="att-chip-link" href="{% url 'attendance:logout' %}">Sign out</a>
+      {% endif %}
+    </header>
+    {% endblock %}
+
+    {% if messages %}
+    <div class="att-messages">
+      {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'debug' %}secondary{% else %}{{ message.tags }}{% endif %} mb-2 py-2">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="att-main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  {% block portal_nav %}
+  {% if user.is_authenticated %}
+  <nav class="att-nav" aria-label="Attendance">
+    <a href="{% url 'attendance:punch' %}" class="{% if request.resolver_match.url_name == 'punch' %}is-active{% endif %}">
+      <i class="bi bi-fingerprint"></i>
+      Punch
+    </a>
+    <a href="{% url 'attendance:my-history' %}" class="{% if request.resolver_match.url_name == 'my-history' %}is-active{% endif %}">
+      <i class="bi bi-calendar3"></i>
+      History
+    </a>
+    <a href="{% url 'attendance:profile' %}" class="{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'password-change' %}is-active{% endif %}">
+      <i class="bi bi-person"></i>
+      Profile
+    </a>
+  </nav>
+  {% endif %}
+  {% endblock %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  try {
+    sessionStorage.removeItem("canmee.pageLoading");
+    sessionStorage.removeItem("canmee.paymentSheetLoading");
+  } catch (e) {}
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

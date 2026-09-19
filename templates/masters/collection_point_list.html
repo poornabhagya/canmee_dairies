@@ -1,0 +1,1068 @@
+{% extends "base.html" %}
+{% block title %}Collection points · Canmee Dairies{% endblock %}
+{% block body_class %}point-page{% endblock %}
+{% block page_heading %}Collection points{% endblock %}
+{% block topbar_actions %}
+{% if request.user.is_superuser and perms.masters.change_collectionpoint %}
+<button type="button" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#pointBankImportModal"><i class="bi bi-upload me-1"></i>Import bank accounts</button>
+{% endif %}
+{% if perms.masters.add_collectionpoint %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#pointQuickAddModal"><i class="bi bi-plus-lg me-1"></i>Add point</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "masters/_buyer_page_compact_styles.html" %}
+<style>
+  .point-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .point-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .point-list-card .table-wrap,
+  .point-list-card .dataTables_wrapper,
+  .point-list-card div.dt-container,
+  .point-list-card div.dt-scroll,
+  .point-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .point-list-card .point-table {
+    width: 100% !important;
+  }
+  .point-list-card .point-table tbody td {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.35rem;
+    vertical-align: middle;
+  }
+  .point-list-card .point-table .smart-dt-name-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(12rem, 28vw);
+    display: inline-block;
+  }
+  .point-list-card .point-table .point-col-no,
+  .point-list-card .point-table .point-col-route {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .point-inactive-alert-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    margin-bottom: 0.85rem;
+  }
+  .point-inactive-alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%);
+    color: #92400e;
+    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.84rem;
+    line-height: 1.45;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.08);
+  }
+  .point-inactive-alert i.bi-exclamation-triangle-fill { color: #d97706; flex-shrink: 0; }
+  .point-inactive-alert strong { color: #78350f; }
+  .point-inactive-alert-action {
+    margin-left: auto;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .point-today-col,
+  .point-avg-col {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .point-row--inactive-30 td { background-color: rgba(254, 243, 199, 0.22); }
+  .payment-sheet-paid-popover {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-popover-pop {
+    --bs-popover-max-width: 15rem;
+    font-size: 0.8125rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-header {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.45rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-body { padding: 0.5rem 0.65rem; }
+  .payment-sheet-paid-popover-body__hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .payment-sheet-paid-popover-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-sheet-paid-popover-row--total {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .point-view-btn {
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    padding: 0.1rem 0.25rem;
+    line-height: 1;
+  }
+  .point-view-btn:hover { color: #0f172a; }
+  .point-fee-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 1.75rem;
+  }
+  .point-fee-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0.35rem;
+    margin: 0;
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    line-height: 1.2;
+    cursor: pointer;
+    max-width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  .point-fee-display:hover,
+  .point-fee-display:focus {
+    background: rgba(5, 150, 105, 0.08);
+    outline: none;
+  }
+  .point-fee-display .point-fee-edit-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .point-fee-display:hover .point-fee-edit-icon,
+  .point-fee-display:focus .point-fee-edit-icon,
+  tr:hover .point-fee-display .point-fee-edit-icon {
+    opacity: 1;
+  }
+  .point-fee-editor {
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    width: 100%;
+  }
+  .point-fee-inline.is-editing .point-fee-display { display: none; }
+  .point-fee-inline.is-editing .point-fee-editor { display: inline-flex; }
+  .point-fee-editor .js-point-fee-input {
+    width: 5.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .point-fee-inline.is-saving { opacity: 0.65; pointer-events: none; }
+  .point-fee-inline.is-saved .point-fee-display {
+    background: rgba(5, 150, 105, 0.12);
+  }
+  .point-fee-inline.is-error .js-point-fee-input {
+    border-color: #f87171;
+  }
+  .point-view-modal-dl {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 0.55rem 0.85rem;
+    margin: 0;
+  }
+  .point-view-modal-dl dt {
+    margin: 0;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+  .point-view-modal-dl dd {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 600;
+    word-break: break-word;
+  }
+</style>
+{% endblock %}
+{% block content %}
+{{ point_filter_routes|json_script:"point-filter-routes-data" }}
+<div class="card card-table point-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Collection point summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Points</span>
+        <span class="smart-dt-stat-value">{{ point_summary.count }}</span>
+      </div>
+      <button type="button" class="smart-dt-stat smart-dt-stat--active smart-dt-stat--clickable js-point-stat-filter" data-smart-filter="active">
+        <span class="smart-dt-stat-label">Active today</span>
+        <span class="smart-dt-stat-value">{{ point_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--inactive smart-dt-stat--clickable js-point-stat-filter" data-smart-filter="inactive">
+        <span class="smart-dt-stat-label">Inactive today</span>
+        <span class="smart-dt-stat-value">{{ point_summary.inactive_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--warn smart-dt-stat--clickable js-point-stat-filter" data-smart-filter="inactive-30">
+        <span class="smart-dt-stat-label">30+ days</span>
+        <span class="smart-dt-stat-value">{{ point_summary.inactive_30_days }}</span>
+      </button>
+    </div>
+    {% if point_summary.inactive_30_days %}
+    <div class="point-inactive-alert-wrap" id="pointInactiveAlert">
+      <div class="point-inactive-alert" role="status" aria-live="polite">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <span>
+          <strong>{{ point_summary.inactive_30_days }} collection point{{ point_summary.inactive_30_days|pluralize }}</strong>
+          ha{{ point_summary.inactive_30_days|pluralize:"s,ve" }} had no milk collection for
+          <strong>30+ consecutive days</strong>
+          {% if point_summary.max_inactive_days %} (longest gap: {{ point_summary.max_inactive_days }} days){% endif %}.
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-warning point-inactive-alert-action js-point-show-inactive-30">
+          View points
+        </button>
+      </div>
+    </div>
+    {% endif %}
+    <div id="pointDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Collection point filters">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ point_summary.count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="active">
+        Active<span class="smart-dt-chip-count">{{ point_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="inactive">
+        Inactive<span class="smart-dt-chip-count">{{ point_summary.inactive_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="inactive-30">
+        30+ days<span class="smart-dt-chip-count">{{ point_summary.inactive_30_days }}</span>
+      </button>
+      {% if point_branch_options|length > 1 %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by branch</span>
+        <select id="pointBranchFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by branch">
+          <option value="all">All branches</option>
+          {% for b in point_branch_options %}
+          <option value="{{ b.id }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by route</span>
+        <select id="pointRouteFilter" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Filter by route">
+          <option value="all">All routes</option>
+        </select>
+      </label>
+    </div>
+    <table
+      class="table table-hover datatable datatable-smart point-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No collection points yet."
+      data-filters-target="pointDtFilters"
+      data-branch-filter-target="pointBranchFilter"
+      data-route-filter-target="pointRouteFilter"
+      data-footer-sum-cols="4"
+      data-default-order-col="1"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Point</th>
+          <th class="all">No</th>
+          <th class="min-tablet-l">Route</th>
+          <th class="all text-end">Today (kg)</th>
+          <th class="min-tablet-l text-end" title="Average daily supply (kg per collection day)">Avg daily (kg)</th>
+          <th class="min-tablet-l text-end">Collector fee</th>
+          <th class="min-tablet-l text-end">Additional</th>
+          {% if can_view_point_account %}<th class="min-tablet-l text-end">Account</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr
+          data-branch-id="{{ o.route.branch_id|default:'' }}"
+          data-route-id="{{ o.route_id|default:'' }}"
+          class="{% if o.is_active_point %}smart-row--active{% elif o.is_inactive_point %}smart-row--inactive{% endif %}{% if o.is_inactive_30_days %} smart-row--inactive-30 point-row--inactive-30{% endif %}{% if o.has_no_location %} smart-row--no-location{% endif %}"
+        >
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">
+            <div class="smart-dt-name-row">
+              <a href="{% url 'point-detail' o.pk %}" class="smart-dt-name-link">{{ o.name }}</a>
+              <button
+                type="button"
+                class="point-view-btn js-point-view"
+                title="View point details"
+                aria-label="View {{ o.name }}"
+                data-point-name="{{ o.name }}"
+                data-point-number="{{ o.number }}"
+                data-point-account="{% if can_view_point_account and o.account_summary %}{{ o.account_summary.net|money }}{% else %}—{% endif %}"
+                data-point-route="{% if o.route %}{{ o.route.name }}{% else %}—{% endif %}"
+                data-point-branch="{% if o.route.branch %}{{ o.route.branch.name }}{% else %}—{% endif %}"
+                data-point-location="{% if o.location %}{{ o.location }}{% else %}—{% endif %}"
+                data-point-collector-fee="{{ o.collector_fee|money }}"
+                data-point-additional="{{ o.additional|money }}"
+              >
+                <i class="bi bi-eye" aria-hidden="true"></i>
+              </button>
+              {% if perms.masters.change_collectionpoint %}
+              <button
+                type="button"
+                class="smart-dt-edit-btn js-point-edit"
+                title="Edit point"
+                aria-label="Edit {{ o.name }}"
+                data-point-id="{{ o.pk }}"
+                data-point-route-id="{{ o.route_id }}"
+                data-point-number="{{ o.number }}"
+                data-point-name="{{ o.name }}"
+                data-point-location="{{ o.location }}"
+                data-point-collector-fee="{{ o.collector_fee }}"
+                data-point-additional="{{ o.additional }}"
+              >
+                <i class="bi bi-pen-fill" aria-hidden="true"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="all point-col-no">{{ o.number }}</td>
+          <td class="min-tablet-l point-col-route">{{ o.route.name }}</td>
+          <td class="all point-today-col text-end dt-num" data-order="{{ o.today_milk_kg|default:'0' }}">{{ o.today_milk_kg }}</td>
+          <td class="min-tablet-l point-avg-col text-end dt-num" data-order="{{ o.avg_daily_milk_kg|default:'0' }}">
+            {% if o.avg_daily_milk_kg != None %}{{ o.avg_daily_milk_kg }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="min-tablet-l text-end point-fee-cell" data-order="{{ o.collector_fee|default:'0' }}">
+            {% if perms.masters.change_collectionpoint %}
+            <div
+              class="point-fee-inline"
+              data-point-id="{{ o.pk }}"
+              data-field="collector_fee"
+              data-value="{{ o.collector_fee|default_if_none:'0' }}"
+            >
+              <button type="button" class="point-fee-display js-point-fee-edit" title="Edit collector fee">
+                <span class="js-point-fee-label">{{ o.collector_fee|money }}</span>
+                <i class="bi bi-pencil point-fee-edit-icon" aria-hidden="true"></i>
+              </button>
+              <div class="point-fee-editor">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="form-control form-control-sm js-point-fee-input no-global-select2"
+                  value="{{ o.collector_fee }}"
+                  aria-label="Collector fee for {{ o.name }}"
+                >
+              </div>
+            </div>
+            {% else %}
+            <span class="dt-num">{{ o.collector_fee|money }}</span>
+            {% endif %}
+          </td>
+          <td class="min-tablet-l text-end point-fee-cell" data-order="{{ o.additional|default:'0' }}">
+            {% if perms.masters.change_collectionpoint %}
+            <div
+              class="point-fee-inline"
+              data-point-id="{{ o.pk }}"
+              data-field="additional"
+              data-value="{{ o.additional|default_if_none:'0' }}"
+            >
+              <button type="button" class="point-fee-display js-point-fee-edit" title="Edit additional">
+                <span class="js-point-fee-label">{{ o.additional|money }}</span>
+                <i class="bi bi-pencil point-fee-edit-icon" aria-hidden="true"></i>
+              </button>
+              <div class="point-fee-editor">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  class="form-control form-control-sm js-point-fee-input no-global-select2"
+                  value="{{ o.additional }}"
+                  aria-label="Additional for {{ o.name }}"
+                >
+              </div>
+            </div>
+            {% else %}
+            <span class="dt-num">{{ o.additional|money }}</span>
+            {% endif %}
+          </td>
+          {% if can_view_point_account %}
+          <td class="min-tablet-l text-end">
+            {% include "masters/_point_account_cell.html" with account=o.account_summary %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all text-end">Totals</th>
+          <th class="all"></th>
+          <th class="min-tablet-l"></th>
+          <th class="all text-end dt-foot-total"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-tablet-l"></th>
+          {% if can_view_point_account %}<th class="min-tablet-l"></th>{% endif %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% if request.user.is_superuser and perms.masters.change_collectionpoint %}
+<div class="modal fade smart-modal" id="pointBankImportModal" tabindex="-1" aria-labelledby="pointBankImportModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'point-bank-account-import' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="pointBankImportModalLabel">Import point bank accounts</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <a href="{% url 'point-bank-account-import-template' %}?format=xlsx" class="btn btn-sm btn-outline-secondary me-2">
+              <i class="bi bi-download me-1"></i>Download Excel template
+            </a>
+            <a href="{% url 'point-bank-account-import-template' %}?format=csv" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-download me-1"></i>Download CSV template
+            </a>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_point_bank_import_default_branch">Default Branch (optional)</label>
+            <select id="id_point_bank_import_default_branch" name="default_branch" class="form-select">
+              <option value="">Use Branch column in file</option>
+              {% for branch in point_branch_options %}
+              <option value="{{ branch.name }}">{{ branch.name }}{% if branch.code %} ({{ branch.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Used when a row has no Branch column (e.g. CEFT upload). Prefer filling Branch in the template when point numbers repeat across branches.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_point_bank_import_file">Excel/CSV file</label>
+            <input id="id_point_bank_import_file" type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+            <div class="form-text">
+              Template columns: Branch, point_number, account_name, account_number, bank_name, bank_code, bank_branch, branch_code, is_primary.
+              Branch is the dairy branch (Setup → Branches), not the bank branch.
+              You can also upload a CEFT bank payment file (Beneficiary Name / Bank Code / Branch Code / Account No); point number is taken from credit narration (e.g. MILK_401) — set Default Branch above if the same point number exists in more than one branch.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Import</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="modal fade smart-modal" id="pointViewModal" tabindex="-1" aria-labelledby="pointViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="pointViewModalLabel">Collection point details</h5>
+          <p class="text-muted small mb-0" id="pointViewSubtitle"></p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <dl class="point-view-modal-dl">
+          <dt>Number</dt><dd id="pointViewNumber">—</dd>
+          <dt>Account</dt><dd id="pointViewAccount">—</dd>
+          <dt>Route</dt><dd id="pointViewRoute">—</dd>
+          <dt>Branch</dt><dd id="pointViewBranch">—</dd>
+          <dt>Location</dt><dd id="pointViewLocation">—</dd>
+          <dt>Collector fee</dt><dd id="pointViewCollectorFee">—</dd>
+          <dt>Additional</dt><dd id="pointViewAdditional">—</dd>
+        </dl>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% if perms.masters.add_collectionpoint %}
+<div class="modal fade smart-modal" id="pointQuickAddModal" tabindex="-1" aria-labelledby="pointQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="point-quick-add-form" method="post" action="{% url 'point-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-geo-alt-fill"></i></span>
+            <div>
+              <h5 class="modal-title" id="pointQuickAddModalLabel">Add collection point</h5>
+              <p class="modal-subtitle">Link a pickup point to a route.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% include "masters/_point_modal_form_add.html" with form=point_create_form %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save point</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if perms.masters.change_collectionpoint %}
+<div class="modal fade smart-modal" id="pointQuickEditModal" tabindex="-1" aria-labelledby="pointQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="point-quick-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-pen-fill"></i></span>
+            <div>
+              <h5 class="modal-title" id="pointQuickEditModalLabel">Edit collection point</h5>
+              <p class="modal-subtitle" data-edit-point-subtitle>Update route, location, and collector fee.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="smart-form-sections">
+            <section class="smart-form-section">
+              <h6 class="smart-form-section-title"><i class="bi bi-geo-alt" aria-hidden="true"></i>Route &amp; identity</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_point_edit_route">Route</label>
+                  <select id="id_point_edit_route" name="route" class="form-select">
+                    <option value="">Select route</option>
+                    {% for r in point_route_options %}
+                    <option value="{{ r.id }}">{{ r.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback" data-modal-error-for="route"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_point_edit_number">Point no</label>
+                  <input id="id_point_edit_number" name="number" type="text" class="form-control" maxlength="20" required autocomplete="off">
+                  <div class="invalid-feedback" data-modal-error-for="number"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_point_edit_name">Name</label>
+                  <input id="id_point_edit_name" name="name" type="text" class="form-control" maxlength="120" required autocomplete="off">
+                  <div class="invalid-feedback" data-modal-error-for="name"></div>
+                </div>
+              </div>
+            </section>
+            <section class="smart-form-section mb-0">
+              <h6 class="smart-form-section-title"><i class="bi bi-pin-map" aria-hidden="true"></i>Location &amp; fee</h6>
+              <div class="smart-form-grid">
+                <div class="smart-field span-2">
+                  <label class="form-label" for="id_point_edit_location">Location</label>
+                  <input id="id_point_edit_location" name="location" type="text" class="form-control" maxlength="255" autocomplete="off">
+                  <div class="invalid-feedback" data-modal-error-for="location"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_point_edit_collector_fee">Collector fee</label>
+                  <input id="id_point_edit_collector_fee" name="collector_fee" type="number" class="form-control" step="0.01" min="0" required autocomplete="off">
+                  <div class="invalid-feedback" data-modal-error-for="collector_fee"></div>
+                </div>
+                <div class="smart-field">
+                  <label class="form-label" for="id_point_edit_additional">Additional</label>
+                  <input id="id_point_edit_additional" name="additional" type="number" class="form-control" step="0.01" min="0" required autocomplete="off" value="0">
+                  <div class="invalid-feedback" data-modal-error-for="additional"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Update point</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.masters.add_collectionpoint or perms.masters.change_collectionpoint %}
+<script>
+(function () {
+  var $ = window.jQuery;
+  var addForm = document.getElementById("point-quick-add-form");
+  var addModalEl = document.getElementById("pointQuickAddModal");
+  var editForm = document.getElementById("point-quick-edit-form");
+  var editModalEl = document.getElementById("pointQuickEditModal");
+  var addModal = addModalEl ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  var addRouteSelect = addForm ? addForm.querySelector('[name="route"]') : null;
+  var editRouteSelect = editForm ? editForm.querySelector('[name="route"]') : null;
+
+  function initRouteSelect2(selectEl, parentEl) {
+    if (!$ || !$.fn || !$.fn.select2 || !selectEl || !parentEl) return;
+    var $route = $(selectEl);
+    if ($route.hasClass("select2-hidden-accessible")) $route.select2("destroy");
+    $route.select2({ width: "100%", dropdownParent: $(parentEl), placeholder: "Select route", allowClear: true });
+  }
+
+  function clearErrors(form) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[data-modal-error-for]").forEach(function (el) { el.textContent = ""; });
+  }
+
+  function setErrors(form, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector('[data-modal-error-for="' + field + '"]');
+      if (input) input.classList.add("is-invalid");
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  function submitForm(form, submitBtn, done) {
+    clearErrors(form);
+    if (submitBtn) submitBtn.disabled = true;
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErrors(form, (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: "Could not save collection point." });
+          }
+          return;
+        }
+        done();
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save collection point." });
+      })
+      .finally(function () {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+  }
+
+  if (addForm && addModalEl) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      submitForm(addForm, addForm.querySelector('button[type="submit"]'), function () {
+        if (addModal) addModal.hide();
+        window.location.reload();
+      });
+    });
+    addModalEl.addEventListener("shown.bs.modal", function () {
+      initRouteSelect2(addRouteSelect, addModalEl);
+      var first = addForm.querySelector('[name="number"]');
+      if (first) first.focus();
+    });
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      if ($ && $.fn && $.fn.select2 && addRouteSelect) {
+        var $route = $(addRouteSelect);
+        if ($route.hasClass("select2-hidden-accessible")) $route.select2("destroy");
+      }
+      addForm.reset();
+      clearErrors(addForm);
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      submitForm(editForm, editForm.querySelector('button[type="submit"]'), function () {
+        if (editModal) editModal.hide();
+        window.location.reload();
+      });
+    });
+    editModalEl.addEventListener("shown.bs.modal", function () {
+      initRouteSelect2(editRouteSelect, editModalEl);
+      var first = editForm.querySelector('[name="number"]');
+      if (first) first.focus();
+    });
+    editModalEl.addEventListener("hidden.bs.modal", function () {
+      if ($ && $.fn && $.fn.select2 && editRouteSelect) {
+        var $route = $(editRouteSelect);
+        if ($route.hasClass("select2-hidden-accessible")) $route.select2("destroy");
+      }
+      editForm.reset();
+      clearErrors(editForm);
+    });
+  }
+
+  var pointListRoot = document.querySelector(".point-list-card");
+  if (pointListRoot) {
+    pointListRoot.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest(".js-point-edit") : null;
+      if (!btn || !editForm || !editModal) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var pointId = btn.getAttribute("data-point-id");
+      var name = btn.getAttribute("data-point-name") || "";
+      editForm.action = "{% url 'point-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + pointId + "/quick-edit/");
+      var subtitleEl = editModalEl.querySelector("[data-edit-point-subtitle]");
+      if (subtitleEl) subtitleEl.textContent = name ? "Updating " + name + "." : "Update route, location, and collector fee.";
+      editForm.querySelector('[name="route"]').value = btn.getAttribute("data-point-route-id") || "";
+      editForm.querySelector('[name="number"]').value = btn.getAttribute("data-point-number") || "";
+      editForm.querySelector('[name="name"]').value = name;
+      editForm.querySelector('[name="location"]').value = btn.getAttribute("data-point-location") || "";
+      editForm.querySelector('[name="collector_fee"]').value = btn.getAttribute("data-point-collector-fee") || "5";
+      editForm.querySelector('[name="additional"]').value = btn.getAttribute("data-point-additional") || "0";
+      clearErrors(editForm);
+      if ($ && $.fn && $.fn.select2 && editRouteSelect && $(editRouteSelect).hasClass("select2-hidden-accessible")) {
+        $(editRouteSelect).val(btn.getAttribute("data-point-route-id") || "").trigger("change");
+      }
+      editModal.show();
+    });
+  }
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  function readJson(id) {
+    try {
+      var el = document.getElementById(id);
+      return el ? JSON.parse(el.textContent || "[]") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function initPointCascadeFilters() {
+    var branchEl = document.getElementById("pointBranchFilter");
+    var routeEl = document.getElementById("pointRouteFilter");
+    if (!routeEl) return;
+    var routes = readJson("point-filter-routes-data");
+
+    function appendOption(selectEl, value, label) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      selectEl.appendChild(opt);
+    }
+
+    function refillRoutes() {
+      var branchId = branchEl ? String(branchEl.value || "all") : "all";
+      routeEl.innerHTML = "";
+      appendOption(routeEl, "all", "All routes");
+      routes.forEach(function (route) {
+        if (branchId === "all" || String(route.branch_id) === branchId) {
+          appendOption(routeEl, String(route.id), route.label);
+        }
+      });
+    }
+
+    refillRoutes();
+    if (branchEl) {
+      branchEl.addEventListener("change", function () {
+        refillRoutes();
+        routeEl.value = "all";
+        routeEl.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+  }
+
+  function initPointAccountPopovers(root) {
+    if (!window.bootstrap || !bootstrap.Popover) return;
+    (root || document).querySelectorAll(".point-account-popover").forEach(function (trigger) {
+      if (trigger.dataset.popoverReady === "1") return;
+      var template = trigger.nextElementSibling;
+      if (!template || template.tagName !== "TEMPLATE") return;
+      new bootstrap.Popover(trigger, {
+        html: true,
+        sanitize: false,
+        title: "Point account summary",
+        content: template.innerHTML,
+        trigger: "hover focus",
+        placement: "left",
+        container: "body",
+        customClass: "payment-sheet-paid-popover-pop",
+      });
+      trigger.dataset.popoverReady = "1";
+    });
+  }
+
+  function initPointViewModal() {
+    var modalEl = document.getElementById("pointViewModal");
+    if (!modalEl || typeof bootstrap === "undefined") return;
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    var subtitleEl = document.getElementById("pointViewSubtitle");
+    var fields = {
+      number: document.getElementById("pointViewNumber"),
+      account: document.getElementById("pointViewAccount"),
+      route: document.getElementById("pointViewRoute"),
+      branch: document.getElementById("pointViewBranch"),
+      location: document.getElementById("pointViewLocation"),
+      collectorFee: document.getElementById("pointViewCollectorFee"),
+      additional: document.getElementById("pointViewAdditional"),
+    };
+
+    document.addEventListener("click", function (e) {
+      var trigger = e.target.closest(".js-point-view");
+      if (!trigger) return;
+      e.preventDefault();
+      if (subtitleEl) subtitleEl.textContent = trigger.getAttribute("data-point-name") || "";
+      if (fields.number) fields.number.textContent = trigger.getAttribute("data-point-number") || "—";
+      if (fields.account) fields.account.textContent = trigger.getAttribute("data-point-account") || "—";
+      if (fields.route) fields.route.textContent = trigger.getAttribute("data-point-route") || "—";
+      if (fields.branch) fields.branch.textContent = trigger.getAttribute("data-point-branch") || "—";
+      if (fields.location) fields.location.textContent = trigger.getAttribute("data-point-location") || "—";
+      if (fields.collectorFee) fields.collectorFee.textContent = trigger.getAttribute("data-point-collector-fee") || "—";
+      if (fields.additional) fields.additional.textContent = trigger.getAttribute("data-point-additional") || "—";
+      modal.show();
+    });
+  }
+
+  function bootPointListUi() {
+    initPointCascadeFilters();
+    initPointAccountPopovers(document.querySelector(".point-list-card"));
+    initPointViewModal();
+    var tableEl = document.querySelector(".point-table");
+    if (tableEl && window.jQuery && $.fn.dataTable) {
+      $(tableEl).on("draw.dt", function () {
+        initPointAccountPopovers(document.querySelector(".point-list-card"));
+      });
+    }
+    document.querySelectorAll(".js-point-show-inactive-30").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var chip = document.querySelector('#pointDtFilters [data-smart-filter="inactive-30"]');
+        if (chip) chip.click();
+      });
+    });
+    document.querySelectorAll(".js-point-stat-filter").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var filter = btn.getAttribute("data-smart-filter");
+        if (!filter) return;
+        var chip = document.querySelector('#pointDtFilters [data-smart-filter="' + filter + '"]');
+        if (chip) chip.click();
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootPointListUi);
+  } else {
+    bootPointListUi();
+  }
+})();
+</script>
+{% if perms.masters.change_collectionpoint %}
+<script>
+(function () {
+  var saveUrl = "{% url 'point-fee-cell-save' %}";
+  var csrfToken = (document.querySelector("[name=csrfmiddlewaretoken]") || {}).value || "{{ csrf_token }}";
+  var inFlight = Object.create(null);
+
+  function formatMoney(value) {
+    var n = parseFloat(String(value || "").replace(/,/g, ""));
+    if (!isFinite(n)) return "";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function flightKey(wrap) {
+    return (wrap.getAttribute("data-point-id") || "") + ":" + (wrap.getAttribute("data-field") || "");
+  }
+
+  function getEditors() {
+    return Array.prototype.slice.call(document.querySelectorAll(".point-fee-inline"));
+  }
+
+  function closeEditor(wrap, restore) {
+    if (!wrap) return;
+    var input = wrap.querySelector(".js-point-fee-input");
+    if (restore && input) {
+      input.value = wrap.getAttribute("data-value") || "";
+    }
+    wrap.classList.remove("is-editing", "is-error");
+  }
+
+  function openEditor(wrap) {
+    getEditors().forEach(function (other) {
+      if (other !== wrap) closeEditor(other, true);
+    });
+    wrap.classList.add("is-editing");
+    wrap.classList.remove("is-error", "is-saved");
+    var input = wrap.querySelector(".js-point-fee-input");
+    if (input) {
+      input.focus();
+      if (typeof input.select === "function") input.select();
+    }
+  }
+
+  function setLabel(wrap, valueDisplay) {
+    var label = wrap.querySelector(".js-point-fee-label");
+    if (label) label.textContent = valueDisplay;
+  }
+
+  function nextEditor(wrap) {
+    var editors = getEditors().filter(function (el) {
+      return el.offsetParent !== null;
+    });
+    var idx = editors.indexOf(wrap);
+    if (idx < 0) return null;
+    return editors[idx + 1] || null;
+  }
+
+  function syncRowFeeAttrs(wrap, data) {
+    var row = wrap.closest("tr");
+    if (!row || !data) return;
+    var editBtn = row.querySelector(".js-point-edit");
+    if (editBtn) {
+      if (data.collector_fee != null) editBtn.setAttribute("data-point-collector-fee", data.collector_fee);
+      if (data.additional != null) editBtn.setAttribute("data-point-additional", data.additional);
+    }
+    var viewBtn = row.querySelector(".js-point-view");
+    if (viewBtn) {
+      if (data.collector_fee != null) viewBtn.setAttribute("data-point-collector-fee", formatMoney(data.collector_fee));
+      if (data.additional != null) viewBtn.setAttribute("data-point-additional", formatMoney(data.additional));
+    }
+  }
+
+  function saveEditor(wrap, options) {
+    options = options || {};
+    var key = flightKey(wrap);
+    if (!key || inFlight[key]) return Promise.resolve();
+    var input = wrap.querySelector(".js-point-fee-input");
+    if (!input) return Promise.resolve();
+
+    var value = String(input.value || "").replace(/,/g, "").trim();
+    var original = wrap.getAttribute("data-value") || "0";
+    if (!value) {
+      closeEditor(wrap, true);
+      return Promise.resolve();
+    }
+    if (value === original) {
+      closeEditor(wrap, false);
+      if (options.moveNext) {
+        var nxtSame = nextEditor(wrap);
+        if (nxtSame) openEditor(nxtSame);
+      }
+      return Promise.resolve();
+    }
+
+    inFlight[key] = true;
+    wrap.classList.add("is-saving");
+    wrap.classList.remove("is-error");
+    var body = new FormData();
+    body.append("point_id", wrap.getAttribute("data-point-id") || "");
+    body.append("field", wrap.getAttribute("data-field") || "");
+    body.append("value", value);
+    body.append("csrfmiddlewaretoken", csrfToken);
+
+    return fetch(saveUrl, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        return r.json().then(function (d) {
+          return { ok: r.ok, data: d };
+        });
+      })
+      .then(function (res) {
+        wrap.classList.remove("is-saving");
+        delete inFlight[key];
+        if (!res.ok || !res.data || !res.data.ok) {
+          wrap.classList.add("is-error");
+          if (window.Swal) {
+            Swal.fire({
+              icon: "error",
+              title: "Could not save fee",
+              text: (res.data && res.data.error) || "Please try again.",
+              timer: 2200,
+              showConfirmButton: false,
+              toast: true,
+              position: "top-end",
+            });
+          }
+          return;
+        }
+        var data = res.data;
+        wrap.setAttribute("data-value", data.value);
+        input.value = data.value;
+        setLabel(wrap, data.value_display || formatMoney(data.value));
+        var cell = wrap.closest("td");
+        if (cell) cell.setAttribute("data-order", data.value);
+        syncRowFeeAttrs(wrap, data);
+        wrap.classList.remove("is-editing");
+        wrap.classList.add("is-saved");
+        window.setTimeout(function () {
+          wrap.classList.remove("is-saved");
+        }, 900);
+        if (options.moveNext) {
+          var nxt = nextEditor(wrap);
+          if (nxt) openEditor(nxt);
+        }
+      })
+      .catch(function () {
+        wrap.classList.remove("is-saving");
+        delete inFlight[key];
+        wrap.classList.add("is-error");
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var editBtn = ev.target.closest(".js-point-fee-edit");
+    if (editBtn) {
+      ev.preventDefault();
+      openEditor(editBtn.closest(".point-fee-inline"));
+      return;
+    }
+    var inside = ev.target.closest(".point-fee-inline.is-editing");
+    if (!inside) {
+      getEditors().forEach(function (wrap) {
+        if (wrap.classList.contains("is-editing")) saveEditor(wrap);
+      });
+    }
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    var wrap = ev.target.closest(".point-fee-inline.is-editing");
+    if (!wrap) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor(wrap, { moveNext: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor(wrap, true);
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

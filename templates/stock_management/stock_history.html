@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+{% block title %}Stock History · Canmee Dairies{% endblock %}
+{% block page_heading %}Stock History{% endblock %}
+{% block topbar_actions %}
+<a class="btn btn-outline-secondary" href="{% url 'stock-overview' %}">Back to Stock</a>
+<a
+  class="btn btn-primary"
+  href="{% url 'stock-history-export' %}?product={{ filters.product }}&action_type={{ filters.action_type }}&status={{ filters.status }}&branch={{ filters.branch }}&from_date={{ filters.from_date }}&to_date={{ filters.to_date }}"
+><i class="bi bi-download me-1"></i>Export CSV</a>
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .stock-history-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .stock-history-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .stock-history-card .table-wrap,
+  .stock-history-card .dataTables_wrapper,
+  .stock-history-card div.dt-container,
+  .stock-history-card div.dt-scroll,
+  .stock-history-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .stock-history-card .history-table {
+    width: 100% !important;
+  }
+  .stock-history-card .history-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .stock-history-card .history-table tbody td {
+    white-space: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .stock-history-card .history-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .stock-history-card .history-table tbody td.dt-seq,
+  .stock-history-card .history-table thead th.dt-seq {
+    width: 2.5rem;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .stock-history-card .history-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .stock-history-card .history-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 0.55rem 0.4rem;
+    white-space: nowrap;
+  }
+  .stock-history-card .history-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .history-action-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 0;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  button.history-action-pill:hover,
+  button.history-action-pill:focus-visible {
+    filter: brightness(0.96);
+    outline: 2px solid rgba(15, 23, 42, 0.15);
+    outline-offset: 1px;
+  }
+  .history-action-pill.is-grn {
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+  .history-action-pill.is-transfer {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .history-action-pill.is-issue {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+  .history-status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .history-status-pill.is-posted,
+  .history-status-pill.is-accepted,
+  .history-status-pill.is-not_required {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .history-status-pill.is-draft {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .history-status-pill.is-pending {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+  .history-status-pill.is-rejected {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+  #stockLogDocEmbed {
+    width: 100%;
+    min-height: 70vh;
+    border: 0;
+    background: #fff;
+  }
+  .stock-history-card a.smart-dt-chip {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .history-advanced-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: end;
+    margin: 0 0 0.85rem;
+  }
+  .history-advanced-filters .form-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+  }
+  .history-advanced-filters .form-select,
+  .history-advanced-filters .form-control,
+  .history-advanced-filters .input-group-text,
+  .history-advanced-filters .btn {
+    min-height: 34px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .history-advanced-filters .flatpickr-range-wrap {
+    min-width: 12.5rem;
+  }
+  .history-advanced-filters .flatpickr-range-wrap .form-control,
+  .history-advanced-filters .flatpickr-range-wrap .fp-range-alt-input {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .history-advanced-filters .flatpickr-range-wrap .input-group-text {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .history-advanced-filters .select2-container {
+    min-width: 14rem;
+  }
+  .history-advanced-filters .select2-container .select2-selection--single {
+    min-height: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border-color: #dee2e6;
+    display: flex;
+    align-items: center;
+  }
+  .history-advanced-filters .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 32px;
+    padding-left: 0.85rem;
+    font-size: 0.8rem;
+    color: #334155;
+  }
+  .history-advanced-filters .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px;
+    right: 0.4rem;
+  }
+  @media (max-width: 768px) {
+    .smart-dt-stats--four {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table stock-history-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Stock history summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Total movements</span>
+        <span class="smart-dt-stat-value">{{ history_summary.count }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">GRN</span>
+        <span class="smart-dt-stat-value">{{ history_summary.grn_count }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Transfer</span>
+        <span class="smart-dt-stat-value">{{ history_summary.transfer_count }}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--warn">
+        <span class="smart-dt-stat-label">Issue</span>
+        <span class="smart-dt-stat-value">{{ history_summary.issue_count }}</span>
+      </div>
+    </div>
+
+    <div class="smart-dt-filters" role="toolbar" aria-label="Action filters">
+      <a
+        class="smart-dt-chip {% if not filters.action_type and not filters.status %}is-active{% endif %}"
+        href="{% url 'stock-history' %}{% if history_filter_query %}?{{ history_filter_query }}{% endif %}"
+      >All<span class="smart-dt-chip-count">{{ history_summary.count }}</span></a>
+      <a
+        class="smart-dt-chip {% if filters.action_type == 'grn' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_filter_query %}{{ history_filter_query }}&{% endif %}action_type=grn{% if filters.status %}&status={{ filters.status }}{% endif %}"
+      >GRN<span class="smart-dt-chip-count">{{ history_summary.grn_count }}</span></a>
+      <a
+        class="smart-dt-chip {% if filters.action_type == 'transfer' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_filter_query %}{{ history_filter_query }}&{% endif %}action_type=transfer{% if filters.status %}&status={{ filters.status }}{% endif %}"
+      >Transfer<span class="smart-dt-chip-count">{{ history_summary.transfer_count }}</span></a>
+      <a
+        class="smart-dt-chip {% if filters.action_type == 'issue' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_filter_query %}{{ history_filter_query }}&{% endif %}action_type=issue{% if filters.status %}&status={{ filters.status }}{% endif %}"
+      >Issue<span class="smart-dt-chip-count">{{ history_summary.issue_count }}</span></a>
+    </div>
+    <div class="smart-dt-filters mt-1" role="toolbar" aria-label="Status filters">
+      <a
+        class="smart-dt-chip {% if filters.status == 'posted' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_status_filter_query %}{{ history_status_filter_query }}&{% endif %}status=posted"
+      >Posted<span class="smart-dt-chip-count">{{ history_summary.posted_count }}</span></a>
+      <a
+        class="smart-dt-chip {% if filters.status == 'draft' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_status_filter_query %}{{ history_status_filter_query }}&{% endif %}status=draft"
+      >Draft<span class="smart-dt-chip-count">{{ history_summary.draft_count }}</span></a>
+      <a
+        class="smart-dt-chip {% if filters.status == 'pending' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_status_filter_query %}{{ history_status_filter_query }}&{% endif %}status=pending"
+      >Pending<span class="smart-dt-chip-count">{{ history_summary.pending_count }}</span></a>
+      <a
+        class="smart-dt-chip {% if filters.status == 'rejected' %}is-active{% endif %}"
+        href="{% url 'stock-history' %}?{% if history_status_filter_query %}{{ history_status_filter_query }}&{% endif %}status=rejected"
+      >Rejected<span class="smart-dt-chip-count">{{ history_summary.rejected_count }}</span></a>
+    </div>
+
+    <form method="get" class="history-advanced-filters" role="search">
+      {% if filters.action_type %}
+      <input type="hidden" name="action_type" value="{{ filters.action_type }}">
+      {% endif %}
+      {% if filters.status %}
+      <input type="hidden" name="status" value="{{ filters.status }}">
+      {% endif %}
+      <div>
+        <label class="form-label" for="history-filter-product">Product</label>
+        <select id="history-filter-product" name="product" class="form-select js-history-product-select" data-placeholder="Search products…">
+          <option value="">All products</option>
+          {% for p in products %}
+          <option value="{{ p.id }}" {% if filters.product == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="history-filter-branch">Branch</label>
+        <select id="history-filter-branch" name="branch" class="form-select no-global-select2">
+          <option value="">All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if filters.branch == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="history-filter-period">Period</label>
+        <div class="input-group flatpickr-range-wrap">
+          <span class="input-group-text border-end-0 text-muted"><i class="bi bi-calendar3"></i></span>
+          <input
+            type="text"
+            id="history-filter-period"
+            class="form-control border-start-0 js-datepicker-range"
+            data-range-start="from_date"
+            data-range-end="to_date"
+            placeholder="All dates"
+            autocomplete="off"
+            readonly
+            aria-label="Period"
+          >
+        </div>
+        <input type="hidden" name="from_date" value="{{ filters.from_date }}">
+        <input type="hidden" name="to_date" value="{{ filters.to_date }}">
+      </div>
+      <div class="d-flex gap-1">
+        <button type="submit" class="btn btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i></button>
+        <a href="{% url 'stock-history' %}" class="btn btn-outline-secondary" title="Clear filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+      </div>
+    </form>
+    <p class="text-muted small mb-2">
+      Balance is the running qty after each <strong>posted</strong> movement for the current filters.
+      Draft GRNs and rejected/pending issues are listed with status but do not change balance.
+      {% if history_summary.draft_count or history_summary.rejected_count or history_summary.pending_count %}
+      (Draft {{ history_summary.draft_count|default:0 }} · Pending {{ history_summary.pending_count|default:0 }} · Rejected {{ history_summary.rejected_count|default:0 }})
+      {% endif %}
+    </p>
+
+    <table
+      class="table table-hover datatable datatable-smart history-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No stock movement logs found."
+      data-footer-sum-cols="5"
+      data-smart-order="1,desc"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Date</th>
+          <th class="all">Action</th>
+          <th class="all">Status</th>
+          <th class="all">Product</th>
+          <th class="all text-end">Quantity</th>
+          <th class="all text-end">Balance</th>
+          <th class="min-desktop">Source</th>
+          <th class="min-desktop">Destination</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in logs %}
+        <tr class="smart-row--{{ row.action_type }}">
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all" data-order="{{ row.date|date:'Y-m-d H:i:s' }}-{{ row.id|default:0|stringformat:'010d' }}">{{ row.date|date:"Y-m-d H:i" }}</td>
+          <td class="all">
+            <button
+              type="button"
+              class="history-action-pill is-{{ row.action_type }} js-stock-log-doc"
+              data-log-id="{% if row.doc_type == 'log' %}{{ row.id }}{% endif %}"
+              data-doc-type="{{ row.doc_type }}"
+              data-doc-id="{{ row.doc_id }}"
+              data-action-label="{{ row.get_action_type_display }}"
+              title="View related document"
+            >{{ row.get_action_type_display }}</button>
+          </td>
+          <td class="all">
+            <span class="history-status-pill is-{{ row.status_css }}">{{ row.status_label }}</span>
+          </td>
+          <td class="all">{{ row.product.name }}</td>
+          <td class="all dt-num text-end" data-order="{{ row.quantity|default:'0' }}">{{ row.quantity }}</td>
+          <td class="all dt-num text-end" data-order="{{ row.balance_qty|default:'0' }}">{% if row.affects_balance %}{{ row.balance_qty }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td class="min-desktop">{{ row.source }}</td>
+          <td class="min-desktop">{{ row.destination }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all"></th>
+          <th class="min-tablet-l"></th>
+          <th class="min-tablet-l"></th>
+          <th class="all text-end">Totals</th>
+          <th class="all text-end dt-foot-total"></th>
+          <th class="all"></th>
+          <th class="min-desktop"></th>
+          <th class="min-desktop"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="stockLogDocModal" tabindex="-1" aria-labelledby="stockLogDocModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="stockLogDocModalLabel">Document</h5>
+          <p class="text-muted small mb-0" id="stockLogDocModalSubtitle"></p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="stockLogDocLoading" class="text-muted py-4 text-center">Loading…</div>
+        <div id="stockLogDocContent" class="d-none">
+          <div id="stockLogDocMessage" class="alert alert-warning d-none mb-3"></div>
+          <div class="row g-3 mb-3" id="stockLogDocMeta"></div>
+          <div id="stockLogDocTableWrap" class="table-wrap">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr id="stockLogDocHead"></tr>
+              </thead>
+              <tbody id="stockLogDocBody"></tbody>
+            </table>
+          </div>
+          <div class="row justify-content-end mt-3">
+            <div class="col-md-5">
+              <dl class="row mb-0 small" id="stockLogDocTotals"></dl>
+            </div>
+          </div>
+          <iframe id="stockLogDocEmbed" class="d-none" title="Document preview"></iframe>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a id="stockLogDocPrintLink" class="btn btn-outline-secondary d-none" href="#" target="_blank" rel="noopener">Open / Print</a>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+    var $ = window.jQuery;
+    var $product = $("#history-filter-product");
+    if ($product.length && !$product.hasClass("select2-hidden-accessible")) {
+      $product.select2({
+        width: "100%",
+        allowClear: true,
+        placeholder: $product.data("placeholder") || "Search products…",
+      });
+    }
+  }
+
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function openStockLogDoc(opts) {
+    var logId = opts.logId || "";
+    var docType = opts.docType || "";
+    var docId = opts.docId || "";
+    var actionLabel = opts.actionLabel || "Document";
+    var el = document.getElementById("stockLogDocModal");
+    if (!el || !window.bootstrap || !bootstrap.Modal) return;
+    var modal = bootstrap.Modal.getOrCreateInstance(el);
+    document.getElementById("stockLogDocModalLabel").textContent = actionLabel || "Document";
+    document.getElementById("stockLogDocModalSubtitle").textContent = "";
+    document.getElementById("stockLogDocLoading").classList.remove("d-none");
+    document.getElementById("stockLogDocLoading").textContent = "Loading…";
+    document.getElementById("stockLogDocContent").classList.add("d-none");
+    document.getElementById("stockLogDocMessage").classList.add("d-none");
+    document.getElementById("stockLogDocMeta").innerHTML = "";
+    document.getElementById("stockLogDocHead").innerHTML = "";
+    document.getElementById("stockLogDocBody").innerHTML = "";
+    document.getElementById("stockLogDocTotals").innerHTML = "";
+    var embed = document.getElementById("stockLogDocEmbed");
+    embed.classList.add("d-none");
+    embed.removeAttribute("src");
+    document.getElementById("stockLogDocTableWrap").classList.remove("d-none");
+    var printLink = document.getElementById("stockLogDocPrintLink");
+    printLink.classList.add("d-none");
+    printLink.href = "#";
+    modal.show();
+
+    var url;
+    if (logId) {
+      url = "{% url 'stock-log-document-modal' 0 %}".replace("/0/", "/" + logId + "/");
+    } else if (docType && docId) {
+      url =
+        "{% url 'stock-history-document-modal' %}?doc_type=" +
+        encodeURIComponent(docType) +
+        "&doc_id=" +
+        encodeURIComponent(docId);
+    } else {
+      document.getElementById("stockLogDocLoading").textContent = "No related document linked.";
+      return;
+    }
+
+    fetch(url, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error("Failed");
+        return r.json();
+      })
+      .then(function (data) {
+        document.getElementById("stockLogDocLoading").classList.add("d-none");
+        document.getElementById("stockLogDocModalLabel").textContent = data.title || actionLabel || "Document";
+        document.getElementById("stockLogDocModalSubtitle").textContent = data.subtitle || "";
+
+        if (data.message) {
+          var msg = document.getElementById("stockLogDocMessage");
+          msg.textContent = data.message;
+          msg.classList.remove("d-none");
+        }
+
+        var meta = data.meta || [];
+        document.getElementById("stockLogDocMeta").innerHTML = meta
+          .map(function (m) {
+            return (
+              '<div class="col-md-3"><div class="text-muted small">' +
+              esc(m.label) +
+              '</div><div class="fw-semibold">' +
+              esc(m.value) +
+              "</div></div>"
+            );
+          })
+          .join("");
+
+        if (data.embed_url) {
+          document.getElementById("stockLogDocTableWrap").classList.add("d-none");
+          embed.src = data.embed_url;
+          embed.classList.remove("d-none");
+        } else {
+          var cols = data.columns || ["Product", "Qty", "", ""];
+          document.getElementById("stockLogDocHead").innerHTML = cols
+            .map(function (c, idx) {
+              var cls = idx === 0 ? "" : ' class="text-end"';
+              return "<th" + cls + ">" + esc(c) + "</th>";
+            })
+            .join("");
+          var lines = data.lines || [];
+          document.getElementById("stockLogDocBody").innerHTML = lines.length
+            ? lines
+                .map(function (line) {
+                  return (
+                    "<tr>" +
+                    "<td>" +
+                    esc(line.product) +
+                    (line.unit ? ' <span class="text-muted">(' + esc(line.unit) + ")</span>" : "") +
+                    "</td>" +
+                    '<td class="text-end">' +
+                    esc(line.quantity) +
+                    "</td>" +
+                    '<td class="text-end">' +
+                    esc(line.extra || "") +
+                    "</td>" +
+                    '<td class="text-end">' +
+                    esc(line.total || "") +
+                    "</td>" +
+                    "</tr>"
+                  );
+                })
+                .join("")
+            : '<tr><td colspan="4" class="text-center text-muted py-3">No line details.</td></tr>';
+
+          var totals = data.totals || [];
+          document.getElementById("stockLogDocTotals").innerHTML = totals
+            .map(function (t) {
+              return (
+                '<dt class="col-6">' +
+                esc(t.label) +
+                '</dt><dd class="col-6 text-end">' +
+                esc(t.value) +
+                "</dd>"
+              );
+            })
+            .join("");
+        }
+
+        if (data.print_url) {
+          printLink.href = data.print_url;
+          printLink.classList.remove("d-none");
+        }
+        document.getElementById("stockLogDocContent").classList.remove("d-none");
+      })
+      .catch(function () {
+        document.getElementById("stockLogDocLoading").textContent = "Could not load related document.";
+      });
+  }
+
+  document.addEventListener("click", function (event) {
+    var btn = event.target.closest(".js-stock-log-doc");
+    if (!btn) return;
+    event.preventDefault();
+    openStockLogDoc({
+      logId: btn.getAttribute("data-log-id") || "",
+      docType: btn.getAttribute("data-doc-type") || "",
+      docId: btn.getAttribute("data-doc-id") || "",
+      actionLabel: btn.getAttribute("data-action-label") || "",
+    });
+  });
+})();
+</script>
+{% endblock %}

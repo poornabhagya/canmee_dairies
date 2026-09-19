@@ -1,0 +1,343 @@
+<script>
+(function () {
+  var FONT = "font-family:Arial,Helvetica,sans-serif;";
+  var B =
+    "border:0.5pt solid #000000;" +
+    "border-top:0.5pt solid #000000;" +
+    "border-right:0.5pt solid #000000;" +
+    "border-bottom:0.5pt solid #000000;" +
+    "border-left:0.5pt solid #000000;" +
+    "mso-border-alt:solid #000000 .25pt;";
+  var NO_B =
+    "border:none;mso-border-alt:none;";
+  var CELL = FONT + "font-size:9pt;padding:2px 4px;vertical-align:middle;";
+  var TH =
+    CELL +
+    B +
+    "background:#e0e0e0;font-weight:700;text-align:center;text-transform:uppercase;font-size:8pt;";
+  var TH_LEFT = TH.replace("text-align:center", "text-align:left");
+  var TD = CELL + B;
+  var TD_NUM = TD + "text-align:right;mso-number-format:\"\\#\\,\\#\\#0\\.00\";";
+  var TD_CENTER = TD + "text-align:center;";
+  var TITLE = CELL + NO_B + "font-weight:700;text-align:center;font-size:11pt;text-transform:uppercase;";
+  var SUBTITLE = CELL + NO_B + "font-weight:700;text-align:center;font-size:10pt;text-transform:uppercase;";
+  var META = CELL + NO_B + "font-size:9pt;";
+  var SPACER = CELL + NO_B;
+  var LABEL = TD + "font-weight:600;text-transform:uppercase;font-size:8pt;text-align:left;";
+  var SHADED = "background:#e0e0e0;";
+  var BOLD = "font-weight:700;";
+  var MAIN_TABLE =
+    'border="0" cellpadding="0" cellspacing="0" class="xl-sheet" ' +
+    'style="border-collapse:separate;border-spacing:0;width:360px;mso-table-layout-alt:fixed;"';
+  var COLGROUP =
+    '<colgroup><col width="95"><col width="70"><col width="70"><col width="95"></colgroup>';
+  var COLS = 4;
+
+  function esc(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function row(cells) {
+    return "<tr>" + cells.join("") + "</tr>";
+  }
+
+  function gridCell(tag, style, content, extraAttrs) {
+    extraAttrs = extraAttrs || "";
+    return (
+      "<" + tag + ' class="xl-grid"' + extraAttrs + ' style="' + style + '">' +
+      content +
+      "</" + tag + ">"
+    );
+  }
+
+  function mergedCell(style, content) {
+    return (
+      '<td colspan="' + COLS + '" class="xl-plain" style="' + style + '">' + content + "</td>"
+    );
+  }
+
+  function mergedRow(style, content) {
+    return row([mergedCell(style, content)]);
+  }
+
+  function paymentSheetPlainFromElement(sheet, section) {
+    section = section || "full";
+    if (!sheet) return "";
+    var lines = [];
+    var company = sheet.querySelector(".payslip-a5-company");
+    if (company) lines.push(company.textContent.trim());
+    var phone = sheet.querySelector(".payslip-a5-phone");
+    if (phone) lines.push(phone.textContent.trim());
+    var metaRow = sheet.querySelector(".payslip-a5-meta-row");
+    if (metaRow) lines.push(metaRow.textContent.trim().replace(/\s+/g, " "));
+    lines.push("");
+    sheet.querySelectorAll("table").forEach(function (table) {
+      if (section === "daily" && !table.classList.contains("payslip-a5-daily")) return;
+      if (
+        section === "summary" &&
+        !table.classList.contains("payslip-a5-summary") &&
+        !table.classList.contains("payslip-a5-loan")
+      ) {
+        return;
+      }
+      table.querySelectorAll("tr").forEach(function (tr) {
+        var cells = [];
+        tr.querySelectorAll("th, td").forEach(function (cell) {
+          cells.push(cell.textContent.trim());
+        });
+        if (cells.length) lines.push(cells.join("\t"));
+      });
+      lines.push("");
+    });
+    return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  function appendTwoColSection(parts, tableEl) {
+    if (!tableEl) return;
+    tableEl.querySelectorAll("tbody tr").forEach(function (tr) {
+      var cells = tr.querySelectorAll("td");
+      if (cells.length < 2) return;
+      var shaded = tr.classList.contains("shaded");
+      var bold = tr.classList.contains("bold");
+      var bg = shaded ? SHADED : "";
+      var fw = bold ? BOLD : "font-weight:600;";
+      var label = cells[0].textContent.trim();
+      var value = cells[1].textContent.trim();
+      parts.push(
+        row([
+          '<td colspan="3" class="xl-grid" style="' + LABEL + bg + fw + '">' + esc(label) + "</td>",
+          gridCell("td", TD_NUM + bg + (bold ? BOLD : ""), esc(value)),
+        ])
+      );
+    });
+  }
+
+  function appendSheetHeader(parts, sheet) {
+    var company = sheet.querySelector(".payslip-a5-company");
+    if (company) {
+      parts.push(mergedRow(TITLE, esc(company.textContent.trim())));
+    }
+    var phone = sheet.querySelector(".payslip-a5-phone");
+    if (phone) {
+      parts.push(mergedRow(META, esc(phone.textContent.trim())));
+    }
+    var metaRow = sheet.querySelector(".payslip-a5-meta-row");
+    if (metaRow) {
+      parts.push(mergedRow(META, esc(metaRow.textContent.trim().replace(/\s+/g, " "))));
+    }
+  }
+
+  function appendDailySection(parts, sheet) {
+    parts.push(mergedRow(SPACER, "&nbsp;"));
+    parts.push(
+      row([
+        gridCell("th", TH_LEFT, "Date"),
+        gridCell("th", TH, "Ltr"),
+        gridCell("th", TH, "Rate"),
+        gridCell("th", TH, "Amount"),
+      ])
+    );
+    sheet.querySelectorAll(".payslip-a5-daily tbody tr").forEach(function (tr) {
+      var cells = tr.querySelectorAll("td");
+      if (cells.length < 4) return;
+      parts.push(
+        row([
+          gridCell("td", TD, esc(cells[0].textContent.trim())),
+          gridCell("td", TD_NUM, esc(cells[1].textContent.trim())),
+          gridCell("td", TD_NUM, esc(cells[2].textContent.trim())),
+          gridCell("td", TD_NUM, esc(cells[3].textContent.trim())),
+        ])
+      );
+    });
+  }
+
+  function appendSummarySection(parts, sheet) {
+    parts.push(mergedRow(SPACER, "&nbsp;"));
+    appendTwoColSection(parts, sheet.querySelector(".payslip-a5-summary"));
+    parts.push(mergedRow(SPACER, "&nbsp;"));
+    appendTwoColSection(parts, sheet.querySelector(".payslip-a5-loan"));
+  }
+
+  function buildExcelTableFromSheet(sheet, section) {
+    section = section || "full";
+    var parts = [];
+    parts.push("<table " + MAIN_TABLE + ">");
+    parts.push(COLGROUP);
+    appendSheetHeader(parts, sheet);
+
+    if (section === "full" || section === "daily") {
+      appendDailySection(parts, sheet);
+    }
+    if (section === "full") {
+      appendSummarySection(parts, sheet);
+    } else if (section === "summary") {
+      appendSummarySection(parts, sheet);
+    }
+
+    parts.push("</table>");
+    return parts.join("");
+  }
+
+  function wrapExcelHtml(bodyContent) {
+    return (
+      '<html xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+      'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
+      'xmlns="http://www.w3.org/TR/REC-html40">' +
+      "<head><meta charset=\"utf-8\">" +
+      "<style><!--" +
+      ".xl-grid,.xl-grid th,.xl-sheet td.xl-grid,.xl-sheet th.xl-grid{" +
+      "border:0.5pt solid #000000;" +
+      "border-top:0.5pt solid #000000;" +
+      "border-right:0.5pt solid #000000;" +
+      "border-bottom:0.5pt solid #000000;" +
+      "border-left:0.5pt solid #000000;" +
+      "mso-border-alt:solid #000000 .25pt;}" +
+      ".xl-plain{border:none;mso-border-alt:none;}" +
+      "--></style>" +
+      "<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>" +
+      "<x:Name>Payment Sheet</x:Name></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->" +
+      "</head><body><!--StartFragment-->" +
+      bodyContent +
+      "<!--EndFragment--></body></html>"
+    );
+  }
+
+  function paymentSheetHtmlFromSheets(sheets, section) {
+    section = section || "full";
+    var tables = sheets
+      .map(function (sheet, index) {
+        var table = buildExcelTableFromSheet(sheet, section);
+        if (index === 0) return table;
+        return '<br style="mso-data-placement:same-cell;">' + table;
+      })
+      .join("");
+    return wrapExcelHtml(tables);
+  }
+
+  function fragmentHtmlFromSheets(sheets, section) {
+    var style =
+      "<style>" +
+      ".xl-grid,.xl-grid th{border:0.5pt solid #000 !important;mso-border-alt:solid #000 .25pt;}" +
+      ".xl-plain{border:none !important;mso-border-alt:none;}" +
+      "</style>";
+    return style + paymentSheetHtmlFromSheets(sheets, section)
+      .replace(/^[\s\S]*<!--StartFragment-->/i, "")
+      .replace(/<!--EndFragment-->[\s\S]*$/i, "");
+  }
+
+  function copyRichContent(html, plain, fragmentHtml) {
+    function copyViaNativeSelection() {
+      return new Promise(function (resolve, reject) {
+        var wrapper = document.createElement("div");
+        wrapper.contentEditable = "true";
+        wrapper.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;";
+        wrapper.innerHTML = fragmentHtml;
+        document.body.appendChild(wrapper);
+
+        var range = document.createRange();
+        range.selectNodeContents(wrapper);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        function onCopy(e) {
+          e.clipboardData.setData("text/plain", plain);
+        }
+        document.addEventListener("copy", onCopy);
+        var ok = false;
+        try {
+          ok = document.execCommand("copy");
+        } catch (err) {
+          document.removeEventListener("copy", onCopy);
+          document.body.removeChild(wrapper);
+          selection.removeAllRanges();
+          reject(err);
+          return;
+        }
+        document.removeEventListener("copy", onCopy);
+        document.body.removeChild(wrapper);
+        selection.removeAllRanges();
+        if (ok) resolve();
+        else reject(new Error("Copy failed"));
+      });
+    }
+
+    return copyViaNativeSelection().catch(function () {
+      if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
+        var htmlBlob = new Blob([html], { type: "text/html" });
+        var textBlob = new Blob([plain], { type: "text/plain" });
+        return navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": htmlBlob,
+            "text/plain": textBlob,
+          }),
+        ]);
+      }
+      return copyViaNativeSelection();
+    });
+  }
+
+  function notifySuccess(count, section) {
+    var label = "Payment sheet";
+    if (section === "daily") label = "Daily collection";
+    else if (section === "summary") label = "Payment summary";
+    var msg = count > 1
+      ? count + " " + label.toLowerCase() + " sections copied. Paste into Excel with Ctrl+V."
+      : label + " copied. Paste into Excel with Ctrl+V.";
+    if (typeof Swal !== "undefined") {
+      Swal.fire({
+        icon: "success",
+        title: "Copied",
+        text: msg,
+        timer: 2200,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (typeof window.appAlert === "function") {
+      window.appAlert(msg, { icon: "success", title: "Copied" });
+    }
+  }
+
+  function notifyError() {
+    if (typeof Swal !== "undefined") {
+      Swal.fire({ icon: "error", title: "Could not copy", text: "Try again or use Print." });
+      return;
+    }
+    if (typeof window.appAlert === "function") {
+      window.appAlert("Could not copy payment sheet.", { icon: "error", title: "Error" });
+    }
+  }
+
+  document.querySelectorAll(".js-copy-payment-sheet").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var mode = btn.getAttribute("data-copy-mode") || "single";
+      var section = btn.getAttribute("data-copy-section") || "full";
+      var sheets;
+      if (mode === "all") {
+        sheets = Array.prototype.slice.call(document.querySelectorAll(".payslip-print-lang-en .payslip-a5-sheet"));
+      } else {
+        var one = document.querySelector(".payslip-print-a5.payslip-print-lang-en .payslip-a5-sheet")
+          || document.querySelector(".payslip-print-lang-en .payslip-a5-sheet");
+        sheets = one ? [one] : [];
+      }
+      if (!sheets.length) {
+        notifyError();
+        return;
+      }
+      var html = paymentSheetHtmlFromSheets(sheets, section);
+      var fragmentHtml = fragmentHtmlFromSheets(sheets, section);
+      var plain = sheets.map(function (sheet) {
+        return paymentSheetPlainFromElement(sheet, section);
+      }).join("\n\n--------------------\n\n");
+      copyRichContent(html, plain, fragmentHtml)
+        .then(function () { notifySuccess(sheets.length, section); })
+        .catch(notifyError);
+    });
+  });
+})();
+</script>

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% load static user_tags %}
+{% block title %}Assign roles · Canmee Dairies{% endblock %}
+{% block page_heading %}Assign roles{% endblock %}
+{% block extra_css %}
+<style>
+  .assign-roles-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  }
+  .assign-roles-card .card-body {
+    padding: 1.25rem 1.35rem;
+  }
+  .assign-roles-user-panel {
+    display: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .assign-roles-user-panel.is-visible {
+    display: block;
+  }
+  .assign-roles-user-panel__name {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.95rem;
+  }
+  .assign-roles-user-panel__meta {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+  }
+  .assign-roles-current-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.65rem;
+  }
+  .assign-roles-current-roles .badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .assign-roles-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+  }
+  .assign-roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.5rem;
+  }
+  .assign-role-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.55rem 0.65rem;
+    background: #fff;
+    cursor: pointer;
+    margin: 0;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+  .assign-role-option:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+  }
+  .assign-role-option.is-checked {
+    border-color: #059669;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.15);
+  }
+  .assign-role-option .form-check-input {
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+  }
+  .assign-role-option__label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.3;
+  }
+  .assign-roles-empty {
+    color: #64748b;
+    font-size: 0.875rem;
+    padding: 0.75rem 0;
+  }
+  .assign-roles-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+  }
+  .assign-roles-toolbar .btn-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0;
+  }
+  .assign-roles-toolbar .btn-link:hover {
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Assign roles to users</h1>
+    <p class="page-subtitle">Search a user, review their current roles, then update access.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="{% url 'user_management:user-list' %}">
+      <i class="bi bi-people me-1"></i>All users
+    </a>
+  </div>
+</div>
+
+<div class="card assign-roles-card">
+  <div class="card-body">
+    <form method="post" id="assign-roles-form">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-12 col-lg-5">
+          <label class="assign-roles-section-title" for="assign-roles-user">User</label>
+          {{ form.user.errors }}
+          <select
+            name="user"
+            id="assign-roles-user"
+            class="form-select js-assign-roles-user"
+            required
+          >
+            <option value="">Search and select a user…</option>
+            {% for u in users %}
+            <option
+              value="{{ u.pk }}"
+              {% if preselected_user_id == u.pk|stringformat:"s" %}selected{% endif %}
+            >{{ u.username|capfirst }} — {{ u.get_full_name|default:u.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div id="assign-roles-user-panel" class="assign-roles-user-panel{% if preselected_user_id %} is-visible{% endif %}">
+        <div class="assign-roles-user-panel__name" id="assign-roles-user-name">—</div>
+        <div class="assign-roles-user-panel__meta" id="assign-roles-user-meta"></div>
+        <div class="assign-roles-section-title mt-2 mb-1">Current roles</div>
+        <div class="assign-roles-current-roles" id="assign-roles-current-roles">
+          <span class="text-muted small">Select a user to see roles.</span>
+        </div>
+      </div>
+
+      <div class="mt-3">
+        <label class="assign-roles-section-title">Roles to assign</label>
+        {{ form.groups.errors }}
+        {% if all_groups %}
+        <div class="assign-roles-toolbar">
+          <button type="button" class="btn btn-link js-assign-roles-select-all">Select all</button>
+          <span class="text-muted">·</span>
+          <button type="button" class="btn btn-link js-assign-roles-clear-all">Clear all</button>
+        </div>
+        <div class="assign-roles-grid" id="assign-roles-grid">
+          {% for g in all_groups %}
+          <label class="assign-role-option" for="assign-role-{{ g.pk }}">
+            <input
+              class="form-check-input js-assign-role-checkbox"
+              type="checkbox"
+              name="groups"
+              value="{{ g.pk }}"
+              id="assign-role-{{ g.pk }}"
+            >
+            <span class="assign-role-option__label">{{ g.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="assign-roles-empty mb-0">
+          No roles defined yet.
+          <a href="{% url 'user_management:group-create' %}">Create a role</a> first.
+        </p>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-4" id="assign-roles-save-btn" {% if not all_groups %}disabled{% endif %}>
+        <i class="bi bi-check2 me-1"></i>Save assignments
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+  window.ASSIGN_ROLES_USER_DATA_URL = "{% url 'user_management:assign-roles-user-data' %}";
+  window.ASSIGN_ROLES_PRESELECTED_USER = "{{ preselected_user_id }}";
+</script>
+<script src="{% static 'js/assign-roles.js' %}"></script>
+{% endblock %}

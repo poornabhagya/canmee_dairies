@@ -1,0 +1,17 @@
+{% if perms.suppliers.change_rawmilksuppliercollection %}
+<form method="post" action="{% url 'raw-milk-collection-status' o.pk %}" class="raw-milk-status-form m-0">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <select
+    name="status"
+    class="form-select form-select-sm raw-milk-field-inline raw-milk-status-select"
+    aria-label="Status for {{ o.dispatch_no }}"
+  >
+    {% for value, label in status_choices %}
+    <option value="{{ value }}" {% if o.status == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+</form>
+{% else %}
+{{ o.get_status_display }}
+{% endif %}

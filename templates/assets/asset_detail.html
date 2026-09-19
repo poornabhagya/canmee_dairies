@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% load widget_tweaks format_extras %}
+{% block title %}{{ asset.asset_tag }} · Asset account{% endblock %}
+{% block page_heading %}
+Asset account
+{% include "assets/_asset_status_badge.html" %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+<style>
+  @media print {
+    @page { size: A4 portrait; margin: 14mm 14mm 16mm; }
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions asset-page-actions">
+  <a class="btn btn-outline-secondary" href="{% url 'asset-list' %}"><i class="bi bi-arrow-left me-1"></i>Register</a>
+  {% if perms.assets.print_asset_labels %}
+  <a class="btn btn-outline-secondary" href="{% url 'asset-label-generate' %}?ids={{ asset.pk }}"><i class="bi bi-upc me-1"></i>Label</a>
+  {% endif %}
+  <button type="button" class="btn btn-outline-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button>
+  {% if perms.assets.change_asset %}
+  <a class="btn btn-primary" href="{% url 'asset-edit' asset.pk %}">Edit</a>
+  {% endif %}
+  {% if perms.assets.delete_asset %}
+  <a class="btn btn-outline-danger js-swal-delete-post" href="{% url 'asset-delete' asset.pk %}" data-swal-title="Delete asset {{ asset.name }}?" data-swal-text="This cannot be undone.">Delete</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block content %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Asset account summary">
+    <button type="button" class="smart-stat-card asset-kpi--cost js-asset-tab-link" data-asset-tab="account">
+      <span class="smart-stat-card__icon smart-stat-card__icon--blue"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Gross cost</span>
+        <span class="smart-stat-card__value">{{ asset_stats.cost|money }}</span>
+        <span class="smart-stat-card__hint">{% if asset.purchase_date %}Acquired {{ asset.purchase_date|date:"j M Y" }}{% else %}Acquisition cost{% endif %}</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--written js-asset-tab-link{% if asset_stats.written_down %} smart-stat-card--warn{% endif %}" data-asset-tab="valuations">
+      <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Written down</span>
+        <span class="smart-stat-card__value">{{ asset_stats.written_down|money }}</span>
+        <span class="smart-stat-card__hint">Depreciation &amp; revaluation</span>
+      </span>
+    </button>
+    <div class="smart-stat-card asset-kpi--book">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-cash-coin" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Book value</span>
+        <span class="smart-stat-card__value">{{ asset_stats.book|money }}</span>
+        <span class="smart-stat-card__hint">Net carrying amount</span>
+      </span>
+    </div>
+    <button type="button" class="smart-stat-card asset-kpi--audit js-asset-tab-link" data-asset-tab="verifications">
+      <span class="smart-stat-card__icon smart-stat-card__icon--indigo"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Verifications</span>
+        <span class="smart-stat-card__value">{{ asset_stats.verifications }}</span>
+        <span class="smart-stat-card__hint">{% if asset_stats.latest_verify %}Last {{ asset_stats.latest_verify|date:"j M Y" }}{% else %}No physical check yet{% endif %}</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--branch js-asset-tab-link" data-asset-tab="transfers">
+      <span class="smart-stat-card__icon smart-stat-card__icon--teal"><i class="bi bi-arrow-left-right" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Transfers</span>
+        <span class="smart-stat-card__value">{{ asset_stats.transfers }}</span>
+        <span class="smart-stat-card__hint">{{ asset.branch_label }}</span>
+      </span>
+    </button>
+  </div>
+
+  {% if asset_stats.cost %}
+  <div class="asset-nbv" aria-label="Net book value remaining">
+    <div class="asset-nbv__meta">
+      <span class="asset-nbv__label">NBV remaining</span>
+      <span class="asset-nbv__value">{{ asset_stats.nbv_pct }}%</span>
+    </div>
+    <div class="asset-nbv__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ asset_stats.nbv_pct }}">
+      <span class="asset-nbv__fill" style="width: {{ asset_stats.nbv_pct }}%;"></span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card asset-page-card smart-list-card">
+    <div class="card-body">
+      <div class="asset-tabs" data-asset-tabs role="tablist" aria-label="Asset account sections">
+        <button type="button" class="smart-dt-chip is-active" role="tab" aria-selected="true" data-asset-tab="account">Account</button>
+        <button type="button" class="smart-dt-chip{% if not asset_stats.verifications %} is-empty{% endif %}" role="tab" aria-selected="false" data-asset-tab="verifications">
+          Verifications<span class="smart-dt-chip-count">{{ asset_stats.verifications }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip{% if not asset_stats.valuations %} is-empty{% endif %}" role="tab" aria-selected="false" data-asset-tab="valuations">
+          Valuations<span class="smart-dt-chip-count">{{ asset_stats.valuations }}</span>
+        </button>
+        <button type="button" class="smart-dt-chip{% if not asset_stats.transfers %} is-empty{% endif %}" role="tab" aria-selected="false" data-asset-tab="transfers">
+          Transfers<span class="smart-dt-chip-count">{{ asset_stats.transfers }}</span>
+        </button>
+        {% if depreciation_enabled %}
+        <button type="button" class="smart-dt-chip{% if not asset_stats.depreciation_entries %} is-empty{% endif %}" role="tab" aria-selected="false" data-asset-tab="depreciation">
+          Depreciation<span class="smart-dt-chip-count">{{ asset_stats.depreciation_entries }}</span>
+        </button>
+        {% endif %}
+        {% if perms.assets.verify_assets or perms.assets.change_asset %}
+        <button type="button" class="smart-dt-chip" role="tab" aria-selected="false" data-asset-tab="postings">Postings</button>
+        {% endif %}
+      </div>
+
+      <div class="asset-panel is-active" data-asset-panel="account" id="account">
+        <article class="asset-statement">
+          <header class="asset-statement__head">
+            <div>
+              <span class="asset-statement__kicker">Asset account</span>
+              <h2 class="asset-statement__title">{{ asset.name }}</h2>
+              <p class="asset-statement__meta">{% if asset.asset_type %}{{ asset.asset_type.name }}{% else %}Unclassified{% endif %} · {{ asset.branch_label }}{% if asset.location %} · {{ asset.location }}{% endif %}</p>
+            </div>
+            <div class="asset-statement__head-actions">
+              <span class="asset-statement__account">{{ asset.asset_tag }}</span>
+            </div>
+          </header>
+          <div class="asset-statement__grid">
+            <dl>
+              <div class="asset-statement__row"><dt>Asset tag</dt><dd>{{ asset.asset_tag }}</dd></div>
+              <div class="asset-statement__row"><dt>Particulars</dt><dd>{{ asset.name }}</dd></div>
+              <div class="asset-statement__row"><dt>Classification</dt><dd>{% if asset.asset_type %}{{ asset.asset_type.name }}{% else %}—{% endif %}</dd></div>
+              <div class="asset-statement__row"><dt>Category</dt><dd>{{ asset.category.name }}</dd></div>
+              <div class="asset-statement__row"><dt>Status</dt><dd>{% include "assets/_asset_status_badge.html" %}</dd></div>
+              <div class="asset-statement__row"><dt>Condition</dt><dd>{{ asset.get_condition_display }}</dd></div>
+              <div class="asset-statement__row"><dt>Branch</dt><dd>{{ asset.branch_label }}</dd></div>
+              <div class="asset-statement__row"><dt>Location</dt><dd>{% if asset.location %}{{ asset.location }}{% else %}—{% endif %}</dd></div>
+              <div class="asset-statement__row"><dt>Custodian</dt><dd>{% if asset.custodian %}{{ asset.custodian }}{% else %}—{% endif %}</dd></div>
+            </dl>
+            <dl>
+              <div class="asset-statement__row"><dt>Serial number</dt><dd>{{ asset.serial_number|default:"—" }}</dd></div>
+              <div class="asset-statement__row"><dt>Manufacturer</dt><dd>{{ asset.manufacturer|default:"—" }}</dd></div>
+              <div class="asset-statement__row"><dt>Model</dt><dd>{{ asset.model_number|default:"—" }}</dd></div>
+              <div class="asset-statement__row"><dt>Purchase date</dt><dd>{% if asset.purchase_date %}{{ asset.purchase_date|date:"j M Y" }}{% else %}—{% endif %}</dd></div>
+              <div class="asset-statement__row"><dt>Warranty expiry</dt><dd>{% if asset.warranty_expiry %}{{ asset.warranty_expiry|date:"j M Y" }}{% else %}—{% endif %}</dd></div>
+              <div class="asset-statement__row"><dt>Supplier</dt><dd>{{ asset.supplier_name|default:"—" }}</dd></div>
+              <div class="asset-statement__row"><dt>Gross cost</dt><dd class="is-money">{{ asset.purchase_cost|money }}</dd></div>
+              <div class="asset-statement__row"><dt>Salvage value</dt><dd class="is-money">{{ asset.salvage_value|money }}</dd></div>
+              <div class="asset-statement__row"><dt>Depreciation policy</dt><dd>{% if asset.depreciation_policy %}{{ asset.depreciation_policy }}{% else %}—{% endif %}{% if asset.useful_life_months %} · {{ asset.useful_life_months }} mo{% endif %}</dd></div>
+            </dl>
+          </div>
+          <footer class="asset-statement__footer">
+            <div class="asset-statement__figure">
+              <span class="asset-statement__figure-label">Gross cost</span>
+              <span class="asset-statement__figure-value">{{ asset_stats.cost|money }}</span>
+            </div>
+            <div class="asset-statement__figure is-written">
+              <span class="asset-statement__figure-label">Written down</span>
+              <span class="asset-statement__figure-value">{{ asset_stats.written_down|money }}</span>
+            </div>
+            <div class="asset-statement__figure is-book">
+              <span class="asset-statement__figure-label">Net book value</span>
+              <span class="asset-statement__figure-value">{{ asset_stats.book|money }}</span>
+            </div>
+          </footer>
+          {% if asset.description %}
+          <div class="asset-statement__note">
+            <dt>Description</dt>
+            <dd>{{ asset.description }}</dd>
+          </div>
+          {% endif %}
+          {% if asset.notes %}
+          <div class="asset-statement__note">
+            <dt>Internal notes</dt>
+            <dd>{{ asset.notes }}</dd>
+          </div>
+          {% endif %}
+          <p class="asset-statement__disclaimer">Computer-generated asset account · {{ asset.asset_tag }} · printed {% now "j M Y, H:i" %}</p>
+        </article>
+      </div>
+
+      <div class="asset-panel" data-asset-panel="verifications" id="verifications">
+        <article class="asset-statement">
+          <header class="asset-statement__head">
+            <div>
+              <span class="asset-statement__kicker">Audit trail</span>
+              <h2 class="asset-statement__title">Physical verification</h2>
+              <p class="asset-statement__meta">Inspection history for {{ asset.asset_tag }}</p>
+            </div>
+          </header>
+          <div class="card-body table-wrap px-0 pb-0 pt-0">
+            <table class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100" data-page-length="10" data-empty-table="No verifications posted." data-smart-order="0,desc">
+              <thead>
+                <tr>
+                  <th class="all">When</th>
+                  <th class="all">Result</th>
+                  <th class="min-tablet-l">Condition</th>
+                  <th class="all text-end">Assessed value</th>
+                  <th class="min-desktop">By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in verifications %}
+                <tr class="smart-row--{{ v.result }}">
+                  <td class="all text-nowrap" data-order="{{ v.verified_at|date:'Y-m-d H:i:s' }}">{{ v.verified_at|date:"Y-m-d H:i" }}</td>
+                  <td class="all asset-result--{{ v.result }}">{{ v.get_result_display }}</td>
+                  <td class="min-tablet-l">{% if v.condition %}{{ v.get_condition_display }}{% else %}—{% endif %}</td>
+                  <td class="all text-end dt-num">{% if v.assessed_value %}{{ v.assessed_value|money }}{% else %}—{% endif %}</td>
+                  <td class="min-desktop dt-muted">{% if v.verified_by %}{{ v.verified_by }}{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <div class="asset-panel" data-asset-panel="valuations" id="valuations">
+        <article class="asset-statement">
+          <header class="asset-statement__head">
+            <div>
+              <span class="asset-statement__kicker">Ledger</span>
+              <h2 class="asset-statement__title">Valuation movements</h2>
+              <p class="asset-statement__meta">Book value adjustments</p>
+            </div>
+          </header>
+          <table class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100" data-page-length="10" data-empty-table="No valuations posted." data-smart-order="0,desc">
+            <thead>
+              <tr>
+                <th class="all">Date</th>
+                <th class="all text-end">Previous</th>
+                <th class="all text-end">New</th>
+                <th class="min-desktop">Narration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in valuations %}
+              <tr>
+                <td class="all text-nowrap" data-order="{{ v.valued_at|date:'Y-m-d' }}">{{ v.valued_at }}</td>
+                <td class="all text-end dt-num asset-amt-cost">{{ v.previous_value|money }}</td>
+                <td class="all text-end dt-num asset-amt-book">{{ v.new_value|money }}</td>
+                <td class="min-desktop dt-muted">{{ v.reason|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+      </div>
+
+      <div class="asset-panel" data-asset-panel="transfers" id="transfers">
+        <article class="asset-statement">
+          <header class="asset-statement__head">
+            <div>
+              <span class="asset-statement__kicker">Movements</span>
+              <h2 class="asset-statement__title">Transfer register</h2>
+              <p class="asset-statement__meta">Branch and location changes</p>
+            </div>
+          </header>
+          <table class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100" data-page-length="10" data-empty-table="No transfers posted." data-smart-order="0,desc">
+            <thead>
+              <tr>
+                <th class="all">When</th>
+                <th class="all">From</th>
+                <th class="all">To</th>
+                <th class="min-desktop">By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in transfers %}
+              <tr>
+                <td class="all text-nowrap" data-order="{{ t.transferred_at|date:'Y-m-d H:i:s' }}">{{ t.transferred_at|date:"Y-m-d H:i" }}</td>
+                <td class="all">{% if t.from_branch %}{{ t.from_branch.name }}{% else %}Head Office{% endif %}{% if t.from_location %} · {{ t.from_location.name }}{% endif %}</td>
+                <td class="all">{% if t.to_branch %}{{ t.to_branch.name }}{% else %}Head Office{% endif %}{% if t.to_location %} · {{ t.to_location.name }}{% endif %}</td>
+                <td class="min-desktop dt-muted">{% if t.transferred_by %}{{ t.transferred_by }}{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </article>
+      </div>
+
+      {% if depreciation_enabled %}
+      <div class="asset-panel" data-asset-panel="depreciation" id="depreciation">
+        <article class="asset-statement">
+          <header class="asset-statement__head">
+            <div>
+              <span class="asset-statement__kicker">Journal</span>
+              <h2 class="asset-statement__title">Depreciation entries</h2>
+              <p class="asset-statement__meta">Periodic write-down of carrying amount</p>
+            </div>
+          </header>
+          <table class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100" data-page-length="10" data-empty-table="No depreciation entries." data-smart-order="0,desc" data-footer-sum-cols="1">
+            <thead>
+              <tr>
+                <th class="all">Period</th>
+                <th class="all text-end">Amount</th>
+                <th class="all text-end">Book after</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in depreciation_entries %}
+              <tr>
+                <td class="all text-nowrap" data-order="{{ e.period_start|date:'Y-m-d' }}">{{ e.period_start }} – {{ e.period_end }}</td>
+                <td class="all text-end dt-num" data-order="{{ e.amount }}">{{ e.amount|money }}</td>
+                <td class="all text-end dt-num asset-amt-book">{{ e.book_value_after|money }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th class="all text-end">Total</th>
+                <th class="all text-end dt-foot-total"></th>
+                <th class="all"></th>
+              </tr>
+            </tfoot>
+          </table>
+        </article>
+      </div>
+      {% endif %}
+
+      {% if perms.assets.verify_assets or perms.assets.change_asset %}
+      <div class="asset-panel" data-asset-panel="postings" id="postings">
+        <div class="row g-3">
+          {% if perms.assets.verify_assets %}
+          <div class="col-lg-4">
+            <div class="asset-action-pane mb-0">
+              <div class="asset-voucher__section-title"><span class="asset-voucher__no">01</span> Verify</div>
+              <form method="post" action="{% url 'asset-verify' asset.pk %}">
+                {% csrf_token %}
+                <div class="mb-2"><label class="form-label">Result</label>{% render_field verify_form.result class="form-select form-select-sm" %}</div>
+                <div class="mb-2"><label class="form-label">Condition</label>{% render_field verify_form.condition class="form-select form-select-sm" %}</div>
+                <div class="mb-2"><label class="form-label">Location</label>{% render_field verify_form.location class="form-select form-select-sm" %}</div>
+                <div class="mb-2"><label class="form-label">Assessed value</label>{% render_field verify_form.assessed_value class="form-control form-control-sm js-money-input" inputmode="decimal" autocomplete="off" %}</div>
+                <div class="mb-3"><label class="form-label">Narration</label>{% render_field verify_form.note class="form-control form-control-sm" %}</div>
+                <button type="submit" class="btn btn-primary btn-sm">Post verification</button>
+              </form>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="asset-action-pane mb-0">
+              <div class="asset-voucher__section-title"><span class="asset-voucher__no">02</span> Revalue</div>
+              <form method="post" action="{% url 'asset-value' asset.pk %}">
+                {% csrf_token %}
+                <div class="mb-2"><label class="form-label">New book value</label>{% render_field valuation_form.new_value class="form-control form-control-sm js-money-input" inputmode="decimal" autocomplete="off" %}</div>
+                <div class="mb-3"><label class="form-label">Reason</label>{% render_field valuation_form.reason class="form-control form-control-sm" %}</div>
+                <button type="submit" class="btn btn-outline-primary btn-sm">Post valuation</button>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+          {% if perms.assets.change_asset %}
+          <div class="col-lg-4">
+            <div class="asset-action-pane mb-0">
+              <div class="asset-voucher__section-title"><span class="asset-voucher__no">{% if perms.assets.verify_assets %}03{% else %}01{% endif %}</span> Transfer</div>
+              <form method="post" action="{% url 'asset-transfer' asset.pk %}">
+                {% csrf_token %}
+                <div class="mb-2"><label class="form-label">To branch</label>{% render_field transfer_form.to_branch class="form-select form-select-sm" %}</div>
+                <div class="mb-2"><label class="form-label">To location</label>{% render_field transfer_form.to_location class="form-select form-select-sm" %}</div>
+                <div class="mb-3"><label class="form-label">Narration</label>{% render_field transfer_form.note class="form-control form-control-sm" %}</div>
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Post transfer</button>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% include "assets/_asset_print_account.html" %}
+{% endblock %}
+{% block extra_js %}
+{% include "assets/_asset_tabs_script.html" %}
+{% include "assets/_asset_money_input_script.html" %}
+{% endblock %}

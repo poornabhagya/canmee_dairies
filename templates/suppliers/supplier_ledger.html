@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Supplier Ledger{% endblock %}
+{% block page_heading %}Supplier Ledger{% endblock %}
+{% block content %}
+<div class="module-shell">
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Supplier Ledger</h1>
+    <p class="page-subtitle">Credits from GRN confirmations and debits from payments.</p>
+  </div>
+  {% if perms.suppliers.add_suppliertransaction %}
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'supplier-payment-add' %}">Record Payment</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-label">Ledger Rows</div>
+    <div class="metric-value">{{ object_list|length }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Supplier Filter</div>
+    <div class="metric-value">{% if selected_supplier %}Applied{% else %}All{% endif %}</div>
+  </div>
+</div>
+
+<div class="module-card">
+  <div class="module-card-header">
+    <div>
+      <h5 class="module-card-title">Ledger Transactions</h5>
+      <p class="module-card-subtitle">Credits from GRN and debits from payments.</p>
+    </div>
+    <form method="get" class="filter-bar mb-0">
+      <div>
+        <label class="form-label small text-muted mb-1">Supplier</label>
+        <select name="supplier" class="form-select">
+          <option value="">All</option>
+          {% for s in suppliers %}
+          <option value="{{ s.id }}" {% if selected_supplier == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-outline-secondary">Filter</button>
+      </div>
+    </form>
+  </div>
+  <div class="module-card-body p-0 table-wrap">
+    <table class="table table-hover datatable mb-0">
+      <thead><tr><th>Date</th><th>Supplier</th><th>Type</th><th>Amount</th><th>Reference</th><th>Description</th></tr></thead>
+      <tbody>
+      {% for t in object_list %}
+      <tr>
+        <td>{{ t.date|date:"Y-m-d H:i" }}</td>
+        <td>{{ t.supplier.name }}</td>
+        <td>{{ t.get_transaction_type_display }}</td>
+        <td class="text-end">{{ t.amount|money }}</td>
+        <td>{{ t.reference }}</td>
+        <td>{{ t.description|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+{% endblock %}

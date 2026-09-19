@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Overall dashboard · Canmee Dairies{% endblock %}
+{% block page_heading %}Overall dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Overall dashboard</h1>
+    <p class="page-subtitle">Branch-wise stock and milk-factor averages by route, branch, and full company total.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <div class="text-muted small">Collected kg (all branches)</div>
+      <div class="h4 mb-0">{{ total_stock.collected|default:"0" }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <div class="text-muted small">Dispatched kg (deducted)</div>
+      <div class="h4 mb-0">{{ total_stock.dispatched|default:"0" }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <div class="text-muted small">Current stock kg (company total)</div>
+      <div class="h4 mb-0">{{ total_stock.current|default:"0" }}</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Branch stock</div>
+  <div class="card-body p-0 table-wrap">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Branch</th><th>Collected kg</th><th>Dispatched kg</th><th>Current kg</th><th>Updated</th></tr></thead>
+      <tbody>
+        {% for row in stock_rows %}
+        <tr>
+          <td>{{ row.branch.code }} - {{ row.branch.name }}</td>
+          <td>{{ row.collected_kg }}</td>
+          <td>{{ row.dispatched_kg }}</td>
+          <td class="fw-semibold">{{ row.current_kg }}</td>
+          <td>{{ row.updated_at }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted">No branch stock records available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Milk factors average by route</div>
+  <div class="card-body p-0 table-wrap">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Route</th><th>FAT</th><th>SNF</th><th>LR</th><th>Alcohol</th><th>Acidity</th><th>KQ</th></tr></thead>
+      <tbody>
+        {% for r in route_factor_rows %}
+        <tr>
+          <td>{{ r.route__code }} - {{ r.route__name }}</td>
+          <td>{{ r.avg_fat|default:"0"|floatformat:2 }}</td>
+          <td>{{ r.avg_snf|default:"0"|floatformat:2 }}</td>
+          <td>{{ r.avg_lr|default:"0"|floatformat:2 }}</td>
+          <td>{{ r.avg_alcohol|default:"0"|floatformat:2 }}</td>
+          <td>{{ r.avg_acidity|default:"0"|floatformat:2 }}</td>
+          <td>{{ r.avg_kq|default:"0"|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted">No factor records.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Milk factors average by branch</div>
+  <div class="card-body p-0 table-wrap">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Branch</th><th>FAT</th><th>SNF</th><th>LR</th><th>Alcohol</th><th>Acidity</th><th>KQ</th></tr></thead>
+      <tbody>
+        {% for b in branch_factor_rows %}
+        <tr>
+          <td>{{ b.branch__code }} - {{ b.branch__name }}</td>
+          <td>{{ b.avg_fat|default:"0"|floatformat:2 }}</td>
+          <td>{{ b.avg_snf|default:"0"|floatformat:2 }}</td>
+          <td>{{ b.avg_lr|default:"0"|floatformat:2 }}</td>
+          <td>{{ b.avg_alcohol|default:"0"|floatformat:2 }}</td>
+          <td>{{ b.avg_acidity|default:"0"|floatformat:2 }}</td>
+          <td>{{ b.avg_kq|default:"0"|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted">No factor records.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Company-wide milk factors average</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-2"><div class="small text-muted">FAT</div><div class="fw-semibold">{{ total_factor.avg_fat|default:"0"|floatformat:2 }}</div></div>
+      <div class="col-md-2"><div class="small text-muted">SNF</div><div class="fw-semibold">{{ total_factor.avg_snf|default:"0"|floatformat:2 }}</div></div>
+      <div class="col-md-2"><div class="small text-muted">LR</div><div class="fw-semibold">{{ total_factor.avg_lr|default:"0"|floatformat:2 }}</div></div>
+      <div class="col-md-2"><div class="small text-muted">Alcohol</div><div class="fw-semibold">{{ total_factor.avg_alcohol|default:"0"|floatformat:2 }}</div></div>
+      <div class="col-md-2"><div class="small text-muted">Acidity</div><div class="fw-semibold">{{ total_factor.avg_acidity|default:"0"|floatformat:2 }}</div></div>
+      <div class="col-md-2"><div class="small text-muted">KQ</div><div class="fw-semibold">{{ total_factor.avg_kq|default:"0"|floatformat:2 }}</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

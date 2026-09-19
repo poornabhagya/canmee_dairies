@@ -1,0 +1,59 @@
+{% load loan_extras %}
+<div class="payslip-embed-sheet">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 payslip-embed-sheet__header">
+    <div class="min-w-0">
+      <div class="payslip-embed-sheet__title">Loan #{{ loan.pk }}</div>
+      <div class="payslip-embed-sheet__subtitle">{{ loan.get_status_display }} · {{ loan.farmer }}</div>
+    </div>
+    <div class="text-end flex-shrink-0">
+      <div class="payslip-embed-sheet__amount">{{ loan.loan_amount|money }}</div>
+      <div class="payslip-embed-sheet__subtitle">{{ loan.loan_date|date:"Y-m-d" }}</div>
+    </div>
+  </div>
+  <div class="payslip-embed-meta-grid">
+    <div class="payslip-embed-meta-block">
+      <div class="payslip-embed-meta-block__title">Farmer</div>
+      <p><strong>Branch:</strong> {{ loan.branch.name }}</p>
+      <p><strong>Farmer:</strong> {{ loan.farmer }}</p>
+      <p><strong>Reg no:</strong> {{ loan.farm_registration_number|default:"—" }}</p>
+    </div>
+    <div class="payslip-embed-meta-block">
+      <div class="payslip-embed-meta-block__title">Loan</div>
+      <p><strong>First repayment:</strong> {{ loan.first_repayment_date|date:"Y-m-d" }}</p>
+      <p><strong>Instalments:</strong> {{ loan.installment_count }}</p>
+      {% if loan.is_existing_loan %}
+      <p><strong>Prior paid:</strong> {{ loan.prior_paid_amount|money }}</p>
+      {% endif %}
+      <p><strong>Reason:</strong> {{ loan.reason|default:"—" }}</p>
+    </div>
+  </div>
+  {% if loan.repayment_schedules.exists %}
+  <div class="payslip-embed-section-title">Repayment schedule</div>
+  <div class="payslip-embed-table-wrap">
+    <table class="table table-sm table-bordered payslip-embed-lines mb-0">
+      <thead>
+        <tr>
+          <th class="col-idx">#</th>
+          <th>Due</th>
+          <th class="text-end">Amount</th>
+          <th class="text-end">Paid</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in loan.repayment_schedules.all %}
+        <tr>
+          <td>{{ row.installment_number }}</td>
+          <td class="text-nowrap">{{ row.due_date|date:"Y-m-d" }}</td>
+          <td class="text-end text-nowrap">{{ row.installment_amount|money }}</td>
+          <td class="text-end text-nowrap">{{ row.paid_amount|money }}</td>
+          <td>{% if row.is_paid %}Paid{% else %}Pending{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted small mb-0">No repayment schedule yet.</p>
+  {% endif %}
+</div>

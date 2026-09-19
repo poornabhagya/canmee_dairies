@@ -1,0 +1,14 @@
+{# Expects `loan` and `balance`. Settled is approved with no remaining balance. #}
+<span class="cp-loan-status-badge">
+  {% if loan.status == "approved" and balance <= 0 %}
+  <span class="smart-badge smart-badge--success">Settled</span>
+  {% elif loan.status == "approved" %}
+  <span class="smart-badge smart-badge--success">{{ loan.get_status_display }}</span>
+  {% elif loan.status == "pending_approval" %}
+  <span class="smart-badge smart-badge--primary">{{ loan.get_status_display }}</span>
+  {% elif loan.status == "rejected" %}
+  <span class="smart-badge smart-badge--dark">{{ loan.get_status_display }}</span>
+  {% else %}
+  <span class="smart-badge smart-badge--secondary">{{ loan.get_status_display }}</span>
+  {% endif %}
+</span>

@@ -1,0 +1,1050 @@
+{% extends "base.html" %}
+{% block title %}Branches · Canmee Dairies{% endblock %}
+{% block page_heading %}Branches{% endblock %}
+{% block topbar_actions %}
+{% if perms.branches.add_branch %}
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#branchQuickAddModal"><i class="bi bi-plus-lg me-1"></i>Add branch</button>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .branch-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .branch-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .branch-list-card .table-wrap,
+  .branch-list-card .dataTables_wrapper,
+  .branch-list-card div.dt-container,
+  .branch-list-card div.dt-scroll,
+  .branch-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .branch-list-card .branch-table {
+    width: 100% !important;
+  }
+  .branch-list-card .branch-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    word-break: normal;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .branch-list-card .branch-table tbody td {
+    white-space: normal;
+    word-break: normal;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .branch-list-card .branch-table tbody td.branch-stock-cell {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .branch-list-card .branch-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    color: #334155;
+  }
+  .branch-dt-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+  }
+  .branch-dt-stat {
+    border: 1px solid #e7edf5;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 0.65rem 0.75rem;
+    min-width: 0;
+  }
+  .branch-dt-stat-label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+  }
+  .branch-dt-stat-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .branch-dt-stat-value small {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #64748b;
+  }
+  .branch-dt-filters {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .branch-dt-chip {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .branch-dt-chip:hover,
+  .branch-dt-chip:focus {
+    border-color: #cbd5e1;
+    color: #0f172a;
+    outline: none;
+  }
+  .branch-dt-chip.is-active {
+    border-color: rgba(5, 150, 105, 0.35);
+    background: rgba(5, 150, 105, 0.08);
+    color: #047857;
+  }
+  .branch-dt-chip-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    margin-left: 0.25rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.06);
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+  .branch-dt-chip.is-active .branch-dt-chip-count {
+    background: rgba(5, 150, 105, 0.15);
+    color: #047857;
+  }
+  .branch-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .branch-list-card div.dt-smart-toolbar .dt-smart-actions {
+    margin-left: auto;
+  }
+  .branch-list-card div.dt-container .dt-search {
+    margin: 0;
+  }
+  .branch-list-card div.dt-container .dt-search label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .branch-list-card div.dt-container .dt-search input {
+    min-width: min(220px, 42vw);
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.38rem 0.85rem 0.38rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    box-shadow: none;
+  }
+  .branch-list-card div.dt-container .dt-search input:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.1);
+  }
+  .branch-list-card .branch-table tfoot th {
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 0.55rem 0.4rem;
+    white-space: nowrap;
+  }
+  .branch-list-card .branch-table tfoot th.dt-foot-total {
+    font-variant-numeric: tabular-nums;
+    color: #0f172a;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.8125rem;
+  }
+  .branch-list-card .branch-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .branch-stock-wrap {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    min-width: 4.5rem;
+  }
+  .branch-stock-bar {
+    display: block;
+    width: 100%;
+    max-width: 72px;
+    height: 4px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+    position: relative;
+  }
+  .branch-stock-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--stock-pct, 0%);
+    border-radius: inherit;
+    background: #22c55e;
+  }
+  .branch-stock-bar[data-level="warn"]::after {
+    background: #f59e0b;
+  }
+  .branch-stock-bar[data-level="critical"]::after {
+    background: #ef4444;
+  }
+  .branch-name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+  }
+  .branch-name-link {
+    font-weight: 600;
+    color: #0f172a;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .branch-name-link:hover,
+  .branch-name-link:focus {
+    color: var(--color-primary, #059669);
+    border-bottom-color: rgba(5, 150, 105, 0.35);
+  }
+  .branch-name-text {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .opening-stock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    font-variant-numeric: tabular-nums;
+  }
+  .opening-stock-badge:hover,
+  .opening-stock-badge:focus {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    outline: none;
+  }
+  .opening-stock-badge.is-empty {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #b45309;
+  }
+  .opening-stock-badge.is-empty:hover,
+  .opening-stock-badge.is-empty:focus {
+    background: #fef3c7;
+    border-color: #fcd34d;
+  }
+  .branch-opening-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    background: rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(1px);
+  }
+  .branch-opening-popover {
+    position: fixed;
+    z-index: 1050;
+    width: min(320px, calc(100vw - 1.5rem));
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+    padding: 0.9rem;
+  }
+  .branch-opening-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .branch-opening-popover-header h6 {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .branch-opening-popover-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+  }
+  .branch-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control,
+  .branch-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control {
+    padding-left: 0.5rem;
+    cursor: pointer;
+  }
+  .branch-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > td.dtr-control:before,
+  .branch-list-card table.dataTable.dtr-inline.collapsed > tbody > tr > th.dtr-control:before {
+    line-height: 1.2;
+    color: var(--color-primary, #059669);
+  }
+  .branch-list-card table.dataTable > tbody > tr.child td {
+    padding: 0.65rem 1rem 0.75rem 2.25rem;
+    background: rgba(5, 150, 105, 0.04);
+    border-top: none;
+  }
+  .branch-list-card table.dataTable > tbody > tr.child ul.dtr-details {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    width: 100%;
+  }
+  .branch-list-card table.dataTable > tbody > tr.child ul.dtr-details > li {
+    border: none;
+    padding: 0.1rem 0;
+  }
+  .branch-list-card table.dataTable > tbody > tr.child span.dtr-title {
+    font-weight: 600;
+    display: inline-block;
+    min-width: 5.5rem;
+    color: var(--color-text-muted, #64748b);
+  }
+  .branch-list-card table.dataTable > tbody > tr.child span.dtr-data {
+    display: inline;
+  }
+  .branch-list-card div.dt-container .dt-layout-row {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  @media (max-width: 767.98px) {
+    .branch-dt-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .branch-list-card .card-body.table-wrap {
+      padding: 0.75rem;
+    }
+    .branch-list-card .branch-table {
+      table-layout: fixed;
+    }
+    .branch-list-card .branch-table thead th,
+    .branch-list-card .branch-table tbody td {
+      font-size: 0.78rem;
+      padding: 0.4rem 0.3rem;
+    }
+    .branch-list-card .branch-table thead th:nth-child(2),
+    .branch-list-card .branch-table tbody td:nth-child(2) {
+      width: 52%;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .branch-list-card .branch-table thead th:nth-child(7),
+    .branch-list-card .branch-table tbody td:nth-child(7) {
+      width: 22%;
+    }
+    .branch-list-card div.dt-container .dt-layout-row:first-child {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 0.65rem;
+    }
+    .branch-list-card div.dt-container .dt-layout-row:first-child > div {
+      width: 100%;
+      max-width: 100%;
+    }
+    .branch-list-card div.dt-container .dt-buttons {
+      justify-content: flex-start;
+    }
+    .branch-list-card div.dt-container .dt-search {
+      width: 100%;
+    }
+    .branch-list-card div.dt-container .dt-search input {
+      width: 100%;
+    }
+    .branch-list-card div.dt-container .dt-bottom-row {
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 0.5rem;
+      text-align: center;
+    }
+    .branch-list-card div.dt-container .dt-bottom-length,
+    .branch-list-card div.dt-container .dt-bottom-info,
+    .branch-list-card div.dt-container .dt-bottom-pagination {
+      text-align: center;
+      width: 100%;
+    }
+    .branch-list-card table.dataTable > tbody > tr.child td {
+      padding: 0.65rem 0.75rem 0.75rem 2.25rem;
+    }
+    .branch-opening-popover {
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%) !important;
+    }
+  }
+  @media (max-width: 575.98px) {
+    .branch-list-card .card-body.table-wrap {
+      padding: 0.6rem;
+    }
+    .page-header .page-actions .btn {
+      width: 100%;
+    }
+  }
+  .branch-modal .modal-content {
+    border: 1px solid #e7edf5;
+    border-radius: 16px;
+    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.2);
+    overflow: hidden;
+  }
+  .branch-modal .modal-dialog {
+    max-width: 640px;
+  }
+  .branch-modal .modal-header {
+    border-bottom: 1px solid #edf2f7;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    padding: 1rem 1.15rem;
+    align-items: flex-start;
+  }
+  .branch-modal .modal-header-brand {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .branch-modal .modal-header-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 12px;
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--color-primary, #059669);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .branch-modal .modal-title {
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.25;
+  }
+  .branch-modal .modal-subtitle {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0.2rem 0 0;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+  .branch-modal .modal-body {
+    padding: 0.35rem 1.15rem 1rem;
+    max-height: min(68vh, 620px);
+    overflow-y: auto;
+  }
+  .branch-modal .modal-footer {
+    border-top: 1px solid #edf2f7;
+    background: #fafbfc;
+    padding: 0.85rem 1.15rem;
+    gap: 0.5rem;
+  }
+  .branch-form-section {
+    margin-bottom: 1.1rem;
+  }
+  .branch-form-section:last-child {
+    margin-bottom: 0;
+  }
+  .branch-form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    margin: 0 0 0.65rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .branch-form-section-title i {
+    color: var(--color-primary, #059669);
+    font-size: 0.85rem;
+  }
+  .branch-form-section-hint {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: -0.35rem 0 0.65rem;
+  }
+  .branch-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+  }
+  .branch-form-grid .span-2 {
+    grid-column: 1 / -1;
+  }
+  .branch-field .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.3rem;
+  }
+  .branch-field .form-control,
+  .branch-field .form-select {
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    font-size: 0.875rem;
+  }
+  .branch-field .form-control:focus,
+  .branch-field .form-select:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.12);
+  }
+  .branch-field .invalid-feedback {
+    display: block;
+    font-size: 0.78rem;
+    margin-top: 0.2rem;
+  }
+  .branch-modal .select2-container--default .select2-selection--multiple,
+  .branch-modal .select2-container--default .select2-selection--single {
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    min-height: 38px;
+  }
+  .branch-modal .select2-container--default.select2-container--focus .select2-selection--multiple,
+  .branch-modal .select2-container--default.select2-container--focus .select2-selection--single {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.12);
+  }
+  .branch-modal .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    padding: 0.1rem 0.45rem;
+  }
+  .branch-modal .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #059669;
+    margin-right: 0.25rem;
+  }
+  .branch-modal select.branch-team-select:not(.select2-hidden-accessible) {
+    min-height: 42px;
+    max-height: 42px;
+    overflow: hidden;
+  }
+  @media (max-width: 576px) {
+    .branch-form-grid {
+      grid-template-columns: 1fr;
+    }
+    .branch-form-grid .span-2 {
+      grid-column: auto;
+    }
+    .branch-modal .modal-footer .btn {
+      flex: 1 1 auto;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table branch-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats" aria-label="Branch summary">
+      {% include "includes/_smart_stat_dual_qty.html" with label="Stock total" kg=branch_summary.total_stock_kg liters=branch_summary.total_stock_liters %}
+      {% include "includes/_smart_stat_dual_qty.html" with label="Collected today" kg=branch_summary.today_collected_kg liters=branch_summary.today_collected_liters %}
+      {% include "includes/_smart_stat_dual_qty.html" with label="Dispatched today" kg=branch_summary.today_dispatch_kg liters=branch_summary.today_dispatch_liters %}
+    </div>
+    <div id="branchDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Branch filters">
+      <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ branch_summary.count }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="active-today">
+        Active today<span class="smart-dt-chip-count">{{ branch_summary.active_today }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip" data-smart-filter="no-opening">
+        Missing opening<span class="smart-dt-chip-count">{{ branch_summary.missing_opening }}</span>
+      </button>
+    </div>
+    <table
+      class="table table-hover datatable datatable-smart branch-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No branches yet."
+      data-filters-target="branchDtFilters"
+      data-footer-sum-cols="2,3,4,6"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Branch</th>
+          <th class="min-tablet-l text-end">Milk today (kg)</th>
+          <th class="min-desktop text-end">Raw today (kg)</th>
+          <th class="min-tablet-l text-end">Dispatch (kg)</th>
+          <th class="min-desktop">Opening</th>
+          <th class="all text-end">Stock (kg)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in object_list %}
+        <tr
+          data-branch-id="{{ b.pk }}"
+          class="{% if not b.has_opening_stock %}smart-row--no-opening{% endif %}{% if b.is_active_today %} smart-row--active-today{% endif %}"
+        >
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="branch-name-cell all">
+            <div class="smart-dt-name-row">
+              {% if perms.branches.view_branch %}
+              <a href="{% url 'branch-detail' b.pk %}" class="smart-dt-name-link">{{ b.name }}</a>
+              {% else %}
+              <span class="smart-dt-name-text">{{ b.name }}</span>
+              {% endif %}
+              {% if perms.branches.change_branch %}
+              <button type="button" class="smart-dt-edit-btn js-branch-edit" data-branch-id="{{ b.pk }}" title="Edit branch" aria-label="Edit {{ b.name }}">
+                <i class="bi bi-pen-fill" aria-hidden="true"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ b.today_route_milk_kg|default:'0' }}">{{ b.today_route_milk_kg }}</td>
+          <td class="min-desktop dt-num text-end" data-order="{{ b.today_raw_collection_kg|default:'0' }}">{{ b.today_raw_collection_kg|default:"0.00" }}</td>
+          <td class="min-tablet-l dt-num text-end" data-order="{{ b.today_dispatch_kg|default:'0' }}">{{ b.today_dispatch_kg }}</td>
+          <td class="min-desktop" data-order="{{ b.opening_stock_kg|default:'0' }}">
+            {% if can_manage_opening_stock %}
+            <button
+              type="button"
+              class="opening-stock-badge {% if not b.has_opening_stock %}is-empty{% endif %} js-branch-opening-stock"
+              data-branch-id="{{ b.pk }}"
+              aria-label="{% if b.has_opening_stock %}Edit opening stock for {{ b.name }}{% else %}Set opening stock for {{ b.name }}{% endif %}"
+            >
+              {% if b.has_opening_stock %}{{ b.opening_stock_display }}{% else %}<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Opening stock{% endif %}
+            </button>
+            {% elif b.has_opening_stock %}
+            {{ b.opening_stock_display }}
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="all branch-stock-cell text-end" data-order="{{ b.current_stock_kg|default:'0' }}">
+            <div class="branch-stock-wrap">
+              <span class="branch-stock-value">{{ b.current_stock_kg|default:"0.00" }}</span>
+              {% if b.stock_pct is not None %}
+              <span
+                class="branch-stock-bar"
+                style="--stock-pct: {{ b.stock_pct }}%;"
+                data-level="{% if b.stock_pct >= 100 %}critical{% elif b.stock_pct >= 80 %}warn{% else %}ok{% endif %}"
+                title="{{ b.stock_pct|floatformat:0 }}% of max storage"
+                aria-hidden="true"
+              ></span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th class="min-tablet-l"></th>
+          <th class="all text-end">Totals</th>
+          <th class="min-tablet-l text-end dt-foot-total"></th>
+          <th class="min-desktop text-end dt-foot-total"></th>
+          <th class="min-tablet-l text-end dt-foot-total"></th>
+          <th class="min-desktop"></th>
+          <th class="all text-end dt-foot-total"></th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% if perms.branches.add_branch %}
+<div class="modal fade branch-modal" id="branchQuickAddModal" tabindex="-1" aria-labelledby="branchQuickAddModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="branch-quick-add-form" method="post" action="{% url 'branch-quick-add' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-building"></i></span>
+            <div>
+              <h5 class="modal-title" id="branchQuickAddModalLabel">Add branch</h5>
+              <p class="modal-subtitle">Create a branch and assign team access.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% include "branches/_branch_modal_form.html" with form=branch_create_form %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save branch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if perms.branches.change_branch %}
+{{ branch_edit_rows|json_script:"branch-edit-data" }}
+<div class="modal fade branch-modal" id="branchQuickEditModal" tabindex="-1" aria-labelledby="branchQuickEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="branch-quick-edit-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <div class="modal-header-brand">
+            <span class="modal-header-icon" aria-hidden="true"><i class="bi bi-pencil-square"></i></span>
+            <div>
+              <h5 class="modal-title" id="branchQuickEditModalLabel">Edit branch</h5>
+              <p class="modal-subtitle" data-edit-branch-subtitle>Update branch details and team access.</p>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% include "branches/_branch_modal_form.html" with form=branch_edit_form %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Update branch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if can_manage_opening_stock %}
+{{ branch_opening_rows|json_script:"branch-opening-data" }}
+<div class="branch-opening-backdrop" id="branchOpeningBackdrop" hidden></div>
+<aside class="branch-opening-popover" id="branchOpeningPopover" role="dialog" aria-labelledby="branchOpeningPopoverTitle" hidden>
+  <form id="branch-opening-stock-form" method="post" action="">
+    {% csrf_token %}
+    <input type="hidden" name="next_url" value="{{ request.path }}">
+    <div class="branch-opening-popover-header">
+      <h6 id="branchOpeningPopoverTitle" class="mb-0">Opening stock</h6>
+      <button type="button" class="btn-close btn-close-sm" id="branchOpeningPopoverClose" aria-label="Close"></button>
+    </div>
+    <p class="text-muted small mb-2"><span data-opening-branch-name>—</span></p>
+    <label class="form-label small fw-semibold mb-1" for="{{ opening_stock_form.opening_quantity.id_for_label }}">Opening stock (<span data-opening-unit-label>kg</span>)</label>
+    {{ opening_stock_form.opening_quantity }}
+    <div class="invalid-feedback d-block" data-opening-error-for="opening_quantity"></div>
+    <div class="branch-opening-popover-actions">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="branchOpeningPopoverCancel">Cancel</button>
+      <button type="submit" class="btn btn-sm btn-primary">Save</button>
+    </div>
+  </form>
+</aside>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.branches.add_branch or perms.branches.change_branch or can_manage_opening_stock %}
+<script>
+(function () {
+  var $ = window.jQuery;
+  var addForm = document.getElementById("branch-quick-add-form");
+  var addModalEl = document.getElementById("branchQuickAddModal");
+  var editForm = document.getElementById("branch-quick-edit-form");
+  var editModalEl = document.getElementById("branchQuickEditModal");
+  var openingForm = document.getElementById("branch-opening-stock-form");
+  var openingPopover = document.getElementById("branchOpeningPopover");
+  var openingBackdrop = document.getElementById("branchOpeningBackdrop");
+  var openingCloseBtn = document.getElementById("branchOpeningPopoverClose");
+  var openingCancelBtn = document.getElementById("branchOpeningPopoverCancel");
+  var addModal = addModalEl ? bootstrap.Modal.getOrCreateInstance(addModalEl) : null;
+  var editModal = editModalEl ? bootstrap.Modal.getOrCreateInstance(editModalEl) : null;
+  var branchEditDataEl = document.getElementById("branch-edit-data");
+  var branchOpeningDataEl = document.getElementById("branch-opening-data");
+  var branchEditRows = {};
+  var branchOpeningRows = {};
+  var activeOpeningTrigger = null;
+  if (branchEditDataEl) {
+    try { (JSON.parse(branchEditDataEl.textContent || "[]") || []).forEach(function (r) { branchEditRows[String(r.id)] = r; }); } catch (e) {}
+  }
+  if (branchOpeningDataEl) {
+    try { (JSON.parse(branchOpeningDataEl.textContent || "[]") || []).forEach(function (r) { branchOpeningRows[String(r.id)] = r; }); } catch (e) {}
+  }
+
+  function initModalSelect2(form, modalEl) {
+    if (!form || !modalEl || !$ || !$.fn || !$.fn.select2) return;
+    ["users", "employees"].forEach(function (field) {
+      var el = form.querySelector('select[name="' + field + '"]');
+      if (!el) return;
+      var $el = $(el);
+      if ($el.hasClass("select2-hidden-accessible")) {
+        $el.select2("destroy");
+      }
+      $el.select2({
+        width: "100%",
+        closeOnSelect: false,
+        placeholder: field === "users" ? "Select one or more users" : "Select one or more employees",
+        dropdownParent: $(modalEl),
+      });
+    });
+    var managerEl = form.querySelector('select[name="branch_manager"]');
+    if (managerEl) {
+      var $manager = $(managerEl);
+      if ($manager.hasClass("select2-hidden-accessible")) {
+        $manager.select2("destroy");
+      }
+      $manager.select2({
+        width: "100%",
+        allowClear: true,
+        placeholder: "Select branch manager",
+        dropdownParent: $(modalEl),
+      });
+    }
+  }
+
+  function clearErrors(form) {
+    if (!form) return;
+    form.querySelectorAll(".is-invalid").forEach(function (el) { el.classList.remove("is-invalid"); });
+    form.querySelectorAll("[data-branch-error-for]").forEach(function (el) { el.textContent = ""; });
+  }
+
+  function setErrors(form, errors) {
+    Object.keys(errors || {}).forEach(function (field) {
+      var input = form.querySelector('[name="' + field + '"]');
+      var msg = form.querySelector('[data-branch-error-for="' + field + '"]');
+      if (input) input.classList.add("is-invalid");
+      if (msg) msg.textContent = (errors[field] || []).join(" ");
+    });
+  }
+
+  function submitAjax(form, done) {
+    fetch(form.action, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.ok) {
+          setErrors(form, (res.data && res.data.errors) || {});
+          if (typeof Swal !== "undefined" && !(res.data && res.data.errors)) {
+            Swal.fire({ icon: "error", title: res.data && res.data.error ? res.data.error : "Could not save." });
+          }
+          return;
+        }
+        done(res.data);
+      })
+      .catch(function () {
+        if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save." });
+      });
+  }
+
+  function closeOpeningPopover() {
+    if (openingPopover) openingPopover.hidden = true;
+    if (openingBackdrop) openingBackdrop.hidden = true;
+    activeOpeningTrigger = null;
+    document.body.classList.remove("branch-opening-open");
+  }
+
+  function positionOpeningPopover(trigger) {
+    if (!openingPopover || !trigger) return;
+    openingPopover.style.transform = "";
+    openingPopover.hidden = false;
+    if (window.innerWidth < 768) {
+      openingPopover.style.left = "50%";
+      openingPopover.style.top = "50%";
+      openingPopover.style.transform = "translate(-50%, -50%)";
+      return;
+    }
+    var rect = trigger.getBoundingClientRect();
+    var popRect = openingPopover.getBoundingClientRect();
+    var left = rect.left;
+    var top = rect.bottom + 8;
+    if (left + popRect.width > window.innerWidth - 12) {
+      left = window.innerWidth - popRect.width - 12;
+    }
+    if (top + popRect.height > window.innerHeight - 12) {
+      top = rect.top - popRect.height - 8;
+    }
+    openingPopover.style.left = Math.max(12, left) + "px";
+    openingPopover.style.top = Math.max(12, top) + "px";
+  }
+
+  function updateOpeningRow(branchId, data) {
+    var row = document.querySelector('tr[data-branch-id="' + branchId + '"]');
+    if (!row) return;
+    var badge = row.querySelector(".js-branch-opening-stock");
+    var stockCell = row.querySelector(".branch-stock-cell");
+    if (stockCell && data.current_stock_kg !== undefined) {
+      stockCell.textContent = data.current_stock_kg;
+    }
+    if (!badge) return;
+    if (data.has_opening_stock) {
+      badge.classList.remove("is-empty");
+      badge.textContent = data.opening_stock_display;
+      badge.setAttribute("aria-label", "Edit opening stock");
+    } else {
+      badge.classList.add("is-empty");
+      badge.innerHTML = '<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Opening stock';
+      badge.setAttribute("aria-label", "Set opening stock");
+    }
+    if (branchOpeningRows[branchId]) {
+      branchOpeningRows[branchId].opening_stock_display = data.opening_stock_display;
+    }
+  }
+
+  function openOpeningPopover(trigger) {
+    if (!openingForm || !openingPopover || !openingBackdrop) return;
+    var id = trigger.getAttribute("data-branch-id");
+    var row = branchOpeningRows[String(id)];
+    if (!row) return;
+    activeOpeningTrigger = trigger;
+    openingForm.action = "{% url 'branch-opening-stock-update' 0 %}".replace("/0/opening-stock/", "/" + id + "/opening-stock/");
+    var nameEl = openingForm.querySelector("[data-opening-branch-name]");
+    if (nameEl) nameEl.textContent = row.name || "—";
+    var unitEl = openingForm.querySelector("[data-opening-unit-label]");
+    if (unitEl) unitEl.textContent = ((row.collection_unit_label || "kg") + "").toLowerCase();
+    var qtyInput = openingForm.querySelector('[name="opening_quantity"]');
+    if (qtyInput) qtyInput.value = row.opening_stock_display || "0.00";
+    clearErrors(openingForm, "data-opening-error-for");
+    openingBackdrop.hidden = false;
+    document.body.classList.add("branch-opening-open");
+    positionOpeningPopover(trigger);
+    if (qtyInput) {
+      qtyInput.focus();
+      qtyInput.select();
+    }
+  }
+
+  if (addForm && addModalEl) {
+    addForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(addForm);
+      submitAjax(addForm, function () { addModal.hide(); window.location.reload(); });
+    });
+    addModalEl.addEventListener("shown.bs.modal", function () {
+      initModalSelect2(addForm, addModalEl);
+      var first = addForm.querySelector('[name="name"]');
+      if (first) first.focus();
+    });
+    addModalEl.addEventListener("hidden.bs.modal", function () {
+      addForm.reset();
+      clearErrors(addForm);
+    });
+  }
+
+  if (editForm && editModalEl) {
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(editForm);
+      submitAjax(editForm, function () { editModal.hide(); window.location.reload(); });
+    });
+
+    document.querySelectorAll(".js-branch-edit").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var id = btn.getAttribute("data-branch-id");
+        var row = branchEditRows[String(id)];
+        if (!row) return;
+        editForm.action = "{% url 'branch-quick-edit' 0 %}".replace("/0/quick-edit/", "/" + id + "/quick-edit/");
+        var subtitleEl = editModalEl.querySelector("[data-edit-branch-subtitle]");
+        if (subtitleEl) {
+          subtitleEl.textContent = row.name
+            ? "Updating " + row.name + " — details, contacts, and team access."
+            : "Update branch details and team access.";
+        }
+        editForm.querySelector('[name="name"]').value = row.name || "";
+        var maxStorage = editForm.querySelector('[name="maximum_milk_storage"]');
+        if (maxStorage) maxStorage.value = row.maximum_milk_storage || "";
+        var manager = editForm.querySelector('[name="branch_manager"]');
+        if (manager) manager.value = row.branch_manager_id ? String(row.branch_manager_id) : "";
+        var managerContact = editForm.querySelector('[name="manager_contact"]');
+        if (managerContact) managerContact.value = row.manager_contact || "";
+        var branchContact = editForm.querySelector('[name="branch_contact"]');
+        if (branchContact) branchContact.value = row.branch_contact || "";
+        var location = editForm.querySelector('[name="location"]');
+        if (location) location.value = row.location || "";
+        var cu = editForm.querySelector('[name="collection_unit"]');
+        if (cu) cu.value = row.collection_unit || "kg";
+        var users = editForm.querySelector('[name="users"]');
+        var emps = editForm.querySelector('[name="employees"]');
+        if (users) Array.prototype.forEach.call(users.options, function (opt) { opt.selected = (row.user_ids || []).indexOf(parseInt(opt.value, 10)) !== -1; });
+        if (emps) Array.prototype.forEach.call(emps.options, function (opt) { opt.selected = (row.employee_ids || []).indexOf(parseInt(opt.value, 10)) !== -1; });
+        initModalSelect2(editForm, editModalEl);
+        if ($ && $.fn && $.fn.select2) {
+          if (users) $(users).trigger("change");
+          if (emps) $(emps).trigger("change");
+          if (manager) $(manager).trigger("change");
+        }
+        clearErrors(editForm);
+        editModal.show();
+      });
+    });
+  }
+
+  if (openingForm && openingPopover) {
+    openingForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clearErrors(openingForm, "data-opening-error-for");
+      var branchId = (openingForm.action.match(/\/(\d+)\/opening-stock\//) || [])[1];
+      submitAjax(openingForm, "data-opening-error-for", function (data) {
+        if (branchId) updateOpeningRow(branchId, data);
+        closeOpeningPopover();
+      });
+    });
+
+    document.querySelectorAll(".js-branch-opening-stock").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openOpeningPopover(btn);
+      });
+    });
+
+    if (openingBackdrop) {
+      openingBackdrop.addEventListener("click", closeOpeningPopover);
+    }
+    if (openingCloseBtn) openingCloseBtn.addEventListener("click", closeOpeningPopover);
+    if (openingCancelBtn) openingCancelBtn.addEventListener("click", closeOpeningPopover);
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && openingPopover && !openingPopover.hidden) {
+        closeOpeningPopover();
+      }
+    });
+
+    window.addEventListener("resize", function () {
+      if (activeOpeningTrigger && openingPopover && !openingPopover.hidden) {
+        positionOpeningPopover(activeOpeningTrigger);
+      }
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

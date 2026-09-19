@@ -1,0 +1,890 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if grn_edit %}Edit GRN{% else %}Create GRN{% endif %}{% endblock %}
+{% block page_heading %}{% if grn_edit %}Edit GRN{% else %}Create GRN{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+  .module-shell.grn-full-width .form-shell {
+    max-width: 100%;
+  }
+  .grn-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .grn-hero h1 { margin: 0; letter-spacing: -0.02em; }
+  .grn-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #047857;
+    border: 1px solid rgba(5, 150, 105, 0.25);
+  }
+  .grn-form-smart.module-card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 12px 32px -8px rgba(15, 23, 42, 0.08);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .grn-form-smart .module-card-body {
+    padding: 1.5rem 1.75rem;
+  }
+  .grn-section {
+    margin-bottom: 1.75rem;
+  }
+  .grn-section:last-of-type { margin-bottom: 0; }
+  .grn-section-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .grn-section-icon {
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #059669;
+    font-size: 1.1rem;
+  }
+  .grn-section-icon.grn-icon-discount {
+    background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
+    color: #b45309;
+  }
+  .grn-section-icon.grn-icon-lines {
+    background: linear-gradient(145deg, #eff6ff 0%, #dbeafe 100%);
+    color: #2563eb;
+  }
+  .grn-section-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .grn-section-desc {
+    margin: 0.15rem 0 0;
+    font-size: 0.8125rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  .grn-line-total-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 4.5rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 8px;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .grn-line-total-pill.is-live {
+    background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #047857;
+    border-color: rgba(5, 150, 105, 0.35);
+  }
+  .grn-summary-strip {
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: linear-gradient(125deg, #f8fafc 0%, #f1f5f9 55%, #ecfdf5 120%);
+    padding: 1rem 1.25rem;
+    margin-top: 1.25rem;
+  }
+  .grn-totals-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9375rem;
+  }
+  .grn-totals-row.grn-totals-grand {
+    font-size: 1.05rem;
+  }
+  .grn-total-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #64748b;
+  }
+  .grn-total-label i {
+    opacity: 0.7;
+  }
+  .grn-totals-grand .grn-total-label {
+    color: #0f172a;
+    font-weight: 600;
+  }
+  .transfer-inline-wrap.grn-lines-shell {
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+  .transfer-inline-table.grn-inline-lines-table thead th {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    font-size: 0.65rem;
+    padding: 0.65rem 0.5rem;
+  }
+  .transfer-inline-table.grn-inline-lines-table .transfer-line-product {
+    min-width: 220px;
+  }
+  .transfer-inline-table.grn-inline-lines-table .transfer-line-num {
+    width: 2.5rem;
+    vertical-align: middle;
+  }
+  .transfer-inline-table.grn-inline-lines-table tbody td {
+    vertical-align: top;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+  .transfer-inline-table.grn-inline-lines-table th,
+  .transfer-inline-table.grn-inline-lines-table td {
+    border: 1px solid #dbe1ea !important;
+  }
+  .transfer-inline-table.grn-inline-lines-table {
+    border-collapse: collapse !important;
+  }
+  .transfer-inline-table.grn-inline-lines-table tbody td .form-control,
+  .transfer-inline-table.grn-inline-lines-table tbody td .form-select,
+  .transfer-inline-table.grn-inline-lines-table tbody td .select2-selection--single {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+  }
+  .transfer-inline-table.grn-inline-lines-table tbody td .form-control:focus,
+  .transfer-inline-table.grn-inline-lines-table tbody td .form-select:focus,
+  .transfer-inline-table.grn-inline-lines-table tbody td .select2-selection--single:focus {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .grn-col-total {
+    white-space: nowrap;
+  }
+  tr.js-grn-line.grn-line-muted {
+    opacity: 0.5;
+  }
+  .js-grn-remove-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    color: #94a3b8;
+    padding: 0;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+  .js-grn-remove-line:hover {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+  .grn-lines-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .grn-lines-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: #64748b;
+    padding: 0.35rem 0.65rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+  }
+  .grn-lines-hint i { color: #059669; }
+  .grn-lines-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="module-shell grn-full-width">
+  <div class="grn-hero">
+    <div>
+      <h1 class="page-title">{% if grn_edit %}Edit GRN{% else %}Create GRN{% endif %}</h1>
+      <p class="page-subtitle mb-0">Record multiple products, costs, and issue pricing in one goods receipt.</p>
+      <div class="grn-hero-badge">
+        <i class="bi bi-lightning-charge-fill"></i>
+        Live line totals as you type
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'grn-list' %}" class="btn btn-outline-secondary">Back to list</a>
+    </div>
+  </div>
+
+  <form method="post" id="grn-form" class="module-card form-shell grn-form-smart js-grn-form" novalidate>
+    {% csrf_token %}
+    <div class="module-card-body">
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% if item_formset.non_form_errors %}
+        <div class="alert alert-danger swal-flash">{{ item_formset.non_form_errors }}</div>
+      {% endif %}
+
+      <div class="grn-section">
+        <div class="grn-section-head">
+          <span class="grn-section-icon" aria-hidden="true"><i class="bi bi-box-seam"></i></span>
+          <div>
+            <h2 class="grn-section-title">Receipt details</h2>
+            <p class="grn-section-desc">Who you bought from, which branch receives stock, and when the note applies.</p>
+          </div>
+        </div>
+      <div class="row g-3 mb-0">
+        <div class="col-md-3">
+          <label class="form-label" for="id_supplier">Supplier</label>
+          <div class="input-group">
+            {{ form.supplier }}
+            {% if perms.suppliers.add_supplier %}
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalNewSupplier" title="Add supplier">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            {% endif %}
+          </div>
+          {% for e in form.supplier.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_branch">Branch</label>
+          {{ form.branch }}
+          {% for e in form.branch.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_grn_type">GRN type</label>
+          {{ form.grn_type }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_date">Date</label>
+          {{ form.date }}
+        </div>
+      </div>
+      </div>
+
+      <div class="grn-section">
+        <div class="grn-section-head">
+          <span class="grn-section-icon grn-icon-discount" aria-hidden="true"><i class="bi bi-percent"></i></span>
+          <div>
+            <h2 class="grn-section-title">Discounts</h2>
+            <p class="grn-section-desc">Choose either per-line discounts (including free qty) <strong>or</strong> one discount on the GRN total — not both.</p>
+          </div>
+        </div>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label" for="id_discount_scope">{{ form.discount_scope.label }}</label>
+          {{ form.discount_scope }}
+        </div>
+        <div class="col-md-4" id="wrap-doc-pct">
+          <label class="form-label" for="id_document_discount_percent">{{ form.document_discount_percent.label }}</label>
+          {{ form.document_discount_percent }}
+        </div>
+        <div class="col-md-4" id="wrap-doc-amt">
+          <label class="form-label" for="id_document_discount_amount">{{ form.document_discount_amount.label }}</label>
+          {{ form.document_discount_amount }}
+        </div>
+      </div>
+      </div>
+
+      <div class="grn-section">
+        <div class="grn-section-head">
+          <span class="grn-section-icon grn-icon-lines" aria-hidden="true"><i class="bi bi-list-check"></i></span>
+          <div class="flex-grow-1">
+            <h2 class="grn-section-title">Products &amp; costing</h2>
+            <p class="grn-section-desc mb-0">Search products, enter quantities, and review line totals instantly.</p>
+          </div>
+        </div>
+
+      <div class="grn-lines-toolbar">
+        <span class="grn-lines-hint"><i class="bi bi-keyboard"></i> Tab through cells · search in the product column</span>
+        <div class="grn-lines-actions">
+          {% if perms.stock_management.add_product %}
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#modalNewProduct"
+            id="btn-open-new-product"
+          >
+            <i class="bi bi-plus-lg me-1"></i> New product
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      {{ item_formset.management_form }}
+
+      <div class="transfer-inline-wrap grn-lines-shell">
+        <div class="table-responsive">
+          <table class="table transfer-inline-table grn-inline-lines-table mb-0">
+            <thead>
+              <tr>
+                <th class="transfer-line-num" scope="col">#</th>
+                <th class="transfer-line-product">Product</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Free</th>
+                <th class="text-end">Rate</th>
+                <th class="text-end">Price</th>
+                <th class="text-end grn-col-line-disc">Disc %</th>
+                <th class="text-end grn-col-line-disc">Disc amt</th>
+                <th class="text-end grn-col-total" scope="col" title="Line amount after discounts">Line total</th>
+                <th class="transfer-line-actions" aria-label="Remove row"></th>
+              </tr>
+            </thead>
+            <tbody id="js-grn-lines-body">
+              {% for f in item_formset %}
+              <tr class="js-grn-line">
+                <td class="transfer-line-num">
+                  <span class="js-line-num">{{ forloop.counter }}</span>
+                  {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                </td>
+                <td class="transfer-line-product">
+                  <div class="grn-product-cell">
+                  <div>
+                    {{ f.product }}
+                  </div>
+                  </div>
+                  {% if f.non_field_errors %}
+                    <div class="text-danger small mt-1">{{ f.non_field_errors }}</div>
+                  {% endif %}
+                  {% for e in f.product.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+                </td>
+                <td>{{ f.quantity }}{% for e in f.quantity.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>
+                <td>{{ f.free_quantity }}</td>
+                <td>{{ f.unit_price|money }}</td>
+                <td>{{ f.issuing_price|money }}</td>
+                <td class="grn-col-line-disc">{{ f.line_discount_percent }}</td>
+                <td class="grn-col-line-disc">{{ f.line_discount_amount|money }}</td>
+                <td class="text-end grn-line-total-cell"><span class="grn-line-total-pill line-total-display">0.00</span></td>
+                <td class="transfer-line-actions">
+                  <span class="visually-hidden">{{ f.DELETE }}</span>
+                  <button type="button" class="js-grn-remove-line" title="Remove line" aria-label="Remove line">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="transfer-inline-add">
+          <button type="button" class="btn btn-link text-success p-0 d-inline-flex align-items-center gap-1 fw-semibold" id="js-grn-add-line">
+            <i class="bi bi-plus-circle-fill"></i> Add product line
+          </button>
+        </div>
+      </div>
+      </div>
+
+      <div class="grn-summary-strip">
+        <div class="grn-totals-row">
+          <span class="grn-total-label"><i class="bi bi-calculator"></i> Lines subtotal</span>
+          <strong id="grn-subtotal-display">0.00</strong>
+        </div>
+        <div class="grn-totals-row w-100 d-none align-items-center justify-content-between" id="grn-doc-discount-row">
+          <span class="grn-total-label"><i class="bi bi-tag"></i> GRN discount (total)</span>
+          <strong id="grn-doc-discount-display" class="text-danger">−0.00</strong>
+        </div>
+        <div class="grn-totals-row grn-totals-grand border-top pt-2 mt-1">
+          <span class="grn-total-label"><i class="bi bi-wallet2"></i> Payable total</span>
+          <strong class="fs-5" id="grn-grand-total-display" style="color: var(--color-primary);">0.00</strong>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-1 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-success px-4">{% if grn_edit %}Save GRN{% else %}Save draft GRN{% endif %}</button>
+        <a href="{% url 'grn-list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if perms.suppliers.add_supplier %}
+<div class="modal fade" id="modalNewSupplier" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New supplier</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-control" id="quick-supplier-name" maxlength="140" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="quick-supplier-category">
+            {% for val, label in supplier_category_choices %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Phone (optional)</label>
+          <input type="text" class="form-control" id="quick-supplier-phone" maxlength="25">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="btn-quick-supplier-save">Save &amp; select</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.stock_management.add_product %}
+<div class="modal fade" id="modalNewProduct" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">New product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-control" id="quick-product-name" maxlength="120" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="quick-product-category">
+            {% for val, label in product_category_choices %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Unit</label>
+          <input type="text" class="form-control" id="quick-product-unit" value="kg" maxlength="20">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="btn-quick-product-save">Save &amp; select</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if supplier_branch_options %}{{ supplier_branch_options|json_script:"supplier-branch-options" }}{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'js/grn_line_items.js' %}"></script>
+<script>
+(function () {
+  function getCsrfToken() {
+    var input = document.querySelector('[name=csrfmiddlewaretoken]');
+    return input ? input.value : '';
+  }
+
+  var grnBranchSelect = document.getElementById('id_branch');
+  var grnSupplierSelect = document.getElementById('id_supplier');
+  var supplierBranchOptions = [];
+  var supplierBranchOptionsEl = document.getElementById('supplier-branch-options');
+  if (supplierBranchOptionsEl) {
+    try { supplierBranchOptions = JSON.parse(supplierBranchOptionsEl.textContent || '[]'); } catch (e) {}
+  }
+
+  function filterGrnSupplierOptions() {
+    if (!grnSupplierSelect || !supplierBranchOptions.length) return;
+    var branchId = grnBranchSelect ? parseInt(grnBranchSelect.value, 10) : NaN;
+    var current = grnSupplierSelect.value;
+    grnSupplierSelect.innerHTML = '';
+    var placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '---------';
+    grnSupplierSelect.appendChild(placeholder);
+    supplierBranchOptions.forEach(function (supplier) {
+      if (!branchId || (supplier.branches || []).indexOf(branchId) >= 0) {
+        var opt = new Option(supplier.name, supplier.id, false, String(supplier.id) === current);
+        grnSupplierSelect.appendChild(opt);
+      }
+    });
+    if (current && grnSupplierSelect.querySelector('option[value="' + current + '"]')) {
+      grnSupplierSelect.value = current;
+    }
+  }
+
+  if (grnBranchSelect) {
+    grnBranchSelect.addEventListener('change', filterGrnSupplierOptions);
+  }
+  filterGrnSupplierOptions();
+
+  function parseNum(el) {
+    if (!el) return 0;
+    var raw = String(el.value || '').trim();
+    if (!raw) return 0;
+    var v = parseFloat(raw.replace(/,/g, ''), 10);
+    return isFinite(v) ? v : 0;
+  }
+
+  function bindEnterAsNextField() {
+    var form = document.getElementById('grn-form');
+    if (!form) return;
+    form.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter') return;
+      var target = ev.target;
+      if (!target) return;
+      if (target.tagName === 'TEXTAREA' && !ev.ctrlKey && !ev.metaKey) {
+        ev.preventDefault();
+      }
+      var isEditable =
+        target.matches('input, select, textarea') ||
+        target.classList.contains('select2-search__field');
+      if (!isEditable) return;
+
+      ev.preventDefault();
+      var controls = Array.prototype.slice.call(
+        form.querySelectorAll(
+          'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button.js-grn-remove-line, #js-grn-add-line'
+        )
+      ).filter(function (el) {
+        return el.offsetParent !== null;
+      });
+      var idx = controls.indexOf(target);
+      if (idx === -1 && target.classList.contains('select2-search__field')) {
+        var select2 = target.closest('.select2-container');
+        if (select2) {
+          var relatedSelect = select2.previousElementSibling;
+          idx = controls.indexOf(relatedSelect);
+        }
+      }
+      if (idx < 0) return;
+      var next = controls[idx + 1];
+      if (next) next.focus();
+    });
+  }
+
+  function money(n) {
+    var normalized = Math.round((Number(n) || 0) * 100) / 100;
+    return normalized.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function lineSubtotal(scopeDoc, qty, free, rate, lp, la) {
+    var bill = Math.max(0, qty - free);
+    var base = bill * rate;
+    if (scopeDoc) return Math.max(0, base);
+    var afterPct = base * (1 - Math.min(100, Math.max(0, lp)) / 100);
+    return Math.max(0, afterPct - Math.max(0, la));
+  }
+
+  function refreshLineRow(tr) {
+    if (!tr || tr.classList.contains('d-none')) return;
+    var scopeSel = document.getElementById('id_discount_scope');
+    var scopeDoc = scopeSel && scopeSel.value === 'document';
+    var qty = parseNum(tr.querySelector('input[name$="-quantity"]'));
+    var free = parseNum(tr.querySelector('input[name$="-free_quantity"]'));
+    var rate = parseNum(tr.querySelector('input[name$="-unit_price"]'));
+    var lp = parseNum(tr.querySelector('input[name$="-line_discount_percent"]'));
+    var la = parseNum(tr.querySelector('input[name$="-line_discount_amount"]'));
+    var sub = lineSubtotal(scopeDoc, qty, free, rate, lp, la);
+    var badge = tr.querySelector('.line-total-display');
+    if (badge) {
+      badge.textContent = money(sub);
+      if (sub > 0.0001) badge.classList.add('is-live');
+      else badge.classList.remove('is-live');
+    }
+    var delCb = tr.querySelector('input[name$="-DELETE"]');
+    if (delCb && delCb.checked) tr.classList.add('grn-line-muted');
+    else tr.classList.remove('grn-line-muted');
+  }
+
+  function documentDiscountAmount(subtotal) {
+    var pctEl = document.getElementById('id_document_discount_percent');
+    var amtEl = document.getElementById('id_document_discount_amount');
+    var pct = pctEl ? parseNum(pctEl) : 0;
+    var flat = amtEl ? parseNum(amtEl) : 0;
+    if (pct > 0) return subtotal * (pct / 100);
+    return Math.min(subtotal, Math.max(0, flat));
+  }
+
+  function refreshTotals() {
+    var scopeSel = document.getElementById('id_discount_scope');
+    var scopeDoc = scopeSel && scopeSel.value === 'document';
+    var rows = document.querySelectorAll('#js-grn-lines-body tr.js-grn-line');
+    var subtotal = 0;
+    rows.forEach(function (tr) {
+      if (tr.classList.contains('d-none')) return;
+      var delCb = tr.querySelector('input[name$="-DELETE"]');
+      if (delCb && delCb.checked) return;
+      var qty = parseNum(tr.querySelector('input[name$="-quantity"]'));
+      var free = parseNum(tr.querySelector('input[name$="-free_quantity"]'));
+      var rate = parseNum(tr.querySelector('input[name$="-unit_price"]'));
+      var lp = parseNum(tr.querySelector('input[name$="-line_discount_percent"]'));
+      var la = parseNum(tr.querySelector('input[name$="-line_discount_amount"]'));
+      subtotal += lineSubtotal(scopeDoc, qty, free, rate, lp, la);
+    });
+    var discount = 0;
+    if (scopeDoc) discount = documentDiscountAmount(subtotal);
+    var grand = Math.max(0, subtotal - discount);
+    var subEl = document.getElementById('grn-subtotal-display');
+    var discRow = document.getElementById('grn-doc-discount-row');
+    var discEl = document.getElementById('grn-doc-discount-display');
+    var grandEl = document.getElementById('grn-grand-total-display');
+    if (subEl) subEl.textContent = money(subtotal);
+    if (discRow && discEl) {
+      if (scopeDoc && discount > 0.0001) {
+        discRow.classList.remove('d-none');
+        discRow.classList.add('d-flex');
+        discEl.textContent = '−' + money(discount);
+      } else {
+        discRow.classList.add('d-none');
+        discRow.classList.remove('d-flex');
+      }
+    }
+    if (grandEl) grandEl.textContent = money(grand);
+  }
+
+  function refreshAllLineRows() {
+    document.querySelectorAll('#js-grn-lines-body tr.js-grn-line').forEach(refreshLineRow);
+  }
+
+  function formatMoneyInputValue(value) {
+    var n = Number(value);
+    if (!isFinite(n)) n = 0;
+    return n.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  function isAmountField(el) {
+    if (!el || !el.name) return false;
+    return (
+      el.name.indexOf('-unit_price') !== -1 ||
+      el.name.indexOf('-issuing_price') !== -1 ||
+      el.name.indexOf('-line_discount_amount') !== -1 ||
+      el.name === 'document_discount_amount'
+    );
+  }
+
+  function isPercentField(el) {
+    if (!el || !el.name) return false;
+    return (
+      el.name.indexOf('-line_discount_percent') !== -1 ||
+      el.name === 'document_discount_percent'
+    );
+  }
+
+  function formatVisibleAmountInputs() {
+    var form = document.getElementById('grn-form');
+    if (!form) return;
+    form.querySelectorAll('input').forEach(function (inp) {
+      if (!isAmountField(inp) && !isPercentField(inp)) return;
+      if (document.activeElement === inp) return;
+      inp.value = formatMoneyInputValue(parseNum(inp));
+    });
+  }
+
+  function bindThousandsFormatting() {
+    var form = document.getElementById('grn-form');
+    if (!form) return;
+
+    form.querySelectorAll('input').forEach(function (inp) {
+      if (!isAmountField(inp) && !isPercentField(inp)) return;
+      inp.setAttribute('type', 'text');
+      inp.setAttribute('inputmode', 'decimal');
+      inp.setAttribute('autocomplete', 'off');
+    });
+
+    form.addEventListener('focusin', function (ev) {
+      var t = ev.target;
+      if (!t || !t.matches || !t.matches('input')) return;
+      if (!isAmountField(t) && !isPercentField(t)) return;
+      t.value = String(t.value || '').replace(/,/g, '');
+      if (typeof t.select === 'function') t.select();
+    });
+
+    form.addEventListener('focusout', function (ev) {
+      var t = ev.target;
+      if (!t || !t.matches || !t.matches('input')) return;
+      if (!isAmountField(t) && !isPercentField(t)) return;
+      t.value = formatMoneyInputValue(parseNum(t));
+    });
+
+    form.addEventListener('submit', function () {
+      form.querySelectorAll('input').forEach(function (inp) {
+        if (!isAmountField(inp) && !isPercentField(inp)) return;
+        inp.value = String(inp.value || '').replace(/,/g, '');
+      });
+    });
+  }
+
+  function toggleDiscountColumns() {
+    var scopeSel = document.getElementById('id_discount_scope');
+    var doc = scopeSel && scopeSel.value === 'document';
+    document.querySelectorAll('.grn-col-line-disc').forEach(function (el) {
+      el.style.opacity = doc ? '0.45' : '1';
+    });
+    var wp = document.getElementById('wrap-doc-pct');
+    var wa = document.getElementById('wrap-doc-amt');
+    if (wp) wp.style.opacity = doc ? '1' : '0.5';
+    if (wa) wa.style.opacity = doc ? '1' : '0.5';
+  }
+
+  var tbody = document.getElementById('js-grn-lines-body');
+  if (tbody) {
+    tbody.addEventListener('input', function () {
+      refreshAllLineRows();
+      refreshTotals();
+    });
+    tbody.addEventListener('change', function () {
+      refreshAllLineRows();
+      refreshTotals();
+    });
+  }
+
+  var scopeEl = document.getElementById('id_discount_scope');
+  if (scopeEl) {
+    scopeEl.addEventListener('change', function () {
+      toggleDiscountColumns();
+      refreshAllLineRows();
+      refreshTotals();
+    });
+  }
+  ['id_document_discount_percent', 'id_document_discount_amount'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshTotals);
+  });
+
+  document.addEventListener('grn-lines-changed', function () {
+    formatVisibleAmountInputs();
+    refreshAllLineRows();
+    refreshTotals();
+  });
+
+  bindEnterAsNextField();
+  bindThousandsFormatting();
+  formatVisibleAmountInputs();
+  toggleDiscountColumns();
+  refreshAllLineRows();
+  refreshTotals();
+
+  /* Quick supplier */
+  var btnS = document.getElementById('btn-quick-supplier-save');
+  if (btnS) {
+    btnS.addEventListener('click', function () {
+      var name = (document.getElementById('quick-supplier-name') || {}).value;
+      if (!name || !name.trim()) return;
+      fetch('{% url "api-supplier-create" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          name: name.trim(),
+          category: document.getElementById('quick-supplier-category').value,
+          contact_number: (document.getElementById('quick-supplier-phone') || {}).value || '',
+          address: '',
+          email: '',
+          status: 'active',
+          branch: grnBranchSelect && grnBranchSelect.value ? grnBranchSelect.value : null
+        })
+      }).then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.detail || JSON.stringify(j)); });
+        return r.json();
+      }).then(function (data) {
+        var branchId = grnBranchSelect ? parseInt(grnBranchSelect.value, 10) : NaN;
+        supplierBranchOptions.push({
+          id: data.id,
+          name: name.trim(),
+          branches: branchId ? [branchId] : []
+        });
+        filterGrnSupplierOptions();
+        var sel = document.getElementById('id_supplier');
+        sel.value = String(data.id);
+        var modal = document.getElementById('modalNewSupplier');
+        if (modal && window.bootstrap) bootstrap.Modal.getInstance(modal).hide();
+      }).catch(function (e) {
+        var msg = String(e.message || e);
+        if (window.appAlert) window.appAlert(msg, { icon: 'error', title: 'Could not create supplier' });
+        else if (window.Swal) Swal.fire({ icon: 'error', title: 'Could not create supplier', text: msg, buttonsStyling: false, customClass: { popup: 'app-swal-popup', confirmButton: 'btn btn-primary' } });
+      });
+    });
+  }
+
+  var lastProductSelect = null;
+  var grnForm = document.getElementById('grn-form');
+  if (grnForm) {
+    grnForm.addEventListener('focusin', function (ev) {
+      if (ev.target && ev.target.name && ev.target.name.indexOf('-product') !== -1) lastProductSelect = ev.target;
+    });
+  }
+  var btnP = document.getElementById('btn-quick-product-save');
+  if (btnP) {
+    btnP.addEventListener('click', function () {
+      var name = (document.getElementById('quick-product-name') || {}).value;
+      if (!name || !name.trim()) return;
+      fetch('{% url "api-stock-product-create" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          name: name.trim(),
+          category: document.getElementById('quick-product-category').value,
+          unit: (document.getElementById('quick-product-unit') || {}).value || 'kg',
+          description: '',
+          status: 'active'
+        })
+      }).then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.detail || JSON.stringify(j)); });
+        return r.json();
+      }).then(function (data) {
+        var sel = lastProductSelect || document.querySelector('select[name$="-product"]');
+        if (sel) {
+          var opt = new Option(name.trim(), data.id, true, true);
+          sel.appendChild(opt);
+          sel.value = data.id;
+          if (window.jQuery && window.jQuery(sel).hasClass('select2-hidden-accessible')) {
+            window.jQuery(sel).trigger('change');
+          }
+        }
+        var modal = document.getElementById('modalNewProduct');
+        if (modal && window.bootstrap) bootstrap.Modal.getInstance(modal).hide();
+      }).catch(function (e) {
+        var msg = String(e.message || e);
+        if (window.appAlert) window.appAlert(msg, { icon: 'error', title: 'Could not create product' });
+        else if (window.Swal) Swal.fire({ icon: 'error', title: 'Could not create product', text: msg, buttonsStyling: false, customClass: { popup: 'app-swal-popup', confirmButton: 'btn btn-primary' } });
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

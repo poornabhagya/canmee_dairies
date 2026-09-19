@@ -1,0 +1,133 @@
+<style>
+  body.goods-issue-print-pos {
+    background: #f1f5f9;
+  }
+  body.goods-issue-print-pos .content-wrap {
+    display: flex;
+    justify-content: center;
+    padding-top: 0.5rem;
+  }
+  .goods-issue-pos-sheet {
+    width: 72mm;
+    max-width: 72mm;
+    margin: 0 auto;
+    padding: 3mm 2mm 4mm;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.3;
+    color: #111;
+  }
+  .goods-issue-pos-company {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .goods-issue-pos-title {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 0.15rem;
+  }
+  .goods-issue-pos-divider {
+    border-top: 1px dashed #94a3b8;
+    margin: 0.45rem 0;
+  }
+  .goods-issue-pos-meta {
+    display: grid;
+    gap: 0.2rem;
+  }
+  .goods-issue-pos-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .goods-issue-pos-label {
+    color: #64748b;
+    font-weight: 600;
+    flex: 0 0 auto;
+  }
+  .goods-issue-pos-value {
+    text-align: right;
+    word-break: break-word;
+  }
+  .goods-issue-pos-lines {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 10px;
+  }
+  .goods-issue-pos-lines th,
+  .goods-issue-pos-lines td {
+    padding: 0.2rem 0;
+    vertical-align: top;
+  }
+  .goods-issue-pos-lines th {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    border-bottom: 1px solid #cbd5e1;
+    padding-bottom: 0.25rem;
+  }
+  .goods-issue-pos-lines tbody td {
+    border-bottom: 1px dotted #e2e8f0;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .goods-issue-pos-product {
+    word-break: break-word;
+    padding-right: 0.35rem;
+  }
+  .goods-issue-pos-amount {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .goods-issue-pos-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    padding-top: 0.15rem;
+  }
+  @media print {
+    @page {
+      size: 80mm auto;
+      margin: 2mm 4mm;
+    }
+    body.goods-issue-print-pos {
+      background: #fff !important;
+    }
+    .no-print,
+    .sidebar,
+    .topbar,
+    .sidebar-backdrop {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    .app-main {
+      margin: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    .content-wrap {
+      padding: 0 !important;
+      display: block !important;
+    }
+    .goods-issue-pos-sheet {
+      width: 72mm !important;
+      max-width: 72mm !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+  }
+</style>

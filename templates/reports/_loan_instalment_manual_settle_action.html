@@ -1,0 +1,23 @@
+{% if perms.reports.record_manual_settlement %}
+<form
+  method="post"
+  action="{% url 'farmer-loan-instalment-manual-settle' instalment.pk %}"
+  class="d-inline{% if not instalment.is_paid %} js-swal-settlement-form{% else %} js-swal-submit-guard{% endif %}"
+>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <input type="hidden" name="settle" value="{% if instalment.is_paid %}0{% else %}1{% endif %}">
+  <button
+    type="submit"
+    class="btn btn-sm {% if instalment.is_paid %}btn-outline-warning js-swal-submit-trigger{% else %}btn-outline-success js-swal-settlement-trigger{% endif %}"
+    data-swal-title="{% if instalment.is_paid %}Mark instalment pending?{% else %}Mark instalment paid{% endif %}"
+    data-swal-text="{% if instalment.is_paid %}This instalment will count toward loan deductions again.{% else %}Enter when and how this instalment was paid outside the payment sheet.{% endif %}"
+  >
+    {% if instalment.is_paid %}
+    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Undo paid
+    {% else %}
+    <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Mark paid
+    {% endif %}
+  </button>
+</form>
+{% endif %}

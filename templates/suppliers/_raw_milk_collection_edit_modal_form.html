@@ -1,0 +1,55 @@
+{% if form.non_field_errors %}
+<div class="alert alert-danger">{{ form.non_field_errors }}</div>
+{% endif %}
+<div id="rawMilkEditFormErrors" class="alert alert-danger d-none" role="alert"></div>
+<div class="bulk-form-grid-three">
+  <div>
+    {{ form.date.errors }}
+    {{ form.date.label_tag }}
+    {{ form.date }}
+  </div>
+  <div>
+    {{ form.branch.errors }}
+    {{ form.branch.label_tag }}
+    {{ form.branch }}
+  </div>
+  <div>
+    {{ form.dispatch_no.errors }}
+    {{ form.dispatch_no.label_tag }}
+    {{ form.dispatch_no }}
+  </div>
+</div>
+<div class="bulk-form-grid mt-2">
+  <div>
+    {{ form.supplier.errors }}
+    {{ form.supplier.label_tag }}
+    {{ form.supplier }}
+  </div>
+  <div id="raw-milk-qty-wrap">
+    <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3 mb-2">
+      <label class="form-label fw-semibold mb-0" for="{{ form.liters.id_for_label }}" id="raw-milk-qty-label">Quantity (liters)</label>
+      <div class="qty-segment" role="group" aria-label="Quantity unit">
+        <button type="button" class="qty-segment__btn" data-qty-unit="kg" aria-pressed="false">Kg</button>
+        <button type="button" class="qty-segment__btn is-active" data-qty-unit="liters" aria-pressed="true">Liters</button>
+      </div>
+    </div>
+    {{ form.liters.errors }}
+    {{ form.liters }}
+    <input type="hidden" name="quantity_unit" id="id_quantity_unit" value="liters">
+  </div>
+</div>
+<div class="bulk-form-grid mt-2">
+  {% for field in form %}
+  {% if field.name == "date" or field.name == "branch" or field.name == "dispatch_no" or field.name == "supplier" or field.name == "liters" %}
+  {% elif field.is_hidden %}
+  {{ field }}
+  {% else %}
+  <div class="{% if field.name == 'remarks' %}full{% endif %}">
+    {{ field.errors }}
+    {{ field.label_tag }}
+    {{ field }}
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+<textarea id="rawMilkEditSupplierBranchOptions" class="d-none" hidden readonly>{{ supplier_branch_options_json|safe }}</textarea>

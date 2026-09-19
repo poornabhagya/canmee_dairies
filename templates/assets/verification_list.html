@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Verification register · Assets{% endblock %}
+{% block page_heading %}Verification register{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block content %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Verification summary">
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="all">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Checks</span>
+        <span class="smart-stat-card__value">{{ stats.total }}</span>
+        <span class="smart-stat-card__hint">Physical verification entries</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--book js-asset-stat-filter" data-smart-filter="found">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Found</span>
+        <span class="smart-stat-card__value">{{ stats.found }}</span>
+        <span class="smart-stat-card__hint">On site as recorded</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--warn js-asset-stat-filter{% if stats.missing %} smart-stat-card--warn{% endif %}" data-smart-filter="missing">
+      <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Missing</span>
+        <span class="smart-stat-card__value">{{ stats.missing }}</span>
+        <span class="smart-stat-card__hint">Audit exceptions</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--written js-asset-stat-filter" data-smart-filter="damaged">
+      <span class="smart-stat-card__icon smart-stat-card__icon--orange"><i class="bi bi-tools" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Damaged</span>
+        <span class="smart-stat-card__value">{{ stats.damaged }}</span>
+        <span class="smart-stat-card__hint">Condition findings</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div id="assetVerifyDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Verification filters">
+        <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">All<span class="smart-dt-chip-count">{{ stats.total }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="found">Found<span class="smart-dt-chip-count">{{ stats.found }}</span></button>
+        <button type="button" class="smart-dt-chip smart-dt-chip--warn" data-smart-filter="missing">Missing<span class="smart-dt-chip-count">{{ stats.missing }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="damaged">Damaged<span class="smart-dt-chip-count">{{ stats.damaged }}</span></button>
+      </div>
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Audit</span>
+            <h2 class="asset-statement__title">Physical verification register</h2>
+            <p class="asset-statement__meta">Inspection results posted against the asset register · {% now "j M Y" %}</p>
+          </div>
+          <span class="asset-statement__account">PVR-{% now "Y" %}</span>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No verifications posted."
+          data-filters-target="assetVerifyDtFilters"
+          data-smart-order="1,desc"
+          data-print-title="Physical verification register"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">When</th>
+              <th class="all">Asset</th>
+              <th class="all">Result</th>
+              <th class="min-tablet-l">Condition</th>
+              <th class="all text-end">Assessed value</th>
+              <th class="min-desktop">Verified by</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in verifications %}
+            <tr class="smart-row--{{ v.result }}">
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all text-nowrap" data-order="{{ v.verified_at|date:'Y-m-d H:i:s' }}">{{ v.verified_at|date:"Y-m-d H:i" }}</td>
+              <td class="all">
+                <div class="smart-dt-name-row">
+                  <a href="{% url 'asset-detail' v.asset_id %}#verifications" class="asset-tag-code">{{ v.asset.asset_tag }}</a>
+                </div>
+                <span class="asset-row-meta">{{ v.asset.name }}</span>
+              </td>
+              <td class="all asset-result--{{ v.result }}">{{ v.get_result_display }}</td>
+              <td class="min-tablet-l">{% if v.condition %}{{ v.get_condition_display }}{% else %}—{% endif %}</td>
+              <td class="all text-end dt-num">{% if v.assessed_value %}{{ v.assessed_value|money }}{% else %}—{% endif %}</td>
+              <td class="min-desktop dt-muted">{% if v.verified_by %}{{ v.verified_by }}{% else %}—{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="asset-statement__disclaimer">This is a computer-generated verification register and does not require a signature.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% include "assets/_asset_stat_filter_script.html" %}
+{% endblock %}

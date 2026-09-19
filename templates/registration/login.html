@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Sign in · Canmee Dairies{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <div class="auth-brand">
+    <img
+      src="{% static 'img/logo-512.png' %}"
+      srcset="{% static 'img/logo-256.png' %} 256w, {% static 'img/logo-512.png' %} 512w"
+      sizes="84px"
+      alt="Canmee Dairies"
+      class="auth-brand-logo"
+      width="84"
+      height="84"
+      decoding="async"
+    >
+    <p class="auth-brand-name">Canmee Dairies</p>
+    <p class="auth-brand-tag">Operations portal</p>
+  </div>
+
+  <h1 class="auth-title">Staff sign in</h1>
+  <p class="auth-subtitle">Use your username and password to continue.</p>
+
+  <form method="post" class="auth-form js-enter-next" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger py-2 small">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="auth-field">
+      <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+      <div class="auth-input">
+        <i class="bi bi-person" aria-hidden="true"></i>
+        <input
+          type="text"
+          name="{{ form.username.name }}"
+          id="{{ form.username.id_for_label }}"
+          class="form-control{% if form.username.errors %} is-invalid{% endif %}"
+          value="{{ form.username.value|default_if_none:'' }}"
+          autocomplete="username"
+          autofocus
+          required
+          placeholder="Enter username"
+        >
+      </div>
+      {% if form.username.errors %}<div class="invalid-feedback d-block">{{ form.username.errors|striptags }}</div>{% endif %}
+    </div>
+
+    <div class="auth-field">
+      <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+      <div class="auth-input auth-input--password">
+        <i class="bi bi-lock" aria-hidden="true"></i>
+        <input
+          type="password"
+          name="{{ form.password.name }}"
+          id="{{ form.password.id_for_label }}"
+          class="form-control js-auth-password{% if form.password.errors %} is-invalid{% endif %}"
+          autocomplete="current-password"
+          required
+          placeholder="Enter password"
+        >
+        <button
+          type="button"
+          class="auth-password-toggle js-auth-password-toggle"
+          aria-label="Show password"
+          aria-controls="{{ form.password.id_for_label }}"
+        >
+          <i class="bi bi-eye" aria-hidden="true"></i>
+        </button>
+      </div>
+      {% if form.password.errors %}<div class="invalid-feedback d-block">{{ form.password.errors|striptags }}</div>{% endif %}
+    </div>
+
+    <button type="submit" class="auth-submit">
+      Sign in
+      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+    </button>
+  </form>
+
+  <div class="auth-divider"><span>Other access</span></div>
+
+  <div class="auth-links">
+    <a class="auth-link-card" href="{% url 'attendance:login' %}">
+      <span class="auth-link-icon"><i class="bi bi-fingerprint"></i></span>
+      <span>
+        <strong>Employee attendance</strong>
+        <small>Sign in with NIC</small>
+      </span>
+      <i class="bi bi-chevron-right auth-link-chevron" aria-hidden="true"></i>
+    </a>
+    <a class="auth-link-card" href="{% url 'route-driver-login' %}">
+      <span class="auth-link-icon"><i class="bi bi-truck"></i></span>
+      <span>
+        <strong>Driver access</strong>
+        <small>Route access code</small>
+      </span>
+      <i class="bi bi-chevron-right auth-link-chevron" aria-hidden="true"></i>
+    </a>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+  document.querySelectorAll(".js-auth-password-toggle").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".auth-input");
+      var input = wrap ? wrap.querySelector(".js-auth-password") : null;
+      if (!input) return;
+      var show = input.type === "password";
+      input.type = show ? "text" : "password";
+      var icon = btn.querySelector("i");
+      if (icon) icon.className = show ? "bi bi-eye-slash" : "bi bi-eye";
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    });
+  });
+
+  document.querySelectorAll("form.js-enter-next").forEach(function (form) {
+    var fields = Array.prototype.slice.call(
+      form.querySelectorAll("input.form-control:not([type='hidden']):not([disabled])")
+    );
+    fields.forEach(function (field, index) {
+      field.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") return;
+        var next = fields[index + 1];
+        if (!next) return; // last field: allow normal submit
+        event.preventDefault();
+        next.focus();
+        if (typeof next.select === "function") next.select();
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% if receipt.batch_ref %}
+<div class="dropdown d-inline-block">
+  <button
+    class="btn btn-sm btn-outline-secondary dropdown-toggle"
+    type="button"
+    data-bs-toggle="dropdown"
+    aria-expanded="false"
+    aria-label="Receipt actions"
+  >
+    <i class="bi bi-three-dots-vertical"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li>
+      <a class="dropdown-item" href="{% url 'farmer-goods-issue-print' receipt.batch_ref %}" target="_blank" rel="noopener"><i class="bi bi-eye me-2"></i>View receipt</a>
+    </li>
+    {% if perms.reports.record_manual_settlement %}
+    <li>
+      <a class="dropdown-item" href="{% url 'farmer-goods-issue-print' receipt.batch_ref %}#record-payment"><i class="bi bi-cash-coin me-2"></i>Record payment</a>
+    </li>
+    {% if receipt.settlement_status == 'settled' %}
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <form method="post" action="{% url 'farmer-goods-issue-settle' receipt.batch_ref %}" class="px-0">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <input type="hidden" name="action" value="unsettle_all">
+        <button
+          type="submit"
+          class="dropdown-item js-swal-submit-trigger"
+          data-swal-title="Undo all payments on this receipt?"
+          data-swal-text="All lines on this receipt will be marked pending again."
+        ><i class="bi bi-arrow-counterclockwise me-2"></i>Undo payment</button>
+      </form>
+    </li>
+    {% endif %}
+    {% endif %}
+  </ul>
+</div>
+{% else %}
+—
+{% endif %}

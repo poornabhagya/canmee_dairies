@@ -1,0 +1,58 @@
+{% load static %}
+<header class="cp-loan-bank-doc">
+  <div class="cp-loan-bank-doc__brand">
+    <img src="{% static 'img/logo.png' %}" alt="" class="cp-loan-bank-doc__logo" width="48" height="48">
+    <div>
+      <div class="cp-loan-bank-doc__company">CANMEE DAIRIES (PVT) LTD</div>
+      <div class="cp-loan-bank-doc__line">Phone: 071 543 5019</div>
+    </div>
+    <div class="cp-loan-bank-doc__issued">
+      <span>Generated</span>
+      <strong>{% now "d M Y, H:i" %}</strong>
+    </div>
+  </div>
+  <div class="cp-loan-bank-doc__titleblock">
+    <h1 class="cp-loan-bank-doc__title">{{ print_doc_name|default:"Collection point statement" }}</h1>
+    <p class="cp-loan-bank-doc__subtitle">
+      {{ point.number }} — {{ point.name }}
+      {% if point.route %} · {{ point.route.name }}{% endif %}
+      {% if point.route.branch %} · {{ point.route.branch.name }}{% endif %}
+    </p>
+  </div>
+  <table class="cp-loan-bank-doc__id">
+    <tbody>
+      <tr>
+        <th>Point no</th>
+        <td>{{ point.number }}</td>
+        <th>Collection point</th>
+        <td>{{ point.name }}</td>
+        <th>Period</th>
+        <td>
+          {% if statement_full %}
+          Full history
+          {% elif statement_start and statement_end %}
+          {{ statement_start|date:"d M Y" }} — {{ statement_end|date:"d M Y" }}
+          {% else %}
+          —
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th>Route</th>
+        <td>{{ point.route.name|default:"—" }}</td>
+        <th>Branch</th>
+        <td>{% if point.route.branch %}{{ point.route.branch.name }}{% else %}—{% endif %}</td>
+        <th>Location</th>
+        <td>{{ point.location|default:"—" }}</td>
+      </tr>
+      <tr>
+        <th>Collector fee</th>
+        <td>{{ point.collector_fee|money }}</td>
+        <th>Additional</th>
+        <td>{% if point.additional %}{{ point.additional|money }}{% else %}—{% endif %}</td>
+        <th>Prev. outstanding</th>
+        <td>{% if can_view_farmer_payments %}{{ point_previous_outstanding_open|default:0|money }}{% else %}—{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+</header>

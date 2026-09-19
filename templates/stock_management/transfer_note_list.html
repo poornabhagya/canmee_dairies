@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Transfer Notes{% endblock %}
+{% block page_heading %}Transfer Notes{% endblock %}
+{% block extra_css %}
+<style>
+  .transfer-notes-card .transfer-notes-table-wrap {
+    padding: 0 1rem 1rem;
+  }
+  .transfer-notes-card .transfer-notes-table-wrap .dataTables_wrapper {
+    width: 100%;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Transfer Notes</h1>
+      <p class="page-subtitle">View and edit branch-to-branch stock transfer notes.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-primary" href="{% url 'stock-transfer' %}">New transfer</a>
+      <a class="btn btn-outline-secondary" href="{% url 'stock-overview' %}">Back to overview</a>
+    </div>
+  </div>
+
+  <div class="module-card transfer-notes-card">
+    <div class="module-card-header">
+      <div>
+        <h5 class="module-card-title">Transfer note register</h5>
+        <p class="module-card-subtitle">Latest notes first. Use Edit to correct quantities or branches.</p>
+      </div>
+    </div>
+    <div class="module-card-body transfer-notes-table-wrap table-wrap">
+      <table class="table table-hover datatable mb-0">
+        <thead>
+          <tr>
+            <th>Transfer #</th>
+            <th>Date</th>
+            <th>From branch</th>
+            <th>To branch</th>
+            <th>Lines</th>
+            <th>Created by</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for note in notes %}
+          <tr>
+            <td>{{ note.transfer_number }}</td>
+            <td>{{ note.date|date:"Y-m-d" }}</td>
+            <td>{{ note.from_branch.name }}</td>
+            <td>{{ note.to_branch.name }}</td>
+            <td>{{ note.lines.count }}</td>
+            <td>{% if note.created_by %}{{ note.created_by.get_username }}{% else %}—{% endif %}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'stock-transfer-note-print' note.pk %}" target="_blank" rel="noopener">Print</a>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'stock-transfer-note-edit' note.pk %}">Edit</a>
+              {% if request.user.is_superuser %}
+              <form method="post" action="{% url 'stock-transfer-note-delete' note.pk %}" class="d-inline js-swal-submit-guard">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

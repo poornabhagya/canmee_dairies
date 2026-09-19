@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Transfer note {{ note.transfer_number }}{% endblock %}
+{% block page_heading %}Transfer note{% endblock %}
+{% block extra_css %}
+<style>
+  .transfer-print-doc {
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+  .transfer-print-doc h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .transfer-print-meta {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 1.25rem;
+  }
+  .transfer-print-doc .money-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  @media print {
+    .no-print { display: none !important; }
+    .content-wrap { padding: 0 !important; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="module-shell transfer-print-doc">
+  <div class="no-print d-flex flex-wrap gap-2 mb-3">
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i>Print
+    </button>
+    <a class="btn btn-outline-secondary" href="{% url 'stock-overview' %}">Back to stock</a>
+    <a class="btn btn-outline-primary" href="{% url 'stock-transfer' %}">New transfer</a>
+  </div>
+
+  <div class="module-card">
+    <div class="module-card-body">
+      <h1>Stock transfer note</h1>
+      <p class="transfer-print-meta mb-0">
+        <strong>{{ note.transfer_number }}</strong>
+        &nbsp;·&nbsp;
+        {{ note.date|date:"Y-m-d" }}
+        {% if note.created_by %}
+        &nbsp;·&nbsp; By {{ note.created_by.get_username }}
+        {% endif %}
+      </p>
+
+      <div class="row g-2 mb-3 small">
+        <div class="col-12 col-md-6">
+          <div class="text-muted text-uppercase" style="font-size:0.7rem; letter-spacing:0.06em;">From</div>
+          <div class="fw-semibold">{{ note.from_branch.name }}</div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="text-muted text-uppercase" style="font-size:0.7rem; letter-spacing:0.06em;">To</div>
+          <div class="fw-semibold">{{ note.to_branch.name }}</div>
+        </div>
+        {% if note.remarks %}
+        <div class="col-12 mt-2">
+          <div class="text-muted text-uppercase" style="font-size:0.7rem; letter-spacing:0.06em;">Remarks</div>
+          <div>{{ note.remarks|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Unit</th>
+              <th class="text-end">Unit price</th>
+              <th class="text-end">Quantity</th>
+              <th class="text-end">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in priced_lines %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ row.product.name }}</td>
+              <td>{{ row.product.unit }}</td>
+              <td class="money-col">{{ row.unit_price|money }}</td>
+              <td class="money-col">{{ row.quantity|money }}</td>
+              <td class="money-col">{{ row.amount|money }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">No lines on this transfer.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          {% if priced_lines %}
+          <tfoot>
+            <tr class="fw-semibold">
+              <td colspan="5" class="text-end">Total</td>
+              <td class="money-col">{{ lines_total_amount|money }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

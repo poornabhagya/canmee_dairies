@@ -1,0 +1,103 @@
+name: Canmee Dairies CI/CD Pipeline
+
+# Main branch එකට අලුත් කේතයක් push කළ විට පමණක් මෙය ක්‍රියාත්මක වේ
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: canmee-dairies-erp
+  # ඔයාගේ ඇත්තම Role ARN එක
+  ROLE_TO_ASSUME: arn:aws:iam::804372444724:role/canmee-github-actions-deploy-role
+  # දැනට අපි කෙළින්ම Production සර්වර් එකට Deploy කරමු
+  INSTANCE_ID: i-0328a5a8e6e95e250
+
+jobs:
+  # 1. Test Track
+  test:
+    name: Code Validation & Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run Syntax Checks
+        run: python manage.py check
+
+  # 2. Build & Push Track
+  build-and-push:
+    name: Build AMD64 Image and Push to ECR
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          # t3.micro සර්වර් එකට ගැලපෙන්න amd64 ලෙස වෙනස් කර ඇත
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+
+  # 3. Deployment Track (AWS SSM)
+  deploy:
+    name: SSM Bastionless Deployment
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger SSM Deployment on EC2
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ env.INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying Canmee Dairies commit: ${{ github.sha }}" \
+            --parameters 'commands=[
+              "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)",
+              "export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com",
+              "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
+              "cd /opt/canmee && docker compose pull web celery_worker",
+              "docker compose run --rm --no-deps web python manage.py migrate --noinput",
+              "docker compose run --rm --no-deps web python manage.py collectstatic --noinput",
+              "docker compose up -d --no-deps web celery_worker",
+              "docker compose restart nginx"
+            ]' \
+            --output text

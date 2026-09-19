@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Canmee Dairies{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+{% block content %}
+{% if dashboard_welcome_only %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body text-center py-5 px-4">
+    <div class="mb-3 text-primary">
+      <i class="bi bi-grid-1x2-fill" style="font-size: 2.5rem;"></i>
+    </div>
+    <h1 class="h4 fw-semibold mb-2">Welcome{% if user_display_name %}, {{ user_display_name }}{% endif %}</h1>
+    <p class="text-muted mb-0 mx-auto" style="max-width: 28rem;">
+      You are signed in to Canmee Dairies. Use the menu on the left to open the areas you have access to.
+    </p>
+  </div>
+</div>
+{% else %}
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-6 col-lg-4">
+        <label class="form-label small text-muted mb-1">Dashboard branch scope</label>
+        <select name="branch" class="form-select">
+          <option value="all" {% if selected_branch == 'all' %}selected{% endif %}>All branches</option>
+          {% for b in dashboard_branches %}
+          <option value="{{ b.id }}" {% if selected_branch == b.id|stringformat:"d" %}selected{% endif %}>{{ b.code }} - {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Load dashboard</button>
+      </div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">Current scope: {{ dashboard_scope_label }}</p>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card-stat">
+      <div class="card-stat-icon emerald"><i class="bi bi-box-seam"></i></div>
+      <div class="card-stat-label">Total milk (kg)</div>
+      <div class="card-stat-value">{{ total_kg }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card-stat">
+      <div class="card-stat-icon sky"><i class="bi bi-moisture"></i></div>
+      <div class="card-stat-label">Total liters</div>
+      <div class="card-stat-value">{{ total_liters }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card-stat">
+      <div class="card-stat-icon sky"><i class="bi bi-truck"></i></div>
+      <div class="card-stat-label">Dispatched (kg)</div>
+      <div class="card-stat-value">{{ total_dispatched_kg }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card-stat">
+      <div class="card-stat-icon emerald"><i class="bi bi-archive"></i></div>
+      <div class="card-stat-label">Current stock (kg)</div>
+      <div class="card-stat-value">{{ current_stock_kg }}</div>
+    </div>
+  </div>
+</div>
+<div class="card-chart">
+  <h2 class="h6 fw-semibold text-muted mb-3">Kg by route</h2>
+  <div style="height: 280px;">
+    <canvas id="routeChart"></canvas>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% if not dashboard_welcome_only %}
+<script>
+(function () {
+  const labels = {{ chart_labels|safe }};
+  const data = {{ chart_values|safe }};
+  const ctx = document.getElementById('routeChart');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Kg',
+        data,
+        backgroundColor: 'rgba(5, 150, 105, 0.35)',
+        borderColor: '#059669',
+        borderWidth: 2,
+        borderRadius: 8,
+        maxBarThickness: 48,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: "'Plus Jakarta Sans', sans-serif" } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(148, 163, 184, 0.2)' },
+          ticks: { font: { family: "'Plus Jakarta Sans', sans-serif" } },
+        },
+      },
+    },
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

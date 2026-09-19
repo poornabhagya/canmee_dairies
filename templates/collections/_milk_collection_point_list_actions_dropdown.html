@@ -1,0 +1,50 @@
+<div class="dropdown dropstart milk-collection-actions-dropdown d-inline-block">
+  <button
+    class="btn btn-sm btn-outline-secondary dropdown-toggle milk-collection-actions-trigger"
+    type="button"
+    data-bs-toggle="dropdown"
+    data-bs-boundary="viewport"
+    aria-expanded="false"
+    aria-label="Row actions"
+  >
+    <i class="bi bi-three-dots-vertical"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end milk-collection-actions-menu">
+    {% if o.source == 'point' and o.collection_point_id %}
+    <li>
+      <a
+        class="dropdown-item"
+        href="{% url 'milk-collection-point-receipt' %}?date={{ o.date|date:'Y-m-d' }}&amp;point={{ o.collection_point_id }}"
+        target="_blank"
+        rel="noopener noreferrer"
+      ><i class="bi bi-receipt me-2"></i>Receipt</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.view_milkcollectionadjustment %}
+    <li>
+      <a class="dropdown-item" href="{% url 'milk-collection-adjustments' o.pk %}"><i class="bi bi-clock-history me-2"></i>History</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.change_milkcollection %}
+    <li>
+      <a class="dropdown-item" href="{% url 'milk-collection-edit' o.pk %}"><i class="bi bi-pencil-square me-2"></i>Edit</a>
+    </li>
+    {% endif %}
+    {% if perms.collections.delete_milkcollection %}
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <button
+        type="submit"
+        form="milk-collection-bulk-form"
+        class="dropdown-item text-danger js-swal-submit-trigger"
+        name="bulk_action"
+        value="delete_one"
+        data-one-input="milk-one-id"
+        data-one-value="{{ o.pk }}"
+        data-swal-title="Delete this milk collection record?"
+        data-swal-text="This cannot be undone."
+      ><i class="bi bi-trash3 me-2"></i>Delete</button>
+    </li>
+    {% endif %}
+  </ul>
+</div>

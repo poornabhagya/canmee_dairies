@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Issue receipts{% endblock %}
+{% block page_heading %}Issue receipts{% endblock %}
+{% block extra_css %}
+<style>
+  .issue-receipts-card .issue-receipts-table-wrap {
+    padding: 0 1rem 1rem;
+  }
+  .issue-receipts-card .issue-receipts-table-wrap .dataTables_wrapper {
+    width: 100%;
+  }
+  .issue-receipts-card table tfoot th {
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    font-weight: 700;
+  }
+  .issue-receipts-card tr.issue-row--settled td {
+    background: #f0fdf4;
+  }
+  .issue-receipts-card .goods-settlement-col {
+    white-space: nowrap;
+    width: 1%;
+  }
+  .issue-type-tabs .nav-link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+  }
+  .issue-type-tabs .nav-link.active {
+    color: #0f172a;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+  }
+  .issue-type-tabs .badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+  .issue-receipts-table .money-col,
+  .issue-receipts-table tfoot .issue-receipts-total-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .issue-receipts-table .issue-ref-link {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.8125rem;
+    text-decoration: none;
+  }
+  .issue-receipts-table .issue-ref-link:hover {
+    text-decoration: underline;
+  }
+  .issue-receipts-filter-form .form-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+  }
+  .issue-receipts-filter-form .flatpickr-range-wrap .form-control,
+  .issue-receipts-filter-form .flatpickr-range-wrap .input-group-text,
+  .issue-receipts-filter-form .form-select {
+    height: 38px;
+    min-height: 38px;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+  .issue-receipts-bulk-toolbar .delete-selected-btn[hidden] {
+    display: none !important;
+  }
+  .issue-receipts-select-col {
+    width: 2.25rem;
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions">
+  {% if perms.suppliers.add_farmergoodsissue %}
+  <a class="btn btn-primary" href="{% url 'farmer-goods-issue' %}">New issue</a>
+  {% endif %}
+  <a class="btn btn-outline-secondary" href="{% url 'stock-overview' %}">Back to overview</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="module-card issue-receipts-card">
+    <div class="module-card-header">
+      <div class="w-100">
+        <h5 class="module-card-title">Register</h5>
+        <ul class="nav issue-type-tabs milk-collection-tabs border-0 gap-1 flex-wrap mb-0 mt-2" role="tablist">
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link {% if not selected_type %}active{% endif %}"
+              href="{% url 'farmer-goods-issue-list' %}{% if issue_filter_query %}?{{ issue_filter_query }}{% endif %}"
+              role="tab"
+            >All <span class="badge rounded-pill text-bg-light">{{ type_counts.all }}</span></a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link {% if selected_type == 'collection_point' %}active{% endif %}"
+              href="{% url 'farmer-goods-issue-list' %}?{% if issue_filter_query %}{{ issue_filter_query }}&{% endif %}type=collection_point"
+              role="tab"
+            >Collection points <span class="badge rounded-pill text-bg-light">{{ type_counts.collection_point }}</span></a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link {% if selected_type == 'farmer' %}active{% endif %}"
+              href="{% url 'farmer-goods-issue-list' %}?{% if issue_filter_query %}{{ issue_filter_query }}&{% endif %}type=farmer"
+              role="tab"
+            >Farmers <span class="badge rounded-pill text-bg-light">{{ type_counts.farmer }}</span></a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a
+              class="nav-link {% if selected_type == 'branch' %}active{% endif %}"
+              href="{% url 'farmer-goods-issue-list' %}?{% if issue_filter_query %}{{ issue_filter_query }}&{% endif %}type=branch"
+              role="tab"
+            >Branch transfers <span class="badge rounded-pill text-bg-light">{{ type_counts.branch }}</span></a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="module-card-body pb-0 px-3">
+      <form method="get" class="row g-2 g-md-3 mb-3 align-items-end issue-receipts-filter-form" role="search">
+        {% if selected_type %}
+        <input type="hidden" name="type" value="{{ selected_type }}">
+        {% endif %}
+        <div class="col-12 col-md-6 col-lg-2">
+          <label class="form-label" for="issue-filter-branch">Branch</label>
+          <select id="issue-filter-branch" name="branch" class="form-select no-global-select2">
+            <option value="">All branches</option>
+            {% for b in branches %}
+            <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-2">
+          <label class="form-label" for="issue-filter-route">Route</label>
+          <select id="issue-filter-route" name="route" class="form-select no-global-select2">
+            <option value="">All routes</option>
+            {% for ro in filter_routes %}
+            <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == selected_route %}selected{% endif %}>{{ ro.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-2">
+          <label class="form-label" for="issue-filter-point">Collection point</label>
+          <select id="issue-filter-point" name="collection_point" class="form-select no-global-select2">
+            <option value="">All points</option>
+            {% for p in filter_points %}
+            <option value="{{ p.id }}" data-branch-id="{{ p.route.branch_id }}" data-route-id="{{ p.route_id }}" {% if p.id|stringformat:'d' == selected_collection_point %}selected{% endif %}>{{ p.number }} — {{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="issue-filter-date-range">Period</label>
+          <div class="input-group flatpickr-range-wrap">
+            <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+            <input
+              type="text"
+              id="issue-filter-date-range"
+              class="form-control border-start-0 js-datepicker-range"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="All dates"
+              autocomplete="off"
+              readonly
+              aria-label="Date range"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ date_from }}">
+          <input type="hidden" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="col-auto d-flex gap-1">
+          <button type="submit" class="btn btn-outline-secondary" title="Apply filters" aria-label="Apply filters"><i class="bi bi-funnel"></i></button>
+          <a href="{% url 'farmer-goods-issue-list' %}{% if selected_type %}?type={{ selected_type }}{% endif %}" class="btn btn-outline-secondary" title="Clear filters" aria-label="Clear filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+      </form>
+    </div>
+    <div class="module-card-body issue-receipts-table-wrap table-wrap pt-0">
+      {% if not batches %}
+      <div class="empty-state p-4 text-muted">{% if issue_filter_query or selected_type %}No receipts match these filters.{% else %}No issue receipts yet.{% endif %}</div>
+      {% else %}
+      {% if user.is_superuser %}
+      <form method="post" id="issue-receipts-bulk-form" class="js-swal-submit-guard issue-receipts-bulk-toolbar px-3 pb-2">
+        {% csrf_token %}
+        <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button type="submit" class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger" name="bulk_action" value="delete_selected" hidden data-swal-title="Delete selected issue receipts?" data-swal-text="All checked issue receipts on this page will be removed.">Delete selected</button>
+          <button type="submit" class="btn btn-sm btn-danger js-swal-submit-trigger" name="bulk_action" value="delete_all" data-swal-title="Delete all filtered issue receipts?" data-swal-text="This removes every issue receipt matching your current filters (superuser only).">Delete all filtered</button>
+          <span class="small text-muted" id="issue-receipts-bulk-hint">Select rows to delete multiple receipts.</span>
+        </div>
+      </form>
+      {% endif %}
+      <table id="issue-receipts-table" class="table table-hover datatable issue-receipts-table mb-0 w-100" data-page-length="25" data-empty-table="No receipts match this filter.">
+        <thead>
+          <tr>
+            {% if user.is_superuser %}
+            <th class="issue-receipts-select-col"><input type="checkbox" class="form-check-input custom-check js-select-all-rows" form="issue-receipts-bulk-form" aria-label="Select all rows"></th>
+            {% endif %}
+            <th>Ref</th>
+            <th>Date</th>
+            <th>From branch</th>
+            <th>Destination</th>
+            <th class="text-end">Lines</th>
+            <th class="text-end">Amount</th>
+            <th>Status</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in batches %}
+          <tr
+            class="{% if row.settlement_status == 'settled' %}issue-row--settled{% endif %}"
+            data-amount="{{ row.batch_amount }}"
+          >
+            {% if user.is_superuser %}
+            <td class="issue-receipts-select-col">
+              <input type="checkbox" class="form-check-input custom-check js-row-select" form="issue-receipts-bulk-form" name="selected_batch_refs" value="{{ row.batch_ref }}" aria-label="Select row">
+            </td>
+            {% endif %}
+            <td>
+              <a class="issue-ref-link text-muted" href="{% url 'farmer-goods-issue-print' row.batch_ref %}">{{ row.batch_ref|slice:":8"|upper }}…</a>
+            </td>
+            <td class="text-nowrap">{{ row.batch_date|date:"Y-m-d" }}</td>
+            <td>{{ row.from_branch_name }}</td>
+            <td>{{ row.destination_name }}</td>
+            <td class="text-end">{{ row.line_count }}</td>
+            <td class="money-col">{{ row.batch_amount|money }}</td>
+            <td class="goods-settlement-col">{% include "suppliers/_goods_issue_settlement_badge.html" with settlement_status=row.settlement_status settled_count=row.settled_count line_count=row.line_count settled_at=row.settled_at %}</td>
+            <td class="text-end text-nowrap">
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'farmer-goods-issue-print' row.batch_ref %}">View</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'farmer-goods-issue-print' row.batch_ref %}?autoprint=1">Print</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'farmer-goods-issue-print' row.batch_ref %}?pos=1&amp;autoprint=1" title="80mm thermal printer">POS</a>
+              {% if perms.reports.record_manual_settlement and row.issue_to_type != 'branch' and row.settlement_status != 'awaiting_driver' and row.settlement_status != 'rejected' %}
+              <a class="btn btn-sm btn-outline-success" href="{% url 'farmer-goods-issue-print' row.batch_ref %}#record-payment"><i class="bi bi-cash-coin me-1"></i>Pay</a>
+              {% endif %}
+              {% if perms.suppliers.change_farmergoodsissue %}
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'farmer-goods-issue-edit' row.batch_ref %}">Edit</a>
+              {% endif %}
+              {% if perms.suppliers.delete_farmergoodsissue %}
+              <form method="post" action="{% url 'farmer-goods-issue-delete' row.batch_ref %}" class="d-inline js-swal-submit-guard">
+                {% csrf_token %}
+                <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            {% if user.is_superuser %}<th></th>{% endif %}
+            <th colspan="5" class="text-end">Total</th>
+            <th class="text-end issue-receipts-total-cell" id="issue-receipts-total">{{ grand_total|money }}</th>
+            <th></th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  function formatMoney(value) {
+    var n = Number(value);
+    if (!isFinite(n)) return "0.00";
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function updateTotal(api) {
+    var total = 0;
+    api.rows({ search: "applied" }).every(function () {
+      var node = this.node();
+      var amount = node && node.getAttribute("data-amount");
+      if (amount) total += Number(amount);
+    });
+    var totalEl = document.getElementById("issue-receipts-total");
+    if (totalEl) totalEl.textContent = formatMoney(total);
+  }
+
+  function initIssueReceiptsTable() {
+    var tableEl = document.getElementById("issue-receipts-table");
+    if (!tableEl || !window.jQuery || !window.jQuery.fn.DataTable) return;
+    if (!window.jQuery.fn.DataTable.isDataTable(tableEl)) return;
+    var api = window.jQuery(tableEl).DataTable();
+    updateTotal(api);
+    api.on("draw", function () {
+      updateTotal(api);
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initIssueReceiptsTable);
+  } else {
+    initIssueReceiptsTable();
+  }
+
+  (function () {
+    var filterForm = document.querySelector(".issue-receipts-filter-form");
+    if (!filterForm) return;
+    var branchSel = filterForm.querySelector("#issue-filter-branch");
+    var routeSel = filterForm.querySelector("#issue-filter-route");
+    var pointSel = filterForm.querySelector("#issue-filter-point");
+    if (!branchSel && !routeSel && !pointSel) return;
+
+    function syncRoutePointOptions() {
+      var branchId = branchSel ? String(branchSel.value || "") : "";
+      var routeId = routeSel ? String(routeSel.value || "") : "";
+      if (!branchId && routeId && routeSel && routeSel.selectedOptions.length) {
+        branchId = String(routeSel.selectedOptions[0].getAttribute("data-branch-id") || "");
+      }
+      if (routeSel) {
+        Array.prototype.forEach.call(routeSel.options, function (opt) {
+          if (!opt.value) return;
+          var bid = String(opt.getAttribute("data-branch-id") || "");
+          var explicitBranch = branchSel ? String(branchSel.value || "") : "";
+          var show = !explicitBranch || bid === explicitBranch;
+          opt.hidden = !show;
+          opt.disabled = !show;
+        });
+        if (routeSel.selectedOptions.length && routeSel.selectedOptions[0].hidden) {
+          routeSel.value = "";
+          routeId = "";
+        }
+      }
+      if (pointSel) {
+        Array.prototype.forEach.call(pointSel.options, function (opt) {
+          if (!opt.value) return;
+          var bid = String(opt.getAttribute("data-branch-id") || "");
+          var rid = String(opt.getAttribute("data-route-id") || "");
+          var explicitBranch = branchSel ? String(branchSel.value || "") : "";
+          var branchOk = !explicitBranch || bid === explicitBranch;
+          if (!explicitBranch && routeId) {
+            branchOk = bid === branchId;
+          }
+          var routeOk = !routeId || rid === routeId;
+          var show = branchOk && routeOk;
+          opt.hidden = !show;
+          opt.disabled = !show;
+        });
+        if (pointSel.selectedOptions.length && pointSel.selectedOptions[0].hidden) {
+          pointSel.value = "";
+        }
+      }
+    }
+
+    if (branchSel) branchSel.addEventListener("change", syncRoutePointOptions);
+    if (routeSel) routeSel.addEventListener("change", syncRoutePointOptions);
+    if (pointSel) {
+      pointSel.addEventListener("change", function () {
+        if (!pointSel.value) return;
+        var opt = pointSel.selectedOptions[0];
+        if (!opt) return;
+        var bid = opt.getAttribute("data-branch-id");
+        var rid = opt.getAttribute("data-route-id");
+        if (branchSel && bid) branchSel.value = bid;
+        if (routeSel && rid) routeSel.value = rid;
+        syncRoutePointOptions();
+      });
+      if (pointSel.value) {
+        var opt = pointSel.selectedOptions[0];
+        if (opt) {
+          var bid = opt.getAttribute("data-branch-id");
+          var rid = opt.getAttribute("data-route-id");
+          if (branchSel && bid) branchSel.value = bid;
+          if (routeSel && rid) routeSel.value = rid;
+        }
+      }
+    }
+    syncRoutePointOptions();
+  })();
+
+  (function () {
+    var form = document.getElementById("issue-receipts-bulk-form");
+    if (!form) return;
+    var master = form.querySelector(".js-select-all-rows");
+    var rows = document.querySelectorAll(".js-row-select");
+    var deleteBtn = form.querySelector(".delete-selected-btn");
+    var hint = document.getElementById("issue-receipts-bulk-hint");
+
+    function selectedBoxes() {
+      return Array.prototype.filter.call(rows, function (cb) { return cb.checked; });
+    }
+
+    function syncBulkActions() {
+      var selected = selectedBoxes();
+      var n = selected.length;
+      if (deleteBtn) deleteBtn.hidden = n === 0;
+      if (hint) {
+        hint.textContent = n
+          ? (n + " selected")
+          : "Select rows to delete multiple receipts.";
+      }
+      if (master && rows.length) {
+        master.checked = n === rows.length;
+        master.indeterminate = n > 0 && n < rows.length;
+      }
+    }
+
+    if (master) {
+      master.addEventListener("change", function () {
+        rows.forEach(function (cb) { cb.checked = master.checked; });
+        syncBulkActions();
+      });
+    }
+    rows.forEach(function (cb) {
+      cb.addEventListener("change", syncBulkActions);
+    });
+    syncBulkActions();
+  })();
+})();
+</script>
+{% endblock %}

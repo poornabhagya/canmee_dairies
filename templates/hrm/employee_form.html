@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Edit employee{% else %}Add employee{% endif %} · Canmee Dairies{% endblock %}
+{% block page_heading %}{% if is_edit %}Edit employee{% else %}Add employee{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+  .doc-thumb-wrap {
+    margin-top: 0.9rem;
+    width: 250px;
+    border: 1px solid #e8edf5;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
+    overflow: hidden;
+  }
+  .doc-thumb-wrap.is-hidden {
+    display: none;
+  }
+  .doc-thumb {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+  .doc-thumb-placeholder {
+    width: 100%;
+    height: 150px;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 0.78rem;
+    text-align: center;
+    padding: 0.2rem;
+  }
+  .doc-file-icon {
+    font-size: 3.1rem;
+    line-height: 1;
+  }
+  .doc-file-icon-pdf {
+    color: #dc3545;
+  }
+  .doc-file-icon-excel {
+    color: #198754;
+  }
+  .doc-file-icon-default {
+    color: #64748b;
+  }
+  .doc-action-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0;
+    padding: 0.65rem;
+    background: #fbfdff;
+    border-top: 1px solid #edf2f7;
+  }
+  .doc-action-btn {
+    min-width: 110px;
+    border-radius: 9px;
+  }
+  .doc-remove-row-btn {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    border-color: #dc3545;
+    background-color: #dc3545;
+    color: #fff;
+  }
+  .doc-remove-row-btn:hover {
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+    color: #fff;
+  }
+  .doc-file-group .form-control {
+    min-height: 44px;
+  }
+  #add-doc-row {
+    border-color: #28a745;
+    color: #28a745;
+  }
+  #add-doc-row:hover {
+    background: #28a745;
+    color: #fff;
+  }
+  .custom-check-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .custom-check-wrap input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .custom-check-indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #8ca0bf;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    background: #fff;
+  }
+  .custom-check-indicator i {
+    font-size: 0.7rem;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.15s ease;
+  }
+  .custom-check-wrap input[type="checkbox"]:checked + .custom-check-indicator {
+    background: #0d6efd;
+    border-color: #0d6efd;
+  }
+  .custom-check-wrap input[type="checkbox"]:checked + .custom-check-indicator i {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .custom-check-label {
+    margin: 0;
+    font-weight: 500;
+    color: #1f2937;
+  }
+  .password-match-text {
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+  }
+  .doc-file-name {
+    display: block;
+    padding: 0.55rem 0.65rem 0.05rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-top: 1px solid #edf2f7;
+  }
+  .doc-file-date {
+    display: block;
+    padding: 0.05rem 0.65rem 0.55rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    background: #ffffff;
+  }
+  .doc-info-list {
+    border-top: 1px solid #edf2f7;
+    background: #ffffff;
+    padding: 0.55rem 0.65rem 0.6rem;
+  }
+  .doc-info-item {
+    font-size: 0.81rem;
+    margin-bottom: 0.16rem;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .doc-info-item:last-child {
+    margin-bottom: 0;
+  }
+  .doc-info-label {
+    color: #64748b;
+    margin-right: 0.35rem;
+    font-weight: 600;
+  }
+  #doc-rows {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .doc-row-existing {
+    width: 250px;
+    margin: 0 !important;
+  }
+  .doc-row-existing .col-md-12 {
+    width: 100%;
+    padding: 0;
+  }
+  .doc-row-existing .doc-thumb-wrap {
+    margin-top: 0;
+    width: 100%;
+  }
+  .doc-row-new {
+    width: 100%;
+    margin: 0 0 0.75rem 0 !important;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% if is_edit %}Edit employee{% else %}Add employee{% endif %}</h1>
+    <p class="page-subtitle">Employee profile, contact details, and optional linked user account.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger swal-flash">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="row g-3">
+        {% for field in form %}
+        <div class="col-md-{% if field.name == 'notes' %}12{% elif field.name == 'full_name' %}8{% elif field.name == 'common_name' %}4{% elif field.name == 'create_user_account' %}12{% elif field.name == 'user_username' or field.name == 'user_email' or field.name == 'user_role' %}4{% elif field.name == 'user_password' or field.name == 'user_password2' %}6{% else %}6{% endif %}">
+          {% if field.name == "create_user_account" %}
+          <div class="mt-2">
+            <label class="custom-check-wrap" for="{{ field.id_for_label }}">
+              {{ field }}
+              <span class="custom-check-indicator"><i class="bi bi-check-lg"></i></span>
+              <span class="custom-check-label">{{ field.label }}</span>
+            </label>
+          </div>
+          {% else %}
+          <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field.errors }}
+          {{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% if field.name == "full_name" %}
+          <div class="form-text">Initial: <span id="auto-initial-preview">—</span></div>
+          {% endif %}
+          {% if field.name == "user_password2" %}
+          <div class="password-match-text" id="password-match-text"></div>
+          {% endif %}
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <hr class="my-4">
+      <h6 class="mb-3">Documents</h6>
+      {{ doc_formset.management_form }}
+      <div id="doc-rows">
+        {% for dform in doc_formset %}
+        <div class="{% if dform.instance.pk and dform.instance.document_file %}doc-row doc-row-existing{% else %}row g-2 align-items-start doc-row doc-row-new{% endif %}" {% if dform.instance.pk and dform.instance.document_file %}data-existing-file="1"{% endif %}>
+          {{ dform.id }}
+          {% if dform.instance.pk and dform.instance.document_file %}
+          <div class="col-md-12">
+            {{ dform.document_type.as_hidden }}
+            {{ dform.document_file.as_hidden }}
+          {% else %}
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ dform.document_type.label }}</label>
+            {{ dform.document_type }}
+            {{ dform.document_type.errors }}
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">{{ dform.document_file.label }}</label>
+            <div class="input-group doc-file-group">
+              {{ dform.document_file }}
+              <button type="button" class="btn doc-remove-row-btn" title="Remove row" data-doc-remove-row-btn>
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            {{ dform.document_file.errors }}
+          {% endif %}
+            <div class="doc-thumb-wrap {% if not dform.instance.pk or not dform.instance.document_file %}is-hidden{% endif %}" data-doc-preview-wrap>
+              {% if dform.instance.pk and dform.instance.document_file %}
+                <img src="{{ dform.instance.document_file.url }}" alt="document" class="doc-thumb" data-doc-thumb>
+              {% else %}
+                <div class="doc-thumb-placeholder" data-doc-thumb-placeholder></div>
+              {% endif %}
+              <div class="doc-info-list">
+                <div class="doc-info-item">
+                  <span class="doc-info-label">Document type</span>
+                  <span data-doc-type-text>{% if dform.instance.pk and dform.instance.document_file %}{{ dform.instance.get_document_type_display }}{% endif %}</span>
+                </div>
+                <div class="doc-info-item">
+                  <span class="doc-info-label">File name</span>
+                  <span data-doc-file-name>{% if dform.instance.pk and dform.instance.document_file %}{{ dform.instance.document_file.name|cut:"hrm/employee_documents/"|default:"Selected file" }}{% else %}Selected file{% endif %}</span>
+                </div>
+                <div class="doc-info-item">
+                  <span class="doc-info-label">Date</span>
+                  <span data-doc-file-date>{% if dform.instance.pk and dform.instance.date_created %}{{ dform.instance.date_created|date:"M d, Y" }}{% endif %}</span>
+                </div>
+              </div>
+              <div class="doc-action-row">
+                {% if dform.instance.pk and dform.instance.document_file %}
+                  <a href="{{ dform.instance.document_file.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-info text-white doc-action-btn" data-doc-view-btn><i class="bi bi-eye me-1"></i>View</a>
+                {% else %}
+                  <button type="button" class="btn btn-sm btn-info text-white doc-action-btn" data-doc-view-btn disabled><i class="bi bi-eye me-1"></i>View</button>
+                {% endif %}
+                <button type="button" class="btn btn-sm btn-danger doc-action-btn" data-doc-remove-file-btn><i class="bi bi-trash me-1"></i>Remove</button>
+              </div>
+            </div>
+            {{ dform.DELETE.as_hidden }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <template id="doc-empty-form-template">
+        <div class="row g-2 align-items-start doc-row doc-row-new">
+          {{ doc_formset.empty_form.id }}
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">{{ doc_formset.empty_form.document_type.label }}</label>
+            {{ doc_formset.empty_form.document_type }}
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">{{ doc_formset.empty_form.document_file.label }}</label>
+            <div class="input-group doc-file-group">
+              {{ doc_formset.empty_form.document_file }}
+              <button type="button" class="btn doc-remove-row-btn" title="Remove row" data-doc-remove-row-btn>
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="doc-thumb-wrap is-hidden" data-doc-preview-wrap>
+              <div class="doc-thumb-placeholder" data-doc-thumb-placeholder></div>
+              <div class="doc-info-list">
+                <div class="doc-info-item">
+                  <span class="doc-info-label">Document type</span>
+                  <span data-doc-type-text></span>
+                </div>
+                <div class="doc-info-item">
+                  <span class="doc-info-label">File name</span>
+                  <span data-doc-file-name>Selected file</span>
+                </div>
+                <div class="doc-info-item">
+                  <span class="doc-info-label">Date</span>
+                  <span data-doc-file-date></span>
+                </div>
+              </div>
+              <div class="doc-action-row">
+                <button type="button" class="btn btn-sm btn-info text-white doc-action-btn" data-doc-view-btn disabled><i class="bi bi-eye me-1"></i>View</button>
+                <button type="button" class="btn btn-sm btn-danger doc-action-btn" data-doc-remove-file-btn><i class="bi bi-trash me-1"></i>Remove</button>
+              </div>
+            </div>
+            {{ doc_formset.empty_form.DELETE.as_hidden }}
+          </div>
+        </div>
+      </template>
+      <button type="button" class="btn btn-outline-secondary mt-2" id="add-doc-row">
+        <i class="bi bi-plus-lg me-1"></i>Add Document
+      </button>
+      <div class="form-text fst-italic mt-2">You may attach multiple files (PDF, JPG, PNG). Optional.</div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save</button>
+        {% if is_edit and employee %}
+        <a href="{% url 'hrm:employee_detail' employee.pk %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+        {% else %}
+        <a href="{% url 'hrm:employee_list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const checkbox = document.getElementById("id_create_user_account");
+  const toggleFields = ["id_user_username", "id_user_email", "id_user_role", "id_user_password", "id_user_password2"];
+  const fullNameInput = document.getElementById("id_full_name");
+  const initialPreview = document.getElementById("auto-initial-preview");
+  const passwordInput = document.getElementById("id_user_password");
+  const password2Input = document.getElementById("id_user_password2");
+  const passwordMatchText = document.getElementById("password-match-text");
+  const commonNameInput = document.getElementById("id_common_name");
+  const emailInput = document.getElementById("id_email");
+  const userNameInput = document.getElementById("id_user_username");
+  const userEmailInput = document.getElementById("id_user_email");
+
+  function buildInitial(name) {
+    const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "";
+    if (parts.length === 1) return parts[0];
+    const prefix = parts.slice(0, -1).map(function (p) { return p.charAt(0).toUpperCase(); }).join(".");
+    return prefix + "." + parts[parts.length - 1];
+  }
+
+  function updateInitialPreview() {
+    if (!fullNameInput || !initialPreview) return;
+    const val = buildInitial(fullNameInput.value);
+    initialPreview.textContent = val || "—";
+  }
+
+  function setVisibility() {
+    const show = !checkbox || checkbox.checked;
+    toggleFields.forEach(function (id) {
+      const input = document.getElementById(id);
+      if (!input) return;
+      const col = input.closest('[class*="col-md-"]');
+      if (col) col.style.display = show ? "" : "none";
+    });
+    if (!show && passwordMatchText) {
+      passwordMatchText.textContent = "";
+    }
+  }
+
+  function slugifyUsername(value) {
+    return (value || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s._-]/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_");
+  }
+
+  function applySuggestedUserFields() {
+    if (!checkbox || !checkbox.checked) return;
+    if (commonNameInput && userNameInput && !userNameInput.value.trim()) {
+      userNameInput.value = slugifyUsername(commonNameInput.value);
+    }
+    if (emailInput && userEmailInput && !userEmailInput.value.trim()) {
+      userEmailInput.value = (emailInput.value || "").trim();
+    }
+  }
+
+  function validatePasswordLive() {
+    if (!passwordInput || !password2Input || !passwordMatchText) return;
+    const pw1 = passwordInput.value || "";
+    const pw2 = password2Input.value || "";
+    if (!pw1 && !pw2) {
+      password2Input.setCustomValidity("");
+      passwordMatchText.textContent = "";
+      passwordMatchText.className = "password-match-text";
+      return;
+    }
+    if (pw1 === pw2) {
+      password2Input.setCustomValidity("");
+      passwordMatchText.textContent = "Password confirmation matches.";
+      passwordMatchText.className = "password-match-text text-success";
+      return;
+    }
+    password2Input.setCustomValidity("Password and confirm password do not match.");
+    passwordMatchText.textContent = "Password confirmation does not match.";
+    passwordMatchText.className = "password-match-text text-danger";
+  }
+  if (checkbox) {
+    checkbox.addEventListener("change", function () {
+      setVisibility();
+      applySuggestedUserFields();
+    });
+    setVisibility();
+  }
+  if (commonNameInput) {
+    commonNameInput.addEventListener("input", function () {
+      if (checkbox && checkbox.checked && userNameInput && !userNameInput.value.trim()) {
+        userNameInput.value = slugifyUsername(commonNameInput.value);
+      }
+    });
+  }
+  if (emailInput) {
+    emailInput.addEventListener("input", function () {
+      if (checkbox && checkbox.checked && userEmailInput && !userEmailInput.value.trim()) {
+        userEmailInput.value = (emailInput.value || "").trim();
+      }
+    });
+  }
+  if (fullNameInput) {
+    fullNameInput.addEventListener("input", updateInitialPreview);
+    updateInitialPreview();
+  }
+  if (passwordInput && password2Input) {
+    passwordInput.addEventListener("input", validatePasswordLive);
+    password2Input.addEventListener("input", validatePasswordLive);
+    validatePasswordLive();
+  }
+
+  const addDocBtn = document.getElementById("add-doc-row");
+  const docRows = document.getElementById("doc-rows");
+  const totalForms = document.getElementById("id_docs-TOTAL_FORMS");
+  const template = document.getElementById("doc-empty-form-template");
+
+  function bindDocRow(rowEl) {
+    if (!rowEl) return;
+    const fileInput = rowEl.querySelector('input[type="file"]');
+    const deleteInput = rowEl.querySelector('input[name$="-DELETE"]');
+    const removeRowBtn = rowEl.querySelector("[data-doc-remove-row-btn]");
+    const removeFileBtn = rowEl.querySelector("[data-doc-remove-file-btn]");
+    const viewBtn = rowEl.querySelector("[data-doc-view-btn]");
+    const previewWrap = rowEl.querySelector("[data-doc-preview-wrap]");
+    const fileNameText = rowEl.querySelector("[data-doc-file-name]");
+    const fileDateText = rowEl.querySelector("[data-doc-file-date]");
+    const docTypeText = rowEl.querySelector("[data-doc-type-text]");
+    const docTypeSelect = rowEl.querySelector('select[name$="-document_type"]');
+    const isExistingFile = rowEl.getAttribute("data-existing-file") === "1";
+
+    function clearPreview() {
+      if (!previewWrap) return;
+      previewWrap.classList.add("is-hidden");
+      const oldImg = previewWrap.querySelector("[data-doc-thumb]");
+      const oldPlaceholder = previewWrap.querySelector("[data-doc-thumb-placeholder]");
+      if (oldImg) oldImg.remove();
+      if (!oldPlaceholder) {
+        const p = document.createElement("div");
+        p.className = "doc-thumb-placeholder";
+        p.setAttribute("data-doc-thumb-placeholder", "1");
+        previewWrap.prepend(p);
+      }
+      if (viewBtn) {
+        viewBtn.setAttribute("disabled", "disabled");
+        viewBtn.removeAttribute("href");
+        viewBtn.removeAttribute("target");
+      }
+      if (fileNameText) {
+        fileNameText.textContent = "Selected file";
+      }
+      if (fileDateText) {
+        fileDateText.textContent = "";
+      }
+      if (docTypeText && docTypeSelect) {
+        const selected = docTypeSelect.options[docTypeSelect.selectedIndex];
+        docTypeText.textContent = selected ? selected.text : "";
+      }
+    }
+
+    function buildFileIconClass(fileName, fileType) {
+      const name = (fileName || "").toLowerCase();
+      const type = (fileType || "").toLowerCase();
+      if (type.includes("pdf") || name.endsWith(".pdf")) return "bi-file-earmark-pdf doc-file-icon-pdf";
+      if (
+        type.includes("spreadsheet") ||
+        type.includes("excel") ||
+        name.endsWith(".xls") ||
+        name.endsWith(".xlsx") ||
+        name.endsWith(".csv")
+      ) {
+        return "bi-file-earmark-excel doc-file-icon-excel";
+      }
+      if (name.endsWith(".doc") || name.endsWith(".docx")) return "bi-file-earmark-word doc-file-icon-default";
+      return "bi-file-earmark doc-file-icon-default";
+    }
+
+    function isImageFile(fileName, fileType) {
+      const name = (fileName || "").toLowerCase();
+      const type = (fileType || "").toLowerCase();
+      if (type.startsWith("image/")) return true;
+      return (
+        name.endsWith(".jpg") ||
+        name.endsWith(".jpeg") ||
+        name.endsWith(".png") ||
+        name.endsWith(".gif") ||
+        name.endsWith(".webp") ||
+        name.endsWith(".bmp") ||
+        name.endsWith(".svg")
+      );
+    }
+
+    function setPreview(url, isImage, fileName, fileType) {
+      if (!previewWrap) return;
+      previewWrap.classList.remove("is-hidden");
+      const oldImg = previewWrap.querySelector("[data-doc-thumb]");
+      const oldPlaceholder = previewWrap.querySelector("[data-doc-thumb-placeholder]");
+      if (oldImg) oldImg.remove();
+      if (oldPlaceholder) oldPlaceholder.remove();
+
+      if (isImage) {
+        const img = document.createElement("img");
+        img.className = "doc-thumb";
+        img.setAttribute("data-doc-thumb", "1");
+        img.src = url;
+        img.alt = "document";
+        previewWrap.prepend(img);
+      } else {
+        const p = document.createElement("div");
+        p.className = "doc-thumb-placeholder";
+        p.setAttribute("data-doc-thumb-placeholder", "1");
+        const icon = document.createElement("i");
+        icon.className = "bi doc-file-icon " + buildFileIconClass(fileName, fileType);
+        p.appendChild(icon);
+        previewWrap.prepend(p);
+      }
+
+      if (viewBtn) {
+        viewBtn.removeAttribute("disabled");
+        viewBtn.setAttribute("href", url);
+        viewBtn.setAttribute("target", "_blank");
+      }
+      if (fileNameText) {
+        fileNameText.textContent = fileName || "Selected file";
+      }
+      if (fileDateText) {
+        if (fileType === "__existing__") {
+          return;
+        }
+        const now = new Date();
+        fileDateText.textContent = now.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "2-digit"
+        });
+      }
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener("change", function () {
+        const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+        if (!f) {
+          clearPreview();
+          return;
+        }
+        const url = URL.createObjectURL(f);
+        const isImage = /^image\//.test(f.type || "");
+        setPreview(url, isImage, f.name, f.type);
+      });
+    }
+    if (docTypeSelect && docTypeText) {
+      const syncType = function () {
+        const selected = docTypeSelect.options[docTypeSelect.selectedIndex];
+        docTypeText.textContent = selected ? selected.text : "";
+      };
+      docTypeSelect.addEventListener("change", syncType);
+      syncType();
+    }
+
+    const existingUrl = viewBtn ? (viewBtn.getAttribute("href") || "") : "";
+    const existingName = fileNameText ? (fileNameText.textContent || "").trim() : "";
+    if (existingUrl && existingName && existingName !== "Selected file") {
+      setPreview(existingUrl, isImageFile(existingName, ""), existingName, "__existing__");
+    }
+
+    if (removeFileBtn) {
+      removeFileBtn.addEventListener("click", function () {
+        if (isExistingFile && deleteInput) {
+          deleteInput.checked = true;
+          rowEl.style.display = "none";
+          return;
+        }
+        if (!fileInput) return;
+        fileInput.value = "";
+        if (docTypeSelect) {
+          docTypeSelect.selectedIndex = 0;
+          docTypeSelect.dispatchEvent(new Event("change"));
+        }
+        clearPreview();
+      });
+    }
+
+    if (removeRowBtn) {
+      removeRowBtn.addEventListener("click", function () {
+        if (deleteInput) {
+          deleteInput.checked = true;
+        }
+        rowEl.style.display = "none";
+      });
+    }
+  }
+
+  docRows.querySelectorAll(".doc-row").forEach(bindDocRow);
+  if (addDocBtn && docRows && totalForms && template) {
+    addDocBtn.addEventListener("click", function () {
+      const idx = parseInt(totalForms.value || "0", 10);
+      const html = template.innerHTML.replace(/__prefix__/g, String(idx));
+      docRows.insertAdjacentHTML("beforeend", html);
+      const rows = docRows.querySelectorAll(".doc-row");
+      bindDocRow(rows[rows.length - 1]);
+      totalForms.value = String(idx + 1);
+    });
+  }
+});
+</script>
+{% endblock %}

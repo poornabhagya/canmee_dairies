@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Day Summary · {{ branch.code }} · {{ report_date|date:"Y-m-d" }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 12px; color: #111; }
+    .top { margin-bottom: 10px; }
+    .top h3 { margin: 0 0 4px; font-size: 18px; }
+    .meta { margin: 0; font-size: 12px; color: #334155; }
+    .no-print { margin-bottom: 8px; }
+    .receipt-copy-actions button {
+      font: inherit;
+      font-size: 13px;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      margin-right: 0.4rem;
+    }
+    .receipt-copy-actions button.is-primary {
+      background: #0f766e;
+      border-color: #0f766e;
+      color: #fff;
+    }
+    .receipt-copy-actions button.is-primary:hover:not(:disabled) {
+      background: #0d9488;
+      border-color: #0d9488;
+    }
+    .receipt-copy-actions button.btn-copy-table {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .print-page {
+      display: inline-block;
+      width: 560px;
+      max-width: 100%;
+      padding: 0;
+    }
+    table {
+      width: 560px;
+      max-width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    col.col-route-num { width: 11%; }
+    col.col-route-name { width: 57%; }
+    col.col-kg { width: 16%; }
+    col.col-liters { width: 16%; }
+    th, td {
+      border: 1px solid #334155;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+    th { background: #f1f5f9; text-align: center; font-weight: 700; }
+    td.num { text-align: right; white-space: nowrap; }
+    td.label { text-align: left; }
+    td.route-num { text-align: center; }
+    tfoot td, tr.total-row td, tr.balance-today td {
+      font-weight: 700;
+    }
+    tr.balance-today td { background: #e2e8f0; }
+    tr.section-gap td { border: none; height: 6px; padding: 0; }
+    tr.section-head td {
+      font-weight: 700;
+      background: #f8fafc;
+      text-align: left;
+      padding: 6px 8px;
+      border-top: 2px solid #334155;
+    }
+    tr.section-head--in td { color: #047857; }
+    tr.section-head--out td { color: #b45309; }
+    .sign-plus { color: #047857; font-weight: 700; margin-right: 0.2rem; }
+    .sign-minus { color: #b45309; font-weight: 700; margin-right: 0.2rem; }
+    .empty { color: #94a3b8; }
+    @media print {
+      @page { size: A4 portrait; margin: 10mm; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print receipt-copy-actions">
+    <button type="button" class="is-primary" onclick="window.print()">Print</button>
+    <button
+      type="button"
+      class="btn-copy-table"
+      onclick="copyTableAsTsv('#day-summary-table', this)"
+      data-copying-label="Copying…"
+      data-copied-label="Copied!"
+      data-failed-label="Copy failed"
+    ><i class="bi bi-clipboard" aria-hidden="true"></i> Copy</button>
+    <button
+      type="button"
+      onclick="copyElementAsImage(document.querySelector('.print-page'), this)"
+      data-copying-label="Copying…"
+      data-copied-label="Copied!"
+      data-downloaded-label="Downloaded"
+      data-failed-label="Copy failed"
+    >Copy as image</button>
+  </div>
+  <div class="print-page" data-copy-filename="day-summary-{{ branch.code }}-{{ report_date|date:'Ymd' }}" data-copy-fixed-width="560">
+    <div class="top">
+      <h3>Day Summary</h3>
+      <p class="meta">
+        Branch: {{ branch.code }} — {{ branch.name }} |
+        Date: {{ report_date|date:"n/j/Y" }} |
+        Printed: {{ printed_at|date:"Y-m-d H:i" }}
+      </p>
+    </div>
+
+    <table id="day-summary-table" class="day-summary-table">
+      <colgroup>
+        <col class="col-route-num">
+        <col class="col-route-name">
+        <col class="col-kg">
+        <col class="col-liters">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Route #</th>
+          <th>Route</th>
+          <th>Kg</th>
+          <th>L</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in route_rows %}
+        <tr>
+          <td class="route-num">{% if row.route_num %}{{ row.route_num }}{% endif %}</td>
+          <td class="label">{{ row.route_name }}</td>
+          <td class="num">{% if row.kg %}{{ row.kg|floatformat:2 }}{% else %}<span class="empty">-</span>{% endif %}</td>
+          <td class="num">{% if row.liters %}{{ row.liters|floatformat:2 }}{% else %}<span class="empty">-</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center;">No routes for this branch.</td>
+        </tr>
+        {% endfor %}
+        {% if route_rows %}
+        <tr class="total-row">
+          <td></td>
+          <td class="label">TOTAL</td>
+          <td class="num">{{ collection_total_kg|floatformat:2 }}</td>
+          <td class="num">{{ collection_total_liters|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+
+        <tr class="section-gap"><td colspan="4"></td></tr>
+        <tr class="section-head section-head--in">
+          <td></td>
+          <td colspan="3" class="label">+ Raw Milk Bulk Collection</td>
+        </tr>
+        {% for row in bulk_rows %}
+        <tr>
+          <td></td>
+          <td class="label"><span class="sign-plus">+</span>{{ row.name }}</td>
+          <td class="num">{% if row.kg %}{{ row.kg|floatformat:2 }}{% else %}<span class="empty">-</span>{% endif %}</td>
+          <td class="num">{% if row.liters %}{{ row.liters|floatformat:2 }}{% else %}<span class="empty">-</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center;">No raw milk bulk suppliers for this branch.</td>
+        </tr>
+        {% endfor %}
+        {% if bulk_rows %}
+        <tr class="total-row">
+          <td></td>
+          <td class="label">TOTAL</td>
+          <td class="num">{{ bulk_total_kg|floatformat:2 }}</td>
+          <td class="num">{{ bulk_total_liters|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+
+        <tr class="section-gap"><td colspan="4"></td></tr>
+        <tr class="section-head section-head--out">
+          <td></td>
+          <td colspan="3" class="label">− Dispatched</td>
+        </tr>
+        {% for row in dispatch_rows %}
+        <tr>
+          <td></td>
+          <td class="label"><span class="sign-minus">−</span>{{ row.name }}</td>
+          <td class="num">{% if row.kg %}{{ row.kg|floatformat:2 }}{% else %}<span class="empty">-</span>{% endif %}</td>
+          <td class="num">{% if row.liters %}{{ row.liters|floatformat:2 }}{% else %}<span class="empty">-</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center;">No buyers linked to this branch.</td>
+        </tr>
+        {% endfor %}
+        {% if dispatch_rows %}
+        <tr class="total-row">
+          <td></td>
+          <td class="label">TOTAL</td>
+          <td class="num">{{ dispatch_total_kg|floatformat:2 }}</td>
+          <td class="num">{{ dispatch_total_liters|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+
+        <tr class="section-gap"><td colspan="4"></td></tr>
+        <tr>
+          <td></td>
+          <td class="label">C/F Balance</td>
+          <td class="num">{{ balance_cf_kg|floatformat:2 }}</td>
+          <td class="num">{{ balance_cf_liters|floatformat:2 }}</td>
+        </tr>
+        <tr class="balance-today">
+          <td></td>
+          <td class="label">Balance Today</td>
+          <td class="num">{{ balance_today_kg|floatformat:2 }}</td>
+          <td class="num">{{ balance_today_liters|floatformat:2 }}</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td class="label">Balance B/F</td>
+          <td class="num">{{ balance_bf_kg|floatformat:2 }}</td>
+          <td class="num">{{ balance_bf_liters|floatformat:2 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% include 'collections/_receipt_copy_table.html' %}
+  {% include 'collections/_receipt_copy_image.html' %}
+</body>
+</html>

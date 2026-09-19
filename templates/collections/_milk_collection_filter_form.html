@@ -1,0 +1,86 @@
+<form method="get" id="milk-collection-filter-form" class="milk-collection-filter-form" role="search">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  {% if request.GET.per_page %}
+  <input type="hidden" name="per_page" value="{{ request.GET.per_page }}">
+  {% endif %}
+  {% if branches|length > 1 and not branch_filter_in_header %}
+  <label class="smart-dt-branch-filter-wrap mb-0">
+    <span class="visually-hidden">Branch</span>
+    <select name="branch" id="milk-list-branch" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Branch">
+      <option value="">All branches</option>
+      {% for b in branches %}
+      <option value="{{ b.id }}" {% if b.id|stringformat:'d' == selected_branch %}selected{% endif %}>{{ b.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <label class="smart-dt-branch-filter-wrap mb-0 milk-filter-date-wrap">
+    <span class="visually-hidden">Date range</span>
+    <div class="input-group input-group-sm flatpickr-range-wrap">
+      <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3"></i></span>
+      <input
+        type="text"
+        id="milk-list-date-range"
+        class="form-control border-start-0 js-datepicker-range js-datepicker-range-iso"
+        data-range-start="date_from"
+        data-range-end="date_to"
+        placeholder="All dates"
+        autocomplete="off"
+        readonly
+        aria-label="Date range"
+      >
+    </div>
+    <input type="hidden" name="date_from" value="{{ date_from }}">
+    <input type="hidden" name="date_to" value="{{ date_to }}">
+  </label>
+  {% if tab == 'route' or tab == 'point' or tab == 'farmer' or tab == 'reconcile' %}
+  <label class="smart-dt-branch-filter-wrap mb-0">
+    <span class="visually-hidden">Route</span>
+    <select name="route" id="milk-list-route" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Route">
+      <option value="">All routes</option>
+      {% for ro in filter_routes %}
+      <option value="{{ ro.id }}" data-branch-id="{{ ro.branch_id }}" {% if ro.id|stringformat:'d' == selected_route %}selected{% endif %}>{{ ro.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if tab == 'point' or tab == 'farmer' or tab == 'reconcile' %}
+  <label class="smart-dt-branch-filter-wrap mb-0">
+    <span class="visually-hidden">Collection point</span>
+    <select name="collection_point" id="milk-list-point" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Collection point">
+      <option value="">All points</option>
+      {% for p in filter_points %}
+      <option value="{{ p.pk }}" data-route-id="{{ p.route_id }}" data-branch-id="{{ p.route.branch_id }}" {% if p.pk|stringformat:'d' == selected_collection_point %}selected{% endif %}>{{ p.number }} — {{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  {% if tab == 'reconcile' %}
+  <label class="smart-dt-branch-filter-wrap mb-0">
+    <span class="visually-hidden">Reconcile status</span>
+    <select name="reconcile_status" id="milk-reconcile-status" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Reconcile status">
+      <option value="" {% if not reconcile_status %}selected{% endif %}>All status</option>
+      <option value="issues" {% if reconcile_status == 'issues' %}selected{% endif %}>Issues only</option>
+      <option value="matched" {% if reconcile_status == 'matched' %}selected{% endif %}>Matched</option>
+      <option value="mismatch" {% if reconcile_status == 'mismatch' %}selected{% endif %}>Mismatch</option>
+      <option value="missing_point" {% if reconcile_status == 'missing_point' %}selected{% endif %}>Missing point</option>
+      <option value="missing_farmers" {% if reconcile_status == 'missing_farmers' %}selected{% endif %}>Missing farmers</option>
+    </select>
+  </label>
+  {% endif %}
+  {% if can_view_payment_status %}
+  {% if tab == 'farmer' or tab == 'point' %}
+  <label class="smart-dt-branch-filter-wrap mb-0">
+    <span class="visually-hidden">Payment</span>
+    <select name="payment_status" id="milk-list-payment-status" class="form-select form-select-sm smart-dt-branch-filter" aria-label="Payment status">
+      <option value="" {% if not payment_status %}selected{% endif %}>All payments</option>
+      <option value="paid" {% if payment_status == 'paid' %}selected{% endif %}>Paid</option>
+      <option value="unpaid" {% if payment_status == 'unpaid' %}selected{% endif %}>Unpaid</option>
+    </select>
+  </label>
+  {% endif %}
+  {% endif %}
+  {% if selected_branch or selected_route or selected_collection_point or date_from or date_to or reconcile_status or payment_status %}
+  <a href="{% url 'milk-collection-list' %}?tab={{ tab }}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Clear filters" aria-label="Clear filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+  {% endif %}
+</form>

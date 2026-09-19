@@ -1,0 +1,191 @@
+<script>
+(function () {
+  var actions = document.getElementById("inline-qty-actions");
+  if (!actions) return;
+
+  var saveBtn = actions.querySelector(".inline-qty-save");
+  var cancelBtn = actions.querySelector(".inline-qty-cancel");
+  var activeCell = null;
+  var activeRow = null;
+  var activeInput = null;
+  var saving = false;
+
+  function csrfToken() {
+    var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return el ? el.value : "";
+  }
+
+  function cellInput(cell) {
+    return cell ? cell.querySelector(".inline-qty-input") : null;
+  }
+
+  function closeEditor() {
+    if (activeCell) {
+      activeCell.classList.remove("is-active");
+      var display = activeCell.querySelector(".inline-qty-display");
+      var input = cellInput(activeCell);
+      if (display) display.style.visibility = "";
+      if (input) input.hidden = true;
+    }
+    if (activeRow) activeRow.classList.remove("inline-qty-row-editing");
+    activeCell = null;
+    activeRow = null;
+    activeInput = null;
+    actions.hidden = true;
+  }
+
+  function positionActions(cell) {
+    var rect = cell.getBoundingClientRect();
+    actions.hidden = false;
+    var panel = actions.querySelector(".inline-qty-actions__panel");
+    var panelWidth = panel ? panel.offsetWidth : 76;
+    var left = rect.left + rect.width / 2 - panelWidth / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+    actions.style.left = left + "px";
+    actions.style.top = rect.top - actions.offsetHeight + 4 + "px";
+  }
+
+  function openEditor(cell) {
+    if (saving) return;
+    if (activeCell === cell && !actions.hidden) return;
+    closeEditor();
+
+    activeCell = cell;
+    activeRow = cell.closest("tr");
+    activeInput = cellInput(cell);
+    if (!activeInput) return;
+
+    var display = cell.querySelector(".inline-qty-display");
+    activeInput.value = cell.getAttribute("data-value") || "";
+    if (display) display.style.visibility = "hidden";
+    activeInput.hidden = false;
+    cell.classList.add("is-active");
+    if (activeRow) activeRow.classList.add("inline-qty-row-editing");
+
+    positionActions(cell);
+    activeInput.focus();
+    activeInput.select();
+  }
+
+  function parseQty(raw) {
+    var text = String(raw || "").replace(/,/g, "").trim();
+    if (!text) return NaN;
+    var n = Number(text);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function formatQty(value) {
+    var n = parseQty(value);
+    if (!isFinite(n)) return value;
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function updateRowQuantities(row, kg, liters) {
+    if (!row) return;
+    row.querySelectorAll(".inline-qty-cell").forEach(function (cell) {
+      var field = cell.getAttribute("data-field");
+      var display = cell.querySelector(".inline-qty-display");
+      if (!display) return;
+      if (field === "kg") {
+        display.textContent = formatQty(kg);
+        cell.setAttribute("data-value", kg);
+      } else if (field === "liters") {
+        display.textContent = formatQty(liters);
+        cell.setAttribute("data-value", liters);
+      }
+    });
+  }
+
+  function saveEditor() {
+    if (!activeCell || !activeInput || saving) return;
+    var value = parseQty(activeInput.value);
+    if (!isFinite(value) || value < 0) {
+      if (typeof Swal !== "undefined") {
+        Swal.fire({ icon: "warning", title: "Invalid quantity", text: "Enter a valid amount (0 or greater)." });
+      }
+      activeInput.focus();
+      return;
+    }
+    var url = activeCell.getAttribute("data-update-url");
+    var field = activeCell.getAttribute("data-field");
+    if (!url || !field) return;
+
+    saving = true;
+    saveBtn.disabled = true;
+    cancelBtn.disabled = true;
+
+    var body = new URLSearchParams();
+    body.set("field", field);
+    body.set("value", String(value));
+
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": csrfToken(),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: body.toString(),
+    })
+      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok || !result.data.ok) {
+          throw new Error((result.data && result.data.error) || "Could not save quantity.");
+        }
+        updateRowQuantities(activeRow, result.data.kg, result.data.liters);
+        closeEditor();
+      })
+      .catch(function (err) {
+        if (typeof Swal !== "undefined") {
+          Swal.fire({ icon: "error", title: "Could not save", text: err.message || "Try again." });
+        }
+      })
+      .finally(function () {
+        saving = false;
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
+      });
+  }
+
+  document.addEventListener("click", function (ev) {
+    var cell = ev.target.closest(".inline-qty-cell.is-editable");
+    if (cell && !actions.contains(ev.target) && !cell.classList.contains("is-active")) {
+      ev.preventDefault();
+      openEditor(cell);
+      return;
+    }
+    if (!actions.hidden && !actions.contains(ev.target) && !ev.target.closest(".inline-qty-cell.is-active")) {
+      closeEditor();
+    }
+  });
+
+  saveBtn.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    saveEditor();
+  });
+  cancelBtn.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    closeEditor();
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    if (!activeInput || activeInput.hidden) return;
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      saveEditor();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeEditor();
+    }
+  });
+
+  window.addEventListener("resize", function () {
+    if (activeCell && !actions.hidden) positionActions(activeCell);
+  });
+  window.addEventListener("scroll", function () {
+    if (activeCell && !actions.hidden) positionActions(activeCell);
+  }, true);
+})();
+</script>

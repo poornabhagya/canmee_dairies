@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>මධ්‍යස්ථාන රිසිට්පත · {{ line.point_name }} · {{ collection_date }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+  {% include 'collections/_receipt_common_styles.html' %}
+  <style>
+    @media print {
+      @page { size: A4 portrait; margin: 10mm 14mm; }
+    }
+  </style>
+</head>
+<body class="receipt-body receipt-print-mode-point">
+  <div class="receipt-shell">
+    <p class="no-print section-label" style="text-align:center;margin-bottom:1rem;font-weight:400;color:#64748b;">
+      එක් මධ්‍යස්ථානයක් සඳහා රිසිට්පත — පළල 100&nbsp;mm (මාර්ග රිසිට්පත හා එකම ආකාරයට).
+    </p>
+
+    <div class="point-receipt-block receipt-slip point-receipt-unified">
+      {% include 'collections/_point_receipt_sinhala_inner.html' %}
+      {% if issue_receipt_sections %}
+      {% include 'collections/_point_receipt_issue_goods_block.html' %}
+      {% endif %}
+    </div>
+
+    <p class="footer-note no-print">මුද්‍රණය: {{ printed_at|date:"Y-m-d H:i" }}</p>
+
+    <div class="actions no-print">
+      <button type="button" class="btn btn-print" onclick="printAndClose()">මුද්‍රණය</button>
+      <a class="btn btn-back" href="{% url 'milk-collection-list' %}?tab=point" onclick="return closeTabOrRedirect(this.href)">ආපසු</a>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function closeTab() {
+        try {
+          window.open('', '_self');
+          window.close();
+        } catch (e) {}
+      }
+      window.printAndClose = function () {
+        var done = false;
+        function finish() {
+          if (done) return;
+          done = true;
+          setTimeout(closeTab, 120);
+        }
+        window.addEventListener('afterprint', finish, { once: true });
+        window.print();
+        setTimeout(finish, 1200);
+      };
+      window.closeTabOrRedirect = function (href) {
+        closeTab();
+        setTimeout(function () {
+          if (href) window.location.href = href;
+        }, 250);
+        return false;
+      };
+    })();
+  </script>
+</body>
+</html>

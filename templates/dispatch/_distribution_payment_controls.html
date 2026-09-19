@@ -1,0 +1,9 @@
+{% load format_extras %}
+{% if o.buyer_id %}
+  {% with status=o.payment_status_from_amounts %}
+  <div class="dispatch-payment-cell" title="Paid {{ o.paid_amount|default:0|money }} / {{ o.total_amount|default:0|money }}">
+    <span class="dispatch-payment-amount">{{ o.total_amount|default:0|money }}</span>
+    <span class="dispatch-payment-badge dispatch-payment-badge--{{ status }}">{% if status == "paid" %}Paid{% elif status == "partial" %}Partial{% else %}Pending{% endif %}</span>
+  </div>
+  {% endwith %}
+{% else %}—{% endif %}

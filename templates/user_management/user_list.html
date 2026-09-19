@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+{% load static user_tags %}
+{% block title %}Users · Canmee Dairies{% endblock %}
+{% block page_heading %}Users{% endblock %}
+{% block extra_css %}
+<style>
+  .card.user-list-card {
+    overflow: visible;
+  }
+  .user-list-card .card-body.table-wrap {
+    padding: 0.85rem 1rem 1rem;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+  .user-list-card .user-table-wrap,
+  .user-list-card .dataTables_wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .user-list-card table.dataTable.user-table {
+    width: 100% !important;
+    table-layout: fixed;
+    margin-bottom: 0;
+    font-size: 0.8125rem;
+  }
+  .user-table thead th {
+    font-size: 0.68rem;
+    padding: 0.55rem 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .user-table tbody td {
+    padding: 0.5rem 0.5rem;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+  .user-table tbody td.user-actions-cell,
+  .user-table tbody td.user-col-roles {
+    overflow: visible;
+  }
+  .user-table .user-col-user { width: 12%; }
+  .user-table .user-col-name { width: 15%; }
+  .user-table .user-col-email { width: 14%; }
+  .user-table .user-col-branches { width: 11%; }
+  .user-table .user-col-status { width: 10%; }
+  .user-table .user-col-roles { width: 26%; }
+  .user-table .user-col-actions { width: 6%; }
+  .user-table .user-cell-ellipsis,
+  .user-table .user-branches-text {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .user-list-filters {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    background: #f8fafc;
+  }
+  .user-list-filters .form-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+  }
+  .user-list-stats {
+    display: none;
+  }
+  .user-status-tabs {
+    padding: 0 1rem;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    background: #fff;
+  }
+  .user-status-tabs .nav-link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #64748b;
+    padding: 0.65rem 0.85rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+  }
+  .user-status-tabs .nav-link:hover {
+    color: #0f172a;
+    border-bottom-color: #cbd5e1;
+  }
+  .user-status-tabs .nav-link.active {
+    color: #059669;
+    border-bottom-color: #059669;
+    background: transparent;
+  }
+  .user-status-tabs .nav-link .badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    margin-left: 0.35rem;
+  }
+  .user-table tr.user-row--inactive td {
+    background-color: #fffbeb;
+  }
+  .user-table tr.user-row--inactive:hover td {
+    background-color: #fef3c7;
+  }
+  .user-status-select.is-inactive {
+    border-color: #f59e0b;
+    background-color: #fffbeb;
+    color: #b45309;
+    font-weight: 600;
+  }
+  .user-count-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 0;
+    padding: 0.2rem 0.45rem;
+  }
+  button.user-count-badge:hover {
+    filter: brightness(0.97);
+  }
+  .user-actions-dropdown {
+    position: relative;
+  }
+  .user-actions-dropdown .dropdown-menu {
+    z-index: 1080;
+  }
+  .user-role-badges {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.2rem;
+    align-items: center;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .user-role-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .user-role-manage-btn {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    line-height: 1.2;
+    flex-shrink: 0;
+  }
+  .user-branches-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .user-status-select {
+    width: 100%;
+    max-width: 100%;
+    padding: 0.2rem 1.35rem 0.2rem 0.35rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+  .user-status-badge {
+    font-size: 0.72rem;
+  }
+  .user-role-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .user-roles-modal .form-check {
+    padding: 0.45rem 0.75rem 0.45rem 2rem;
+    border-radius: 8px;
+    margin-bottom: 0.15rem;
+  }
+  .user-roles-modal .form-check:hover {
+    background: #f8fafc;
+  }
+  .user-roles-modal .modal-body {
+    max-height: min(60vh, 28rem);
+    overflow-y: auto;
+  }
+  .user-actions-menu .dropdown-item {
+    font-size: 0.875rem;
+  }
+  .user-list-card .dataTables_wrapper .dt-buttons {
+    padding: 0 0 0.5rem;
+  }
+  .user-table td.user-status-cell {
+    min-width: 0;
+  }
+  .user-table td.user-actions-cell {
+    min-width: 0;
+    width: 3rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    text-align: center;
+  }
+  .user-table .user-actions-btn {
+    padding: 0.2rem 0.4rem;
+    line-height: 1;
+  }
+  @media (max-width: 1199.98px) {
+    .user-table .user-col-hide-wide {
+      display: none !important;
+    }
+    .user-table .user-col-user { width: 13%; }
+    .user-table .user-col-name { width: 17%; }
+    .user-table .user-col-branches { width: 13%; }
+    .user-table .user-col-status { width: 11%; }
+    .user-table .user-col-roles { width: 30%; }
+    .user-table .user-col-actions { width: 8%; }
+  }
+  @media (max-width: 767.98px) {
+    .user-table .user-col-hide-mobile {
+      display: none !important;
+    }
+    .user-table .user-col-user { width: 30%; }
+    .user-table .user-col-branches { width: 24%; }
+    .user-table .user-col-status { width: 24%; }
+    .user-table .user-col-actions { width: 12%; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Users</h1>
+    <p class="page-subtitle">Search accounts, assign roles inline, and manage access.</p>
+  </div>
+  {% if perms.auth.add_user %}
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{% url 'user_management:user-create' %}"><i class="bi bi-person-plus me-1"></i>Add user</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card card-table user-list-card">
+  <div class="user-list-filters">
+    <form method="get" class="row g-2 align-items-end" id="user-list-filter-form">
+      <div class="col-12 col-md-4 col-lg-3">
+        <label class="form-label" for="user-filter-q">Search</label>
+        <input
+          type="search"
+          id="user-filter-q"
+          class="form-control"
+          name="q"
+          value="{{ search_query }}"
+          placeholder="Username, name, or email"
+          autocomplete="off"
+        >
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label" for="user-filter-role">Role</label>
+        <select id="user-filter-role" name="role" class="form-select">
+          <option value="">All roles</option>
+          {% for g in all_groups %}
+          <option value="{{ g.pk }}" {% if filter_role == g.pk|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-4 col-lg-2">
+        <label class="form-label" for="user-filter-branch">Branch</label>
+        <select id="user-filter-branch" name="branch" class="form-select">
+          <option value="">All branches</option>
+          {% for b in filter_branches %}
+          <option value="{{ b.pk }}" {% if filter_branch == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if filter_status %}
+      <input type="hidden" name="status" value="{{ filter_status }}">
+      {% endif %}
+      <div class="col-auto d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+        {% if search_query or filter_role or filter_branch %}
+        <a href="{% url 'user_management:user-list' %}{% if filter_status %}?status={{ filter_status }}{% endif %}" class="btn btn-outline-secondary">Reset</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <nav class="user-status-tabs" aria-label="Filter users by status">
+    <ul class="nav">
+      <li class="nav-item">
+        <a class="nav-link{% if not filter_status %} active{% endif %}" href="{% url 'user_management:user-list' %}?{% if search_query %}q={{ search_query|urlencode }}&amp;{% endif %}{% if filter_role %}role={{ filter_role }}&amp;{% endif %}{% if filter_branch %}branch={{ filter_branch }}{% endif %}">All<span class="badge text-bg-light border">{{ status_tab_counts.all }}</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if filter_status == 'active' %} active{% endif %}" href="{% url 'user_management:user-list' %}?status=active{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}{% if filter_role %}&amp;role={{ filter_role }}{% endif %}{% if filter_branch %}&amp;branch={{ filter_branch }}{% endif %}">Active<span class="badge text-bg-success-subtle text-success">{{ status_tab_counts.active }}</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if filter_status == 'inactive' %} active{% endif %}" href="{% url 'user_management:user-list' %}?status=inactive{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}{% if filter_role %}&amp;role={{ filter_role }}{% endif %}{% if filter_branch %}&amp;branch={{ filter_branch }}{% endif %}">Inactive<span class="badge text-bg-warning-subtle text-warning-emphasis">{{ status_tab_counts.inactive }}</span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link{% if filter_status == 'staff' %} active{% endif %}" href="{% url 'user_management:user-list' %}?status=staff{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}{% if filter_role %}&amp;role={{ filter_role }}{% endif %}{% if filter_branch %}&amp;branch={{ filter_branch }}{% endif %}">Staff<span class="badge text-bg-secondary">{{ status_tab_counts.staff }}</span></a>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="card-body table-wrap">
+    <p class="small text-muted d-lg-none mb-2">On smaller screens some columns are hidden. Use Edit for full details.</p>
+    <div class="user-table-wrap">
+    <table class="table table-hover datatable datatable-no-responsive user-table mb-0 w-100" data-page-length="25" data-disable-search="true" data-empty-table="No users match this filter.">
+      <thead>
+        <tr>
+          <th class="user-col-user">Username</th>
+          <th class="user-col-name user-col-hide-mobile">Name</th>
+          <th class="user-col-email user-col-hide-wide">Email</th>
+          <th class="user-col-branches">Branches</th>
+          <th class="user-col-status">Status</th>
+          <th class="user-col-roles user-col-hide-mobile">Roles</th>
+          <th class="user-col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in user_list %}
+        <tr data-user-id="{{ u.pk }}"{% if not u.is_active %} class="user-row--inactive"{% endif %}>
+          <td class="fw-medium user-col-user">
+            <span class="user-cell-ellipsis" title="{{ u.username }}">{{ u.username|capfirst }}</span>
+            {% if u.is_staff %}<span class="badge text-bg-secondary user-status-badge">Staff</span>{% endif %}
+          </td>
+          <td class="user-col-name user-col-hide-mobile"><span class="user-cell-ellipsis" title="{{ u.get_full_name }}">{{ u.get_full_name|default:"—" }}</span></td>
+          <td class="user-col-email user-col-hide-wide"><span class="user-cell-ellipsis" title="{{ u.email }}">{{ u.email|default:"—" }}</span></td>
+          <td class="user-col-branches">
+            {% with branch_list=u.assigned_branches.all %}
+            {% if branch_list %}
+              {% if branch_list|length == 1 %}
+              <span class="small text-muted user-branches-text" title="{{ branch_list.0.name }}">{{ branch_list.0.name }}</span>
+              {% else %}
+              {% if perms.auth.change_user %}
+              <a
+                href="{% url 'user_management:user-update' u.pk %}"
+                class="badge text-bg-light border text-dark user-count-badge text-decoration-none"
+                title="{% for b in branch_list %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% endfor %} — click to edit branches"
+              >{{ branch_list|length }} branches</a>
+              {% else %}
+              <button
+                type="button"
+                class="badge text-bg-light border text-dark user-count-badge js-user-branches-popover"
+                data-bs-toggle="popover"
+                data-bs-trigger="focus"
+                data-bs-placement="top"
+                data-bs-content="{% for b in branch_list %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% endfor %}"
+                title="Assigned branches"
+              >{{ branch_list|length }} branches</button>
+              {% endif %}
+              {% endif %}
+            {% else %}
+            —
+            {% endif %}
+            {% endwith %}
+          </td>
+          <td class="user-col-status user-status-cell">
+            {% if perms.auth.change_user and u.pk != request.user.pk %}
+            <select
+              class="form-select form-select-sm user-status-select js-user-status-select{% if not u.is_active %} is-inactive{% endif %}"
+              data-user-id="{{ u.pk }}"
+              data-username="{{ u.username }}"
+              aria-label="Status for {{ u.username }}"
+            >
+              <option value="1" {% if u.is_active %}selected{% endif %}>Active</option>
+              <option value="0" {% if not u.is_active %}selected{% endif %}>Inactive</option>
+            </select>
+            {% elif u.is_active %}
+            <span class="badge text-bg-success-subtle text-success user-status-badge">Active</span>
+            {% else %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis user-status-badge">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="user-col-roles user-col-hide-mobile">
+            <div class="user-role-cell">
+              <div class="user-role-badges" data-user-id="{{ u.pk }}" title="{% for g in u.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                {% if u.groups.all %}
+                  {% if u.groups.all|length == 1 %}
+                    {% if perms.auth.change_user %}
+                    <button
+                      type="button"
+                      class="badge text-bg-light border text-dark user-role-badge user-count-badge text-truncate js-user-roles-btn"
+                      data-user-id="{{ u.pk }}"
+                      data-username="{{ u.username }}"
+                      data-role-ids="{{ u.groups.all.0.pk }}"
+                      title="{{ u.groups.all.0.name }} — click to manage roles"
+                    >{{ u.groups.all.0.name }}</button>
+                    {% else %}
+                    <span class="badge text-bg-light border text-dark user-role-badge text-truncate">{{ u.groups.all.0.name }}</span>
+                    {% endif %}
+                  {% else %}
+                    {% if perms.auth.change_user %}
+                    <button
+                      type="button"
+                      class="badge text-bg-light border text-dark user-role-badge user-count-badge js-user-roles-btn"
+                      data-user-id="{{ u.pk }}"
+                      data-username="{{ u.username }}"
+                      data-role-ids="{% for g in u.groups.all %}{{ g.pk }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                      title="{% for g in u.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %} — click to manage roles"
+                    >{{ u.groups.all|length }} roles</button>
+                    {% else %}
+                    <button
+                      type="button"
+                      class="badge text-bg-light border text-dark user-role-badge user-count-badge js-user-branches-popover"
+                      data-bs-toggle="popover"
+                      data-bs-trigger="focus"
+                      data-bs-placement="top"
+                      data-bs-content="{% for g in u.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}"
+                      title="Assigned roles"
+                    >{{ u.groups.all|length }} roles</button>
+                    {% endif %}
+                  {% endif %}
+                {% else %}
+                <span class="text-muted small user-role-empty">None</span>
+                {% endif %}
+              </div>
+              {% if perms.auth.change_user %}
+              <button
+                type="button"
+                class="btn btn-outline-primary user-role-manage-btn js-user-roles-btn flex-shrink-0"
+                data-user-id="{{ u.pk }}"
+                data-username="{{ u.username }}"
+                data-role-ids="{% for g in u.groups.all %}{{ g.pk }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                title="Assign roles"
+              >
+                <i class="bi bi-shield-plus"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="user-col-actions user-actions-cell">
+            {% if perms.auth.change_user or perms.auth.delete_user %}
+            <div class="dropdown dropstart user-actions-dropdown">
+              <button
+                class="btn btn-sm btn-outline-secondary user-actions-btn"
+                type="button"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="true"
+                aria-expanded="false"
+                aria-label="Actions for {{ u.username }}"
+              >
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu user-actions-menu">
+                {% if perms.auth.change_user %}
+                <li><a class="dropdown-item" href="{% url 'user_management:user-update' u.pk %}"><i class="bi bi-pencil-square me-2"></i>Edit</a></li>
+                <li>
+                  <button
+                    type="button"
+                    class="dropdown-item js-user-roles-btn"
+                    data-user-id="{{ u.pk }}"
+                    data-username="{{ u.username }}"
+                    data-role-ids="{% for g in u.groups.all %}{{ g.pk }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                  ><i class="bi bi-shield-check me-2"></i>Assign roles</button>
+                </li>
+                <li><a class="dropdown-item" href="{% url 'user_management:user-set-password' u.pk %}"><i class="bi bi-key me-2"></i>Password</a></li>
+                {% endif %}
+                {% if perms.auth.delete_user %}
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a
+                    href="{% url 'user_management:user-delete' u.pk %}"
+                    class="dropdown-item text-danger js-swal-delete-post"
+                    data-swal-title="Delete user {{ u.get_username }}?"
+                    data-swal-text="This cannot be undone."
+                  ><i class="bi bi-trash3 me-2"></i>Delete</a>
+                </li>
+                {% endif %}
+              </ul>
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">No users match this filter.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+{% if perms.auth.change_user %}
+<div class="modal fade user-roles-modal" id="userRolesModal" tabindex="-1" aria-labelledby="userRolesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="user-roles-form" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="userRolesModalLabel">Assign roles</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Choose roles for <strong id="user-roles-modal-username"></strong>. Changes apply immediately when you save.
+          </p>
+          {% if all_groups %}
+          <div class="user-roles-checkboxes">
+            {% for g in all_groups %}
+            <div class="form-check">
+              <input class="form-check-input js-user-role-checkbox" type="checkbox" name="groups" value="{{ g.pk }}" id="user-role-opt-{{ g.pk }}">
+              <label class="form-check-label" for="user-role-opt-{{ g.pk }}">{{ g.name }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted mb-0">No roles defined yet. <a href="{% url 'user_management:group-create' %}">Create a role</a> first.</p>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="user-roles-save-btn" {% if not all_groups %}disabled{% endif %}>
+            <i class="bi bi-check2 me-1"></i>Save roles
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+  window.USER_ROLES_UPDATE_URL_TEMPLATE = "{% url 'user_management:user-roles-update' 0 %}";
+  window.USER_STATUS_UPDATE_URL_TEMPLATE = "{% url 'user_management:user-status-update' 0 %}";
+</script>
+<script src="{% static 'js/user-list.js' %}"></script>
+{% endblock %}

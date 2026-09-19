@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Record payment · Raw Milk Bulk Collection{% endblock %}
+{% block page_heading %}Record payment{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Record payment</h1>
+    <p class="page-subtitle">{{ collection.date }} · {{ collection.supplier }} · {{ collection.dispatch_no }}</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <p class="mb-3">
+      Outstanding: <strong>{{ collection.outstanding_amount|money }}</strong>
+      <span class="text-muted">(total {{ collection.total_amount|default:0|money }}, paid {{ collection.paid_amount|default:0|money }})</span>
+    </p>
+    <form method="post" class="form-card" style="max-width: 36rem;">
+      {% csrf_token %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <div class="mb-3">
+        <label class="form-label" for="id_date">Date</label>
+        <input type="text" name="date" id="id_date" class="form-control js-datepicker" value="{{ default_date }}" placeholder="Payment date" autocomplete="off" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="id_amount">Amount</label>
+        <input type="text" name="amount" id="id_amount" class="form-control js-money-input" value="{{ collection.outstanding_amount }}" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="id_reference">Reference</label>
+        <input type="text" name="reference" id="id_reference" class="form-control" maxlength="80" placeholder="Receipt / ref (optional)" autocomplete="off">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="id_note">Note</label>
+        <input type="text" name="note" id="id_note" class="form-control" maxlength="255" placeholder="Note (optional)" autocomplete="off">
+      </div>
+      {% if form_errors %}
+      <div class="alert alert-danger" role="alert">
+        {% for err in form_errors %}<div>{{ err }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-cash-coin me-1"></i>Record payment</button>
+      <a href="{% url 'raw-milk-collection-list' %}" class="btn btn-outline-secondary mt-2 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

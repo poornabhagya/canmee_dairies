@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Print {{ count.count_number }}{% endblock %}
+{% block page_heading %}{{ count.count_number }}{% endblock %}
+{% block extra_css %}
+<style>
+  @media print {
+    .sidebar, .topbar, .page-actions, .no-print { display: none !important; }
+    .app-main, .content-wrap { margin: 0 !important; padding: 0 !important; }
+  }
+  .stock-count-print-table th, .stock-count-print-table td { font-size: 0.9rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="module-shell">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ count.count_number }}</h1>
+      <p class="page-subtitle">{{ count.branch.name }} · {{ count.date|date:"Y-m-d" }} · {{ count.get_status_display }}</p>
+    </div>
+    <div class="page-actions no-print">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+      <a class="btn btn-outline-secondary" href="{% url 'stock-count-edit' count.pk %}">Back</a>
+    </div>
+  </div>
+
+  {% if count.remarks %}
+  <p class="small text-muted">{{ count.remarks }}</p>
+  {% endif %}
+
+  <table class="table table-bordered stock-count-print-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Product</th>
+        <th>Unit</th>
+        <th class="text-end">Book</th>
+        <th class="text-end">Physical</th>
+        <th class="text-end">Variance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in count.lines.all %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ line.product.name }}</td>
+        <td>{{ line.product.unit }}</td>
+        <td class="text-end">{{ line.book_qty }}</td>
+        <td class="text-end">{% if line.physical_qty != None %}{{ line.physical_qty }}{% else %}{% endif %}</td>
+        <td class="text-end">{% if line.variance != None %}{{ line.variance }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="row mt-4 small">
+    <div class="col-4">Counted by: ________________</div>
+    <div class="col-4">Verified by: ________________</div>
+    <div class="col-4">Date: ________________</div>
+  </div>
+</div>
+{% endblock %}

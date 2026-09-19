@@ -1,0 +1,266 @@
+<script>
+(function () {
+  function parseYmd(value) {
+    var text = String(value || "").trim();
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+    if (!match) return null;
+    var year = Number(match[1]);
+    var month = Number(match[2]) - 1;
+    var day = Number(match[3]);
+    var date = new Date(year, month, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return null;
+    return date;
+  }
+
+  function formatYmd(date) {
+    var y = date.getFullYear();
+    var m = String(date.getMonth() + 1).padStart(2, "0");
+    var d = String(date.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  }
+
+  function daysInclusive(start, end) {
+    if (!start || !end) return 0;
+    var ms = end.getTime() - start.getTime();
+    if (ms < 0) return 0;
+    return Math.floor(ms / 86400000) + 1;
+  }
+
+  function lastDayOfMonth(year, monthIndex) {
+    return new Date(year, monthIndex + 1, 0).getDate();
+  }
+
+  function halfForDate(date) {
+    var year = date.getFullYear();
+    var month = date.getMonth();
+    var day = date.getDate();
+    if (day <= 15) {
+      return {
+        start: new Date(year, month, 1),
+        end: new Date(year, month, 15),
+        key: "first-half",
+      };
+    }
+    return {
+      start: new Date(year, month, 16),
+      end: new Date(year, month, lastDayOfMonth(year, month)),
+      key: "second-half",
+    };
+  }
+
+  function previousHalf(date) {
+    var current = halfForDate(date);
+    var pivot = new Date(current.start);
+    pivot.setDate(pivot.getDate() - 1);
+    return halfForDate(pivot);
+  }
+
+  function thisMonth(date) {
+    return {
+      start: new Date(date.getFullYear(), date.getMonth(), 1),
+      end: new Date(date.getFullYear(), date.getMonth(), lastDayOfMonth(date.getFullYear(), date.getMonth())),
+      key: "this-month",
+    };
+  }
+
+  function sameDay(a, b) {
+    return a && b && formatYmd(a) === formatYmd(b);
+  }
+
+  function detectPreset(start, end) {
+    if (!start || !end) return "";
+    var first = halfForDate(start);
+    if (first.key === "first-half" && sameDay(start, first.start) && sameDay(end, first.end)) {
+      return "first-half";
+    }
+    var second = halfForDate(new Date(start.getFullYear(), start.getMonth(), 16));
+    if (sameDay(start, second.start) && sameDay(end, second.end)) {
+      return "second-half";
+    }
+    var month = thisMonth(start);
+    if (sameDay(start, month.start) && sameDay(end, month.end)) {
+      return "this-month";
+    }
+    return "";
+  }
+
+  function syncBranchTiles(form) {
+    var branchEl = form.querySelector("#payment-sheet-branches");
+    if (!branchEl) return;
+    var selected = {};
+    Array.prototype.forEach.call(branchEl.options || [], function (opt) {
+      if (opt.selected && opt.value) selected[String(opt.value)] = true;
+    });
+    form.querySelectorAll(".js-ps-branch-tile").forEach(function (tile) {
+      var id = String(tile.getAttribute("data-branch-id") || "");
+      var on = !!selected[id];
+      tile.classList.toggle("is-selected", on);
+      tile.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function setBranchSelected(form, branchId, selected) {
+    var branchEl = form.querySelector("#payment-sheet-branches");
+    if (!branchEl) return;
+    Array.prototype.forEach.call(branchEl.options || [], function (opt) {
+      if (String(opt.value) === String(branchId)) {
+        opt.selected = !!selected;
+      }
+    });
+    syncBranchTiles(form);
+    refreshMeta(form);
+  }
+
+  function setAllBranches(form, selected) {
+    var branchEl = form.querySelector("#payment-sheet-branches");
+    if (!branchEl) return;
+    Array.prototype.forEach.call(branchEl.options || [], function (opt) {
+      if (opt.value) opt.selected = !!selected;
+    });
+    syncBranchTiles(form);
+    refreshMeta(form);
+  }
+
+  function refreshMeta(form) {
+    var startEl = form.querySelector("#payment-sheet-start");
+    var endEl = form.querySelector("#payment-sheet-end");
+    var branchEl = form.querySelector("#payment-sheet-branches");
+    var daysPill = document.getElementById("ps-period-days-pill");
+    var branchesPill = document.getElementById("ps-period-branches-pill");
+    var start = parseYmd(startEl && startEl.value);
+    var end = parseYmd(endEl && endEl.value);
+    if (daysPill) {
+      if (start && end) {
+        var days = daysInclusive(start, end);
+        daysPill.textContent = days + " day" + (days === 1 ? "" : "s");
+      } else {
+        daysPill.textContent = "Pick period";
+      }
+    }
+    if (branchesPill && branchEl) {
+      var selected = Array.prototype.filter.call(branchEl.options || [], function (opt) {
+        return opt.selected && opt.value;
+      }).length;
+      var total = Array.prototype.filter.call(branchEl.options || [], function (opt) {
+        return opt.value;
+      }).length;
+      if (!total) {
+        branchesPill.textContent = "No branches";
+      } else if (!selected) {
+        branchesPill.textContent = "No branch selected";
+      } else if (selected === total) {
+        branchesPill.textContent = "All " + total + " branches";
+      } else {
+        branchesPill.textContent = selected + " of " + total + " branches";
+      }
+    }
+    form.querySelectorAll(".js-ps-period-preset").forEach(function (chip) {
+      var key = chip.getAttribute("data-preset") || "";
+      chip.classList.toggle("is-active", key && key === detectPreset(start, end));
+    });
+  }
+
+  function setPeriod(form, start, end) {
+    var startEl = form.querySelector("#payment-sheet-start");
+    var endEl = form.querySelector("#payment-sheet-end");
+    var rangeEl = form.querySelector("#payment-sheet-period-range");
+    if (!startEl || !endEl || !start || !end) return;
+    startEl.value = formatYmd(start);
+    endEl.value = formatYmd(end);
+    if (rangeEl && rangeEl._flatpickr) {
+      rangeEl._flatpickr.setDate([start, end], true);
+    } else if (rangeEl) {
+      rangeEl.value = formatYmd(start) + " to " + formatYmd(end);
+    }
+    refreshMeta(form);
+  }
+
+  function resolvePreset(key, start, end) {
+    var anchor = end || start || new Date();
+    if (key === "first-half") {
+      return halfForDate(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+    }
+    if (key === "second-half") {
+      return halfForDate(new Date(anchor.getFullYear(), anchor.getMonth(), 16));
+    }
+    if (key === "prev-half") {
+      return previousHalf(anchor);
+    }
+    if (key === "this-month") {
+      return thisMonth(anchor);
+    }
+    return null;
+  }
+
+  function bindForm(form) {
+    if (!form || form.dataset.psPeriodBound === "1") return;
+    form.dataset.psPeriodBound = "1";
+
+    form.querySelectorAll(".js-ps-period-preset").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var startEl = form.querySelector("#payment-sheet-start");
+        var endEl = form.querySelector("#payment-sheet-end");
+        var start = parseYmd(startEl && startEl.value);
+        var end = parseYmd(endEl && endEl.value);
+        var preset = resolvePreset(chip.getAttribute("data-preset"), start, end);
+        if (!preset) return;
+        setPeriod(form, preset.start, preset.end);
+      });
+    });
+
+    form.querySelectorAll(".js-ps-branch-tile").forEach(function (tile) {
+      tile.addEventListener("click", function () {
+        var id = tile.getAttribute("data-branch-id");
+        var next = !tile.classList.contains("is-selected");
+        setBranchSelected(form, id, next);
+      });
+    });
+
+    var allBtn = form.querySelector(".js-ps-branch-all");
+    var clearBtn = form.querySelector(".js-ps-branch-clear");
+    if (allBtn) {
+      allBtn.addEventListener("click", function () {
+        setAllBranches(form, true);
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function () {
+        setAllBranches(form, false);
+      });
+    }
+
+    var rangeEl = form.querySelector("#payment-sheet-period-range");
+    function hookFlatpickr() {
+      if (!rangeEl || !rangeEl._flatpickr) return false;
+      var fp = rangeEl._flatpickr;
+      var prev = fp.config.onChange || [];
+      var handlers = Array.isArray(prev) ? prev.slice() : [prev];
+      handlers.push(function () {
+        refreshMeta(form);
+      });
+      fp.config.onChange = handlers;
+      return true;
+    }
+    if (!hookFlatpickr()) {
+      var tries = 0;
+      var timer = window.setInterval(function () {
+        tries += 1;
+        if (hookFlatpickr() || tries > 20) window.clearInterval(timer);
+      }, 50);
+    }
+
+    syncBranchTiles(form);
+    refreshMeta(form);
+  }
+
+  function init() {
+    bindForm(document.getElementById("payment-sheet-period-form"));
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>

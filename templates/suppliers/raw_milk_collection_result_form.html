@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Supplier result · Raw Milk Bulk Collection{% endblock %}
+{% block page_heading %}Supplier result{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Update supplier result</h1>
+    <p class="page-subtitle">{{ object.date }} · {{ object.supplier }} · {{ object.dispatch_no }}</p>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <form method="post" class="form-card" style="max-width: 36rem;">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-primary mt-2"><i class="bi bi-check2 me-1"></i>Save</button>
+      <a href="{% url 'raw-milk-collection-list' %}" class="btn btn-outline-secondary mt-2 ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

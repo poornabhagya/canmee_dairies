@@ -1,0 +1,26 @@
+{% if perms.reports.record_manual_settlement and receipt.batch_ref %}
+<a
+  class="btn btn-sm btn-outline-success js-goods-pay-modal"
+  href="{% url 'farmer-goods-issue-print' receipt.batch_ref %}#record-payment"
+  data-panel-url="{% url 'farmer-goods-issue-print' receipt.batch_ref %}?panel=payment&amp;next={{ request.get_full_path|urlencode }}"
+  data-modal-title="Record payment · {{ receipt.batch_ref|slice:':8'|upper }}"
+  title="Record payment"
+><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>Pay</a>
+{% if receipt.settlement_status == 'settled' %}
+<form
+  method="post"
+  action="{% url 'farmer-goods-issue-settle' receipt.batch_ref %}"
+  class="d-inline js-swal-submit-guard"
+>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <input type="hidden" name="action" value="unsettle_all">
+  <button
+    type="submit"
+    class="btn btn-sm btn-outline-warning js-swal-submit-trigger"
+    data-swal-title="Undo all payments?"
+    data-swal-text="All lines on this receipt will be marked pending again."
+  ><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>Undo all</button>
+</form>
+{% endif %}
+{% endif %}

@@ -1,0 +1,65 @@
+<div class="branch-form-sections">
+  <section class="branch-form-section">
+    <h6 class="branch-form-section-title"><i class="bi bi-building" aria-hidden="true"></i>Branch details</h6>
+    <div class="branch-form-grid">
+      <div class="branch-field span-2">
+        <label class="form-label" for="{{ form.name.id_for_label }}">Name</label>
+        {{ form.name }}
+        <div class="invalid-feedback" data-branch-error-for="name"></div>
+      </div>
+      <div class="branch-field">
+        <label class="form-label" for="{{ form.location.id_for_label }}">Location</label>
+        {{ form.location }}
+        <div class="invalid-feedback" data-branch-error-for="location"></div>
+      </div>
+      <div class="branch-field">
+        <label class="form-label" for="{{ form.collection_unit.id_for_label }}">Collection unit</label>
+        {{ form.collection_unit }}
+        <div class="invalid-feedback" data-branch-error-for="collection_unit"></div>
+      </div>
+      <div class="branch-field span-2">
+        <label class="form-label" for="{{ form.maximum_milk_storage.id_for_label }}">Maximum milk storage (kg)</label>
+        {{ form.maximum_milk_storage }}
+        <div class="invalid-feedback" data-branch-error-for="maximum_milk_storage"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="branch-form-section">
+    <h6 class="branch-form-section-title"><i class="bi bi-person-badge" aria-hidden="true"></i>Management &amp; contact</h6>
+    <div class="branch-form-grid">
+      <div class="branch-field span-2">
+        <label class="form-label" for="{{ form.branch_manager.id_for_label }}">Branch manager</label>
+        {{ form.branch_manager }}
+        <div class="invalid-feedback" data-branch-error-for="branch_manager"></div>
+      </div>
+      <div class="branch-field">
+        <label class="form-label" for="{{ form.manager_contact.id_for_label }}">Manager contact</label>
+        {{ form.manager_contact }}
+        <div class="invalid-feedback" data-branch-error-for="manager_contact"></div>
+      </div>
+      <div class="branch-field">
+        <label class="form-label" for="{{ form.branch_contact.id_for_label }}">Branch contact</label>
+        {{ form.branch_contact }}
+        <div class="invalid-feedback" data-branch-error-for="branch_contact"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="branch-form-section mb-0">
+    <h6 class="branch-form-section-title"><i class="bi bi-people" aria-hidden="true"></i>Team access</h6>
+    <p class="branch-form-section-hint">Assign users and employees who can work at this branch.</p>
+    <div class="branch-form-grid">
+      <div class="branch-field span-2">
+        <label class="form-label" for="{{ form.users.id_for_label }}">Users</label>
+        {{ form.users }}
+        <div class="invalid-feedback" data-branch-error-for="users"></div>
+      </div>
+      <div class="branch-field span-2">
+        <label class="form-label" for="{{ form.employees.id_for_label }}">Employees</label>
+        {{ form.employees }}
+        <div class="invalid-feedback" data-branch-error-for="employees"></div>
+      </div>
+    </div>
+  </section>
+</div>

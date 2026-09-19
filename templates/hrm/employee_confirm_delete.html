@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Delete employee · Canmee Dairies{% endblock %}
+{% block page_heading %}Delete employee{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-body">
+    <h5 class="mb-3">Delete {{ employee.get_full_name|default:employee.first_name }}?</h5>
+    <p class="text-muted">This action cannot be undone.</p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Delete</button>
+      <a href="{% url 'hrm:employee_detail' employee.pk %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

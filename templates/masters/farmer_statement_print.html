@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Farmer statement · {{ farmer.common_name|default:farmer.full_name }}{% endblock %}
+{% block page_heading %}Farmer statement{% endblock %}
+{% block extra_css %}
+{% include "masters/_farmer_statement_print_styles.html" %}
+{% endblock %}
+{% block content %}
+<div class="module-shell no-print mb-3">
+  <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'farmer-detail' farmer.pk %}{% if statement_start and statement_end and not statement_full %}?from={{ statement_start|date:'Y-m-d' }}&amp;to={{ statement_end|date:'Y-m-d' }}{% endif %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to farmer</a>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if statement_full %}
+      <span class="align-self-center small text-muted">Full history</span>
+      {% elif statement_start and statement_end %}
+      <span class="align-self-center small text-muted">{{ statement_start|date:"Y-m-d" }} — {{ statement_end|date:"Y-m-d" }}</span>
+      {% endif %}
+      <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button>
+    </div>
+  </div>
+</div>
+
+<div class="farmer-statement-sheet">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <div class="farmer-statement-sheet__title">Farmer statement</div>
+      <div class="farmer-statement-sheet__subtitle">Canmee Dairies</div>
+    </div>
+    <div class="text-end">
+      <div class="fw-bold">{{ farmer.common_name|default:farmer.full_name }}</div>
+      <div class="small text-muted">
+        {% if statement_full %}
+        Full history
+        {% elif statement_start and statement_end %}
+        {{ statement_start|date:"Y-m-d" }} — {{ statement_end|date:"Y-m-d" }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <dl class="row farmer-statement-meta g-2 mb-0">
+    <dt class="col-sm-3">Registration</dt>
+    <dd class="col-sm-9">{{ farmer.registration_number|default:"—" }}</dd>
+    <dt class="col-sm-3">Full name</dt>
+    <dd class="col-sm-9">{{ farmer.full_name }}</dd>
+    <dt class="col-sm-3">Route / point</dt>
+    <dd class="col-sm-9">
+      {% if farmer.collection_point %}{{ farmer.route.name }} · Point {{ farmer.collection_point.number }}{% else %}{{ farmer.route.name|default:"—" }}{% endif %}
+    </dd>
+    <dt class="col-sm-3">Branch</dt>
+    <dd class="col-sm-9">{{ farmer.branch.name|default:"—" }}</dd>
+  </dl>
+
+  <div class="farmer-statement-section-title">Milk collections</div>
+  <table class="table table-sm table-bordered farmer-statement-table mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Date</th>
+        <th>Route</th>
+        <th class="text-end">Kg</th>
+        <th class="text-end">Liters</th>
+        {% if can_view_milk_payment_status %}<th>Payment</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in farmer_milk_collections %}
+      <tr>
+        <td class="text-nowrap">{{ o.date|date:"Y-m-d" }}</td>
+        <td>{{ o.route.name }}</td>
+        <td class="text-end">{{ o.kg }}</td>
+        <td class="text-end">{{ o.liters }}</td>
+        {% if can_view_milk_payment_status %}
+        <td>{% if o.is_paid %}Paid{% else %}Unpaid{% endif %}</td>
+        {% endif %}
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="{% if can_view_milk_payment_status %}5{% else %}4{% endif %}" class="text-center text-muted py-3">No milk collection records in this period.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% if farmer_collection.total_entries %}
+    <tfoot>
+      <tr class="farmer-statement-totals">
+        <td colspan="2" class="text-end">Totals ({{ farmer_collection.total_entries }} entries)</td>
+        <td class="text-end">{{ farmer_collection.total_kg }}</td>
+        <td class="text-end">{{ farmer_collection.total_liters }}</td>
+        {% if can_view_milk_payment_status %}<td></td>{% endif %}
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+
+  {% include "masters/_farmer_detail_financial_sections.html" with statement_print=True %}
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if autoprint %}
+<script>
+  window.addEventListener("load", function () {
+    window.setTimeout(function () { window.print(); }, 150);
+  });
+</script>
+{% endif %}
+{% endblock %}

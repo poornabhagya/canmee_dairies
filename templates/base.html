@@ -1,0 +1,623 @@
+{% load static %}
+{% load static_inline %}
+{% load user_tags %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="{% static 'img/logo.png' %}" type="image/png">
+  <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
+  <title>{% block title %}Canmee Dairies{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/2.1.8/css/dataTables.bootstrap5.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/buttons/3.1.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/responsive/3.0.3/css/responsive.bootstrap5.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+  {# Host returns LiteSpeed 503 for larger /static/css|js files; inline so UI always renders. #}
+  <style>{% inline_static 'css/app.css' %}</style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" crossorigin="anonymous">
+  <meta name="application-name" content="Canmee Dairies Admin">
+  <meta name="apple-mobile-web-app-title" content="Canmee Admin">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="manifest" href="{% static 'pwa/manifest.json' %}">
+  <link rel="apple-touch-icon" href="{% static 'pwa/app-icon.png' %}">
+  <link rel="icon" href="{% static 'pwa/app-icon.png' %}" type="image/png">
+  <style>
+    body.standalone-layout {
+      overflow: hidden !important;
+    }
+    body.standalone-layout .app-shell {
+      grid-template-columns: 1fr !important;
+      min-height: 100vh;
+    }
+    body.standalone-layout .sidebar,
+    body.standalone-layout .sidebar-backdrop,
+    body.standalone-layout #sidebarToggle {
+      display: none !important;
+    }
+    body.standalone-layout .app-main {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0 !important;
+    }
+    body.standalone-layout .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    body.standalone-layout .content-wrap {
+      padding: 0.5rem 0.75rem !important;
+      max-width: 1280px !important;
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      height: calc(100vh - 64px);
+      overflow-x: hidden !important;
+      overflow-y: hidden !important;
+    }
+    body.standalone-layout .page-header {
+      margin-bottom: 0.75rem;
+    }
+    @media (min-width: 1200px) {
+      body.standalone-layout .content-wrap {
+        padding: 0.9rem 1.2rem 1.2rem !important;
+      }
+    }
+    .app-swal-popup {
+      border-radius: 12px !important;
+    }
+    .swal-settlement-date-group .input-group-text {
+      cursor: pointer;
+      color: #64748b;
+      background: #fff;
+    }
+    .swal-settlement-date-group .form-control {
+      cursor: pointer;
+      background: #fff;
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}{% if request.GET.standalone %} standalone-layout{% endif %}">
+{% if user.is_authenticated %}
+{% include "includes/_page_loading_progress.html" %}
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="sidebar-brand" href="{% url 'dashboard' %}">
+      <span class="sidebar-brand-icon">
+        <img src="{% static 'img/logo-128.png' %}" alt="" width="40" height="40" class="brand-logo-img" decoding="async">
+      </span>
+      <span>Canmee Dairies</span>
+    </a>
+    <nav class="sidebar-nav">
+      {% include "includes/_sidebar_nav.html" %}
+    </nav>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+
+  <div class="app-main">
+    <header class="topbar">
+      <button type="button" class="topbar-menu-btn" id="sidebarToggle" aria-label="Toggle menu">
+        <i class="bi bi-list fs-4"></i>
+      </button>
+      <div class="topbar-title">{% block page_heading %}Dashboard{% endblock %}</div>
+      <div class="topbar-spacer"></div>
+      {% block topbar_actions %}{% endblock %}
+      {% if user.is_authenticated %}
+      <div class="dropdown topbar-notifications-dropdown" id="dispatchNotificationsDropdown">
+        <button
+          type="button"
+          class="btn topbar-notifications-toggle dropdown-toggle"
+          data-bs-toggle="dropdown"
+          data-bs-auto-close="outside"
+          aria-expanded="false"
+          aria-label="Notifications"
+        >
+          <i class="bi bi-bell"></i>
+          {% if topbar_notification_badge_count %}
+          <span class="topbar-notifications-badge js-topbar-notif-badge">{{ topbar_notification_badge_count }}</span>
+          {% else %}
+          <span class="topbar-notifications-badge js-topbar-notif-badge" hidden>0</span>
+          {% endif %}
+        </button>
+        <div class="dropdown-menu dropdown-menu-end shadow-sm topbar-notifications-menu">
+          <div class="topbar-notifications-menu__header d-flex align-items-center justify-content-between">
+            <span class="fw-semibold">Notifications</span>
+            <form
+              method="post"
+              action="{% url 'dispatch-notification-read-all' %}"
+              class="m-0 js-dispatch-notifications-mark-all"
+              {% if not unread_dispatch_notification_count %}style="display:none"{% endif %}
+            >
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button type="submit" class="btn btn-link btn-sm p-0">Mark all read</button>
+            </form>
+          </div>
+
+          {% with show_driver_tab=can_view_driver_farmer_goods_requests show_goods_tab=show_farmer_goods_accept_notifications %}
+          <ul
+            class="nav nav-pills topbar-notif-tabs"
+            role="tablist"
+            data-driver-count="{{ pending_driver_goods_request_count|default:0 }}"
+            data-goods-count="{% if show_goods_tab %}{{ pending_farmer_goods_count|default:0 }}{% else %}0{% endif %}"
+            data-dispatch-count="{{ unread_dispatch_notification_count|default:0 }}"
+          >
+            {% if show_driver_tab %}
+            <li class="nav-item flex-fill" role="presentation">
+              <button
+                type="button"
+                class="nav-link w-100{% if show_driver_tab %} active{% endif %}"
+                id="notif-tab-driver-btn"
+                data-bs-toggle="tab"
+                data-bs-target="#notif-tab-driver"
+                data-notif-tab="driver"
+                role="tab"
+                aria-controls="notif-tab-driver"
+                aria-selected="{% if show_driver_tab %}true{% else %}false{% endif %}"
+              >Driver req <span class="topbar-notif-tab-count js-driver-request-notif-count">{{ pending_driver_goods_request_count|default:0 }}</span></button>
+            </li>
+            {% endif %}
+            {% if show_goods_tab %}
+            <li class="nav-item flex-fill" role="presentation">
+              <button
+                type="button"
+                class="nav-link w-100{% if not show_driver_tab %} active{% endif %}"
+                id="notif-tab-goods-btn"
+                data-bs-toggle="tab"
+                data-bs-target="#notif-tab-goods"
+                data-notif-tab="goods"
+                role="tab"
+                aria-controls="notif-tab-goods"
+                aria-selected="{% if not show_driver_tab %}true{% else %}false{% endif %}"
+              >Farmer goods <span class="topbar-notif-tab-count js-staff-goods-notif-count">{{ pending_farmer_goods_count|default:0 }}</span></button>
+            </li>
+            {% endif %}
+            <li class="nav-item flex-fill" role="presentation">
+              <button
+                type="button"
+                class="nav-link w-100{% if not show_driver_tab and not show_goods_tab %} active{% endif %}"
+                id="notif-tab-dispatch-btn"
+                data-bs-toggle="tab"
+                data-bs-target="#notif-tab-dispatch"
+                data-notif-tab="dispatch"
+                role="tab"
+                aria-controls="notif-tab-dispatch"
+                aria-selected="{% if not show_driver_tab and not show_goods_tab %}true{% else %}false{% endif %}"
+              >Dispatches <span class="topbar-notif-tab-count js-dispatch-notif-count">{{ unread_dispatch_notification_count|default:0 }}</span></button>
+            </li>
+          </ul>
+
+          <div class="tab-content topbar-notif-tab-content">
+            {% if show_driver_tab %}
+            <div
+              class="tab-pane fade{% if show_driver_tab %} show active{% endif %}"
+              id="notif-tab-driver"
+              role="tabpanel"
+              aria-labelledby="notif-tab-driver-btn"
+              tabindex="0"
+            >
+              <div class="topbar-goods-notif-section" id="driverGoodsRequestNotifSection">
+                <div class="px-3 py-2 d-flex align-items-center justify-content-between gap-2">
+                  <strong class="small">Driver goods requests</strong>
+                  <span class="badge text-bg-secondary js-driver-request-notif-count">{{ pending_driver_goods_request_count|default:0 }}</span>
+                </div>
+                <div class="px-3 pb-2">
+                  <a class="btn btn-sm btn-outline-primary w-100" href="{% url 'farmer-goods-driver-request-list' %}">View all requests</a>
+                </div>
+                <div class="js-driver-request-notif-list topbar-goods-notif-list">
+                  {% if pending_driver_goods_request_items %}
+                    {% for item in pending_driver_goods_request_items %}
+                    <div class="topbar-goods-notif-item" data-request-id="{{ item.id }}">
+                      <div class="topbar-goods-notif-item__title">{{ item.title }}</div>
+                      <div class="topbar-goods-notif-item__body">{{ item.body }}{% if item.created_ago %} · {{ item.created_ago }}{% endif %}</div>
+                      <div class="d-flex gap-2 flex-wrap">
+                        <a class="btn btn-sm btn-success" href="{{ item.fulfill_url }}">Issue</a>
+                        {% if item.reject_url %}
+                        <button type="button" class="btn btn-sm btn-outline-danger js-driver-request-reject" data-url="{{ item.reject_url }}">Reject</button>
+                        {% endif %}
+                      </div>
+                    </div>
+                    {% endfor %}
+                  {% else %}
+                  <div class="px-3 py-3 text-muted small text-center js-driver-request-notif-empty">No pending driver requests.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if show_goods_tab %}
+            <div
+              class="tab-pane fade{% if not show_driver_tab %} show active{% endif %}"
+              id="notif-tab-goods"
+              role="tabpanel"
+              aria-labelledby="notif-tab-goods-btn"
+              tabindex="0"
+            >
+              <div class="topbar-goods-notif-section" id="staffGoodsNotifSection">
+                <div class="px-3 py-2 d-flex align-items-center justify-content-between gap-2">
+                  <strong class="small">Pending farmer goods</strong>
+                  <span class="badge text-bg-secondary js-staff-goods-notif-count">{{ pending_farmer_goods_count|default:0 }}</span>
+                </div>
+                <div class="px-3 pb-2">
+                  <a class="btn btn-sm btn-outline-primary w-100" href="{% url 'farmer-goods-pending-accept-list' %}">
+                    View all / bulk accept{% if pending_farmer_goods_count %} ({{ pending_farmer_goods_count }}){% endif %}
+                  </a>
+                </div>
+                <div class="js-staff-goods-notif-list topbar-goods-notif-list">
+                  {% if pending_farmer_goods_items %}
+                    {% for item in pending_farmer_goods_items %}
+                    <div class="topbar-goods-notif-item" data-batch-ref="{{ item.batch_ref }}">
+                      <div class="topbar-goods-notif-item__title">{{ item.title }}</div>
+                      <div class="topbar-goods-notif-item__body">{{ item.body }}{% if item.created_ago %} · {{ item.created_ago }}{% endif %}</div>
+                      <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary js-staff-goods-review" data-batch-ref="{{ item.batch_ref }}">Review</button>
+                        <button type="button" class="btn btn-sm btn-success js-staff-goods-accept" data-url="{{ item.accept_url }}" data-batch-ref="{{ item.batch_ref }}">Accept</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger js-staff-goods-reject" data-url="{{ item.reject_url }}" data-batch-ref="{{ item.batch_ref }}">Reject</button>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  {% else %}
+                  <div class="px-3 py-3 text-muted small text-center js-staff-goods-notif-empty">No pending goods issues.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <div
+              class="tab-pane fade{% if not show_driver_tab and not show_goods_tab %} show active{% endif %}"
+              id="notif-tab-dispatch"
+              role="tabpanel"
+              aria-labelledby="notif-tab-dispatch-btn"
+              tabindex="0"
+            >
+              <div id="dispatchNotificationsBody">
+              {% if recent_dispatch_notifications %}
+              <div class="topbar-notifications-list" id="dispatchNotificationsList">
+                {% for note in recent_dispatch_notifications %}
+                {% if note.kind == 'incoming_dispatch' and note.dispatch_id %}
+                {% url 'distribution-branch-respond' note.dispatch_id as note_open_url %}
+                {% elif note.kind == 'return_requested' and note.dispatch_id %}
+                {% url 'distribution-branch-return' note.dispatch_id as note_open_url %}
+                {% elif note.kind == 'return_received' and note.dispatch_id and note.dispatch.returned_branch_id %}
+                {% url 'distribution-list' as note_open_url %}
+                {% endif %}
+                <div class="topbar-notification-item{% if not note.is_read %} is-unread{% endif %}" data-notification-id="{{ note.pk }}">
+                  {% if note.kind == 'incoming_dispatch' and note.dispatch_id %}
+                  <a
+                    href="{{ note_open_url }}?filter_tab=branch&amp;branch_scope=incoming"
+                    class="topbar-notification-item__link js-dispatch-notification-modal"
+                    data-modal-type="respond"
+                  >
+                    <div class="topbar-notification-item__title">{{ note.title }}</div>
+                    <div class="topbar-notification-item__body">{{ note.body }}</div>
+                  </a>
+                  {% elif note.kind == 'return_requested' and note.dispatch_id %}
+                  <a
+                    href="{{ note_open_url }}?filter_tab=branch&amp;branch_scope=outgoing"
+                    class="topbar-notification-item__link js-dispatch-notification-modal"
+                    data-modal-type="return"
+                  >
+                    <div class="topbar-notification-item__title">{{ note.title }}</div>
+                    <div class="topbar-notification-item__body">{{ note.body }}</div>
+                  </a>
+                  {% elif note.action_url %}
+                  <a
+                    href="{{ note.action_url }}"
+                    class="topbar-notification-item__link js-dispatch-notification-modal"
+                    data-modal-type="list"
+                  >
+                    <div class="topbar-notification-item__title">{{ note.title }}</div>
+                    <div class="topbar-notification-item__body">{{ note.body }}</div>
+                  </a>
+                  {% else %}
+                  <div class="topbar-notification-item__title">{{ note.title }}</div>
+                  <div class="topbar-notification-item__body">{{ note.body }}</div>
+                  {% endif %}
+                  <div class="topbar-notification-item__meta">
+                    <span>{{ note.created_at|timesince }} ago</span>
+                    {% if note.kind == 'incoming_dispatch' and note.dispatch_id %}
+                    <a
+                      href="{{ note_open_url }}?filter_tab=branch&amp;branch_scope=incoming"
+                      class="ms-2 js-dispatch-notification-modal"
+                      data-modal-type="respond"
+                    >Open</a>
+                    {% elif note.kind == 'return_requested' and note.dispatch_id %}
+                    <a
+                      href="{{ note_open_url }}?filter_tab=branch&amp;branch_scope=outgoing"
+                      class="ms-2 js-dispatch-notification-modal"
+                      data-modal-type="return"
+                    >Open</a>
+                    {% elif note.kind == 'return_received' and note.action_url %}
+                    <a
+                      href="{{ note.action_url }}"
+                      class="ms-2 js-dispatch-notification-modal"
+                      data-modal-type="list"
+                    >View return</a>
+                    {% elif note.action_url %}
+                    <a
+                      href="{{ note.action_url }}"
+                      class="ms-2 js-dispatch-notification-modal"
+                      data-modal-type="list"
+                    >Open</a>
+                    {% endif %}
+                    {% if not note.is_read %}
+                    <form method="post" action="{% url 'dispatch-notification-read' note.pk %}" class="d-inline ms-2">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="btn btn-link btn-sm p-0">Mark read</button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="topbar-notifications-empty text-muted small" id="dispatchNotificationsEmpty">No dispatch notifications yet.</div>
+              {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+
+          {% if can_manage_farmer_goods_notifications or can_view_driver_farmer_goods_requests %}
+          <div class="topbar-notif-alerts-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary w-100 js-staff-enable-desktop-notif">
+              <i class="bi bi-bell-fill me-1"></i>Enable desktop / mobile alerts
+            </button>
+            <div class="small mt-1 js-staff-desktop-notif-status" hidden></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="dropdown topbar-user-dropdown">
+        <button
+          type="button"
+          class="btn topbar-user-toggle dropdown-toggle"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+          aria-label="Account menu"
+        >
+          {% if user|avatar_url %}
+          <span class="topbar-avatar topbar-avatar--img">
+            <img src="{{ user|avatar_url }}" alt="" width="36" height="36" loading="lazy">
+          </span>
+          {% else %}
+          <span class="topbar-avatar topbar-avatar--fallback">{{ user|user_initials }}</span>
+          {% endif %}
+          <span class="topbar-user-toggle__name d-none d-md-inline">{{ user|username_display }}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm topbar-user-menu">
+          <li class="dropdown-header topbar-user-menu__header">
+            <span class="topbar-user-menu__label">Signed in as</span>
+            <strong class="topbar-user-menu__username">{{ user|username_display }}</strong>
+          </li>
+          <li><hr class="dropdown-divider my-1"></li>
+          <li>
+            <a class="dropdown-item" href="{% url 'user_management:profile' %}">
+              <i class="bi bi-person-circle me-2"></i>My profile
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="{% url 'password_change' %}">
+              <i class="bi bi-key me-2"></i>Change password
+            </a>
+          </li>
+          <li><hr class="dropdown-divider my-1"></li>
+          <li>
+            <a class="dropdown-item text-danger" href="{% url 'logout' %}">
+              <i class="bi bi-box-arrow-right me-2"></i>Log out
+            </a>
+          </li>
+        </ul>
+      </div>
+    </header>
+    <div class="content-wrap">
+{% endif %}
+
+{% if not user.is_authenticated %}
+<div class="auth-shell">
+{% endif %}
+
+      {% if messages %}
+      <div id="django-messages-data" hidden>
+        {% for message in messages %}
+        <div
+          class="django-message-item"
+          data-tags="{{ message.tags|default_if_none:'' }}"
+        >{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+
+{% if not user.is_authenticated %}
+</div>
+{% endif %}
+
+{% if user.is_authenticated %}
+    </div>
+  </div>
+</div>
+{% include "dispatch/_branch_dispatch_respond_modal_shell.html" %}
+{% if show_farmer_goods_accept_notifications %}
+<div class="modal fade" id="staffGoodsDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5 js-staff-goods-modal-title">Farmer goods issue</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small js-staff-goods-modal-body mb-3"></p>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr><th>Product</th><th class="text-end">Qty</th><th class="text-end">Amount</th></tr>
+            </thead>
+            <tbody class="js-staff-goods-modal-lines"></tbody>
+          </table>
+        </div>
+        <div class="mt-2 text-end fw-semibold">Total: <span class="js-staff-goods-modal-total">0.00</span></div>
+        <div class="mt-3">
+          <label class="form-label small" for="staffGoodsNote">Note (optional)</label>
+          <input type="text" class="form-control form-control-sm" id="staffGoodsNote" maxlength="255">
+        </div>
+        <div class="alert alert-danger py-2 mt-3 mb-0 js-staff-goods-modal-error" hidden></div>
+      </div>
+      <div class="modal-footer">
+        <a href="#" class="btn btn-outline-secondary me-auto js-staff-goods-modal-receipt" target="_blank" rel="noopener" hidden>Open receipt</a>
+        <button type="button" class="btn btn-outline-danger js-staff-goods-modal-reject">Reject</button>
+        <button type="button" class="btn btn-success js-staff-goods-modal-accept">Accept</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if can_manage_farmer_goods_notifications or can_view_driver_farmer_goods_requests %}
+<script type="application/json" id="staffGoodsInitialFeed">{
+  "ok": true,
+  "unread": {% if show_farmer_goods_accept_notifications %}{{ pending_farmer_goods_count|default:0 }}{% else %}0{% endif %},
+  "driver_request_unread": {{ pending_driver_goods_request_count|default:0 }},
+  "items": [
+    {% for item in pending_farmer_goods_items %}
+    {
+      "batch_ref": "{{ item.batch_ref|escapejs }}",
+      "title": "{{ item.title|escapejs }}",
+      "body": "{{ item.body|escapejs }}",
+      "created_ago": "{{ item.created_ago|escapejs }}",
+      "total_amount": "{{ item.total_amount|escapejs }}",
+      "accept_url": "{{ item.accept_url|escapejs }}",
+      "reject_url": "{{ item.reject_url|escapejs }}",
+      "review_url": "{{ item.review_url|escapejs }}",
+      "lines": [
+        {% for line in item.lines %}
+        {
+          "product_name": "{{ line.product_name|escapejs }}",
+          "quantity": "{{ line.quantity|escapejs }}",
+          "amount": "{{ line.amount|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "driver_requests": [
+    {% for item in pending_driver_goods_request_items %}
+    {
+      "id": {{ item.id }},
+      "title": "{{ item.title|escapejs }}",
+      "body": "{{ item.body|escapejs }}",
+      "created_ago": "{{ item.created_ago|escapejs }}",
+      "fulfill_url": "{{ item.fulfill_url|escapejs }}",
+      "reject_url": "{{ item.reject_url|default:''|escapejs }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}</script>
+{% endif %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.bootstrap5.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/3.0.3/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/3.0.3/js/responsive.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/3.1.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% include "includes/_payment_sheet_nav_progress_script.html" %}
+{% include "includes/_page_loading_nav_script.html" %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{% static 'js/datepicker.js' %}"></script>
+<script>{% inline_static 'js/app.js' %}</script>
+{% if user.is_authenticated %}
+<script>{% inline_static 'js/dispatch-notification-modals.js' %}</script>
+{% if can_manage_farmer_goods_notifications or can_view_driver_farmer_goods_requests %}
+<script>{% inline_static 'js/staff-farmer-goods-notifications.js' %}</script>
+{% endif %}
+{% endif %}
+<script>
+(function () {
+  if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
+  var $ = window.jQuery;
+  var selectors = [
+    'select[name="branch"]',
+    'select[name="branches"]',
+    'select[name="destination_branches"]',
+    'select#dispatch-filter-branches',
+    'select[name="users"]',
+    'select[name="employees"]',
+    'select#id_branch',
+    'select#id_destination_branch',
+    'select#id_branches',
+    'select#id_users',
+    'select#id_employees'
+  ];
+  selectors.forEach(function (selector) {
+    $(selector).each(function () {
+      var $el = $(this);
+      if ($el.hasClass("no-global-select2")) return;
+      if ($el.hasClass("select2-hidden-accessible")) return;
+      var isMultiple = $el.prop("multiple");
+      var name = ($el.attr("name") || "").toLowerCase();
+      var select2Opts = {
+        width: "100%",
+        closeOnSelect: !isMultiple,
+        placeholder: isMultiple ? "Select one or more options" : "Select option",
+      };
+      var modalParent = $el.closest(".modal");
+      if (modalParent.length) {
+        select2Opts.dropdownParent = modalParent;
+      }
+      var $empty = $el.find('option[value=""]').first();
+      var emptyText = ($empty.text() || "").replace(/\s+/g, " ").trim();
+      var showEmptyChoice =
+        !isMultiple &&
+        emptyText &&
+        emptyText !== "---------" &&
+        emptyText.toLowerCase() !== "select branch" &&
+        emptyText.toLowerCase() !== "select option";
+      if (name === "branch" || name === "branches" || name === "destination_branches") {
+        select2Opts.placeholder = isMultiple ? "Search branches…" : "Select branch";
+      } else if (name === "users") {
+        select2Opts.placeholder = "Select one or more users";
+      } else if (name === "employees") {
+        select2Opts.placeholder = "Select one or more employees";
+      }
+      var opts = {
+        width: select2Opts.width,
+        closeOnSelect: select2Opts.closeOnSelect,
+        dropdownParent: select2Opts.dropdownParent,
+      };
+      if (!showEmptyChoice) {
+        opts.placeholder = select2Opts.placeholder;
+      }
+      $el.select2(opts);
+    });
+  });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

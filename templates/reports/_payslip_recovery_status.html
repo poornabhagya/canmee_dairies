@@ -1,0 +1,15 @@
+<td class="payslip-recovery-col text-nowrap">
+  {% if is_recovered %}
+  <span class="badge text-bg-success-subtle text-success-emphasis"{% if recovered_at %} title="Recovered {{ recovered_at|date:'Y-m-d' }}{% if recovery_note %} — {{ recovery_note }}{% endif %}"{% endif %}>Recovered</span>
+  {% if recovered_at %}<div class="small text-muted">{{ recovered_at|date:"Y-m-d" }}</div>{% endif %}
+  {% elif remaining_amount and original_amount and remaining_amount < original_amount %}
+  <span class="badge text-bg-warning-subtle text-warning-emphasis" title="Balance forwarded to the next payment">Partial</span>
+  {% if recovered_at %}<div class="small text-muted">Paid {{ recovered_at|date:"Y-m-d" }}</div>{% endif %}
+  {% elif is_settled %}
+  <span class="badge text-bg-success-subtle text-success-emphasis"{% if settled_at %} title="Settled {{ settled_at|date:'Y-m-d' }}{% if settlement_note %} — {{ settlement_note }}{% endif %}"{% endif %}>Settled</span>
+  {% elif is_paid %}
+  <span class="badge text-bg-success-subtle text-success-emphasis"{% if paid_on %} title="Paid {{ paid_on|date:'Y-m-d' }}{% if payment_note %} — {{ payment_note }}{% endif %}"{% endif %}>Paid</span>
+  {% else %}
+  <span class="badge text-bg-warning-subtle text-warning-emphasis">Pending</span>
+  {% endif %}
+</td>

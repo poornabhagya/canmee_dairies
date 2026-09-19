@@ -1,0 +1,21 @@
+<td
+  class="inline-qty-cell text-end{{ extra_cell_class }}{% if can_inline_edit %} is-editable{% endif %}"
+  {% if can_inline_edit %}
+  data-field="{{ field }}"
+  data-value="{{ value }}"
+  data-update-url="{% url url_name record_id %}"
+  title="Click to edit"
+  {% endif %}
+>
+  <span class="inline-qty-display">{{ value }}</span>
+  {% if can_inline_edit %}
+  <input
+    type="text"
+    class="inline-qty-input"
+    inputmode="decimal"
+    autocomplete="off"
+    hidden
+    aria-label="Edit {{ field }}"
+  >
+  {% endif %}
+</td>

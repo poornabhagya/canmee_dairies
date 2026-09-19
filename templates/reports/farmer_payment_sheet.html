@@ -1,0 +1,2419 @@
+{% extends "base.html" %}
+{% load loan_extras static %}
+{% block title %}Farmer Payment Sheet{% endblock %}
+{% block page_heading %}Farmer Payment Sheet{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_modal_styles.html" %}
+{% include "reports/_payment_sheet_period_filter_styles.html" %}
+<style>
+  .payment-sheet-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .payment-sheet-card .card-body {
+    padding: 1rem 1.1rem;
+  }
+  .payment-sheet-card__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.15rem;
+  }
+  .payment-sheet-card__hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 0.85rem;
+  }
+  #payment-sheet-print-route-select.form-select-sm {
+    height: 31px;
+    min-height: 31px;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.8125rem;
+    line-height: 1.2;
+  }
+  .payment-sheet-print-section,
+  .payment-sheet-print-value {
+    display: none;
+  }
+  .payment-sheet-table-card {
+    --ps-table-max-height: calc(100dvh - 17rem);
+  }
+  .payment-sheet-table-card .card-body.table-wrap {
+    padding: 0.85rem 1rem 1rem;
+    overflow: visible;
+  }
+  .payment-sheet-table-card .table-wrap,
+  .payment-sheet-table-card .payment-sheet-scroll {
+    width: 100%;
+    max-width: 100%;
+  }
+  .payment-sheet-scroll {
+    overflow: auto;
+    max-height: var(--ps-table-max-height);
+    -webkit-overflow-scrolling: touch;
+  }
+  .payment-sheet-table {
+    --ps-sticky-select-width: 1.65rem;
+    --ps-sticky-farmer-width: 8.5rem;
+    --ps-sticky-rate-width: 5rem;
+  }
+  .payment-sheet-table col.payment-sheet-col-select {
+    width: var(--ps-sticky-select-width);
+  }
+  .payment-sheet-select-col {
+    width: var(--ps-sticky-select-width) !important;
+    min-width: var(--ps-sticky-select-width) !important;
+    max-width: var(--ps-sticky-select-width) !important;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.45rem 0.1rem !important;
+    box-sizing: border-box;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: #fff;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .payment-sheet-table thead .payment-sheet-select-col {
+    top: 0;
+    z-index: 7;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  }
+  .payment-sheet-table tbody tr:hover .payment-sheet-select-col {
+    background: #f8fafc;
+  }
+  .payment-sheet-select-col .form-check-input {
+    margin: 0;
+    float: none;
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+  .payment-sheet-table .sticky-col-farmer {
+    position: sticky;
+    left: var(--ps-sticky-select-width);
+    z-index: 2;
+    min-width: var(--ps-sticky-farmer-width);
+    max-width: var(--ps-sticky-farmer-width);
+    background: #fff;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .payment-sheet-table .sticky-col-rate {
+    position: sticky;
+    left: calc(var(--ps-sticky-select-width) + var(--ps-sticky-farmer-width));
+    z-index: 2;
+    min-width: var(--ps-sticky-rate-width);
+    max-width: var(--ps-sticky-rate-width);
+    background: #fff;
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .payment-sheet-table thead .sticky-col-farmer,
+  .payment-sheet-table thead .sticky-col-rate {
+    top: 0;
+    z-index: 6;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  }
+  .payment-sheet-bulk-actions .btn {
+    white-space: nowrap;
+  }
+  .payment-sheet-table .payment-sheet-actions-col {
+    white-space: nowrap;
+    width: 1%;
+    min-width: 9.5rem;
+  }
+  .payment-sheet-row-actions {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+  .payment-sheet-row-actions .btn,
+  .payment-sheet-row-actions .badge {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .payment-sheet-row--settled {
+    background-color: #f8fafc;
+  }
+  .payment-sheet-cell--settled {
+    color: #64748b;
+  }
+  .payment-sheet-settled-mark {
+    display: inline-block;
+    margin-left: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #16a34a;
+    vertical-align: super;
+  }
+  .payment-sheet-day-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.65rem;
+  }
+  .payment-sheet-day-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .payment-sheet-day-legend__swatch {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 0.2rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+  }
+  .payment-sheet-day-legend__swatch--paid { background: #ecfdf5; }
+  .payment-sheet-day-legend__swatch--unpaid { background: #fef2f2; }
+  .payment-sheet-day-legend__swatch--partial { background: #fffbeb; }
+  .payment-sheet-table .day-col--paid {
+    background: #ecfdf5;
+    color: #047857;
+  }
+  .payment-sheet-table .day-col--unpaid {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+  .payment-sheet-table .day-col--partial {
+    background: #fffbeb;
+    color: #b45309;
+  }
+  .payment-sheet-table tbody tr:hover .day-col--paid,
+  .payment-sheet-table tbody tr:hover .day-col--unpaid,
+  .payment-sheet-table tbody tr:hover .day-col--partial {
+    filter: brightness(0.98);
+  }
+  .payment-sheet-table tbody tr.payment-sheet-row--has-unpaid .sticky-col-farmer {
+    box-shadow: inset 3px 0 0 #f59e0b;
+  }
+  .payment-sheet-col-hint {
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.2;
+    margin-top: 0.1rem;
+  }
+  .payment-sheet-paid-col {
+    min-width: 5.25rem;
+    vertical-align: middle;
+  }
+  .payment-sheet-paid-popover {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-popover:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+    border-radius: 0.15rem;
+  }
+  .payment-sheet-paid-total {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .payment-sheet-paid-note {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-bottom: 0.65rem;
+    line-height: 1.4;
+  }
+  .payment-sheet-paid-popover-pop {
+    --bs-popover-max-width: 15rem;
+    font-size: 0.8125rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-header {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.45rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-pop .popover-body {
+    padding: 0.5rem 0.65rem;
+  }
+  .payment-sheet-paid-popover-body__hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+  .payment-sheet-paid-popover-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.45;
+  }
+  .payment-sheet-paid-popover-row--total {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid #e2e8f0;
+    font-weight: 700;
+  }
+  .payment-sheet-table tbody tr:hover .sticky-col-farmer,
+  .payment-sheet-table tbody tr:hover .sticky-col-rate {
+    background: #f8fafc;
+  }
+  .payment-sheet-advance .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+  }
+  .payment-sheet-advance .form-control,
+  .payment-sheet-advance .form-select {
+    font-size: 0.875rem;
+  }
+  .payment-sheet-advance .advance-amount-input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-sheet-advance .advance-form-actions .btn {
+    min-width: 9rem;
+    white-space: nowrap;
+  }
+  .advance-balance-panel {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.85rem;
+    font-size: 0.8125rem;
+  }
+  .advance-balance-panel .advance-balance-net {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #059669;
+    font-variant-numeric: tabular-nums;
+  }
+  .advance-balance-panel .advance-balance-net.is-negative {
+    color: #dc2626;
+  }
+  .advance-balance-panel .advance-balance-after {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .payment-sheet-table {
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+  }
+  .payment-sheet-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f8fafc;
+    box-shadow: 0 1px 0 #e2e8f0;
+    white-space: nowrap;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #64748b;
+    padding: 0.45rem 0.35rem;
+    vertical-align: bottom;
+    border-bottom-width: 1px;
+  }
+  .payment-sheet-table tbody td {
+    padding: 0.45rem 0.35rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .payment-sheet-table tbody td.sticky-col-farmer {
+    white-space: normal;
+    word-break: break-word;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .payment-sheet-table tbody td:first-child:not(.sticky-col-farmer) {
+    white-space: normal;
+    min-width: 7rem;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .payment-sheet-table .day-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #475569;
+  }
+  .payment-sheet-table .money-col {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .payment-sheet-table .net-amount-cell {
+    font-weight: 700;
+    color: #059669;
+  }
+  .loan-deduct-cell {
+    min-width: 6.5rem;
+    text-align: right;
+  }
+  .loan-deduct-cell .loan-deduct-amount {
+    font-variant-numeric: tabular-nums;
+  }
+  .loan-deduct-cell .loan-deduct-amount.is-skipped {
+    text-decoration: line-through;
+    color: #94a3b8;
+  }
+  .deduction-picker-amount.is-skipped {
+    text-decoration: line-through;
+    color: #94a3b8;
+  }
+  .loan-deduct-cell .loan-deduct-hint {
+    display: block;
+    font-size: 0.65rem;
+    color: #64748b;
+    line-height: 1.2;
+    text-align: right;
+  }
+  .loan-deduct-toggle {
+    margin-right: 0.35rem;
+  }
+  .deduction-picker-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .deduction-picker-trigger:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+  }
+  .deduction-picker-list .form-check {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .deduction-picker-receipt {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+  }
+  .deduction-picker-receipt-lines {
+    margin-left: 0;
+    margin-top: 0;
+  }
+  .deduction-picker-items-table,
+  .deduction-picker-products-table {
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+  }
+  .deduction-picker-items-table th,
+  .deduction-picker-items-table td,
+  .deduction-picker-products-table th,
+  .deduction-picker-products-table td {
+    padding: 0.35rem 0.45rem;
+    vertical-align: middle;
+  }
+  .deduction-picker-items-table .form-check-input,
+  .deduction-picker-products-table .form-check-input {
+    margin-top: 0.15rem;
+  }
+  .deduction-picker-receipt-row td {
+    background: #f1f5f9;
+    font-weight: 600;
+    border-top: 1px solid #e2e8f0;
+  }
+  .deduction-picker-product-row td:first-child + td {
+    padding-left: 0.25rem;
+  }
+  .deduction-picker-product-row.is-nested td:nth-child(2) {
+    padding-left: 1.35rem;
+  }
+  .payment-sheet-table thead th.day-col,
+  .payment-sheet-table thead th.text-end {
+    text-align: right;
+  }
+  .payment-sheet-table tfoot th,
+  .payment-sheet-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #f8fafc;
+    font-weight: 700;
+    color: #0f172a;
+    border-top: 2px solid #e2e8f0;
+    box-shadow: 0 -1px 0 #e2e8f0;
+    white-space: nowrap;
+    padding: 0.5rem 0.35rem;
+    vertical-align: middle;
+  }
+  .payment-sheet-table tfoot .sticky-col-farmer,
+  .payment-sheet-table tfoot .sticky-col-rate,
+  .payment-sheet-table tfoot .payment-sheet-select-col {
+    z-index: 5;
+    background: #f8fafc;
+  }
+  .payment-sheet-table tfoot .net-amount-cell {
+    color: #059669;
+  }
+  @media (max-width: 767.98px) {
+    .payment-sheet-card .card-body {
+      padding: 0.85rem;
+    }
+    .payment-sheet-filter .filter-actions {
+      width: 100%;
+    }
+    .payment-sheet-filter .filter-actions .btn {
+      flex: 1 1 calc(50% - 0.25rem);
+      min-width: 7.5rem;
+    }
+    .payment-sheet-advance .advance-form-actions {
+      width: 100%;
+    }
+    .payment-sheet-advance .advance-form-actions .btn {
+      width: 100%;
+    }
+    .payment-sheet-table-card {
+      --ps-table-max-height: calc(100dvh - 14rem);
+    }
+    .payment-sheet-table-card .card-body.table-wrap {
+      padding: 0.65rem;
+    }
+  }
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+    html, body {
+      width: 100% !important;
+      height: auto !important;
+      background: #fff !important;
+      color: #111 !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+      font-size: 7pt !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .sidebar,
+    .sidebar-backdrop,
+    .topbar,
+    .payment-sheet-no-print,
+    .payment-sheet-summary,
+    .payment-sheet-day-legend,
+    .payment-sheet-paid-note,
+    .alert,
+    .payment-sheet-card__title,
+    #farmer-payment-sheet-table,
+    .payment-sheet-table {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    .app-main,
+    .content-wrap {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    .payment-sheet-table-card {
+      border: none !important;
+      box-shadow: none !important;
+      width: 100% !important;
+      background: transparent !important;
+    }
+    .payment-sheet-table-card .card-header,
+    .payment-sheet-table-card .card-body {
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+    }
+    .table-wrap,
+    .payment-sheet-scroll {
+      max-height: none !important;
+      overflow: visible !important;
+      width: 100% !important;
+    }
+    .payment-sheet-print-section {
+      display: block !important;
+      width: 100% !important;
+    }
+    .payment-sheet-print-route-pack {
+      display: none !important;
+    }
+    body.payment-sheet-print-route-mode .payment-sheet-print-all-pack {
+      display: none !important;
+    }
+    body.payment-sheet-print-route-mode .payment-sheet-print-route-pack.is-print-active {
+      display: block !important;
+    }
+    .payment-sheet-print-summary-sheet,
+    .payment-sheet-print-details-sheet,
+    .payment-sheet-print-final {
+      page-break-after: auto;
+      break-after: auto;
+      page-break-before: auto;
+      break-before: auto;
+      margin-bottom: 10mm;
+    }
+    .payment-sheet-print-route-pack .payment-sheet-print-final {
+      page-break-before: auto;
+      break-before: auto;
+    }
+    .payment-sheet-print-summary-sheet,
+    .payment-sheet-print-details-sheet {
+      page-break-inside: auto;
+    }
+    .payment-sheet-print-table {
+      page-break-inside: auto;
+    }
+    .payment-sheet-print-signatures {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .payment-sheet-print-heading {
+      font-size: 11pt !important;
+      font-weight: 700 !important;
+      margin: 0 0 6pt !important;
+      text-align: center !important;
+      color: #111 !important;
+    }
+    .payment-sheet-print-meta {
+      font-size: 8pt !important;
+      color: #333 !important;
+      margin: 0 0 6pt !important;
+      text-align: center !important;
+    }
+    .payment-sheet-print-table {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      font-size: 6.5pt !important;
+      line-height: 1.15 !important;
+      margin: 0 !important;
+      color: #111 !important;
+      background: #fff !important;
+    }
+    .payment-sheet-print-table--summary {
+      font-size: 6pt !important;
+    }
+    .payment-sheet-print-table--details {
+      font-size: 5.75pt !important;
+    }
+    .payment-sheet-print-table--details .ps-print-col-point {
+      width: 14% !important;
+    }
+    .payment-sheet-print-table--details .ps-print-col-rate {
+      width: 5% !important;
+    }
+    .payment-sheet-print-table--details .ps-print-col-qty,
+    .payment-sheet-print-table--details .ps-print-col-gross {
+      width: 6% !important;
+    }
+    .payment-sheet-print-table--summary .ps-print-col-point {
+      width: 18% !important;
+    }
+    .payment-sheet-print-table th,
+    .payment-sheet-print-table td {
+      border: 0.6pt solid #333 !important;
+      padding: 2px 3px !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      background: #fff !important;
+      color: #111 !important;
+      box-sizing: border-box !important;
+    }
+    .payment-sheet-print-table thead th {
+      background: #4b5563 !important;
+      color: #fff !important;
+      font-weight: 700 !important;
+      text-align: right !important;
+      font-size: inherit !important;
+      text-transform: none !important;
+      letter-spacing: 0 !important;
+    }
+    .payment-sheet-print-table thead th.ps-print-col-point,
+    .payment-sheet-print-table td.ps-print-col-point,
+    .payment-sheet-print-table th.ps-print-col-point {
+      text-align: left !important;
+    }
+    .payment-sheet-print-table tbody tr.payment-sheet-print-row--alt td {
+      background: #eef2f7 !important;
+    }
+    .payment-sheet-print-table .text-end {
+      text-align: right !important;
+      font-variant-numeric: tabular-nums;
+    }
+    .payment-sheet-print-table .is-negative {
+      color: #b91c1c !important;
+    }
+    .payment-sheet-print-total-row th,
+    .payment-sheet-print-total-row td {
+      background: #e5e7eb !important;
+      font-weight: 700 !important;
+      color: #111 !important;
+    }
+    .payment-sheet-print-final {
+      page-break-before: auto;
+      break-before: auto;
+      page-break-inside: avoid;
+      margin-top: 0;
+      padding-top: 0.25rem;
+    }
+    .payment-sheet-print-summary {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem 0.75rem;
+      border: 0.8pt solid #333;
+      border-radius: 0;
+      padding: 0.55rem 0.65rem;
+      margin-bottom: 0.85rem;
+      font-size: 9pt;
+      background: #fff;
+    }
+    .payment-sheet-print-summary__row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.08rem 0;
+      border-bottom: 0.5pt dotted #999;
+    }
+    .payment-sheet-print-summary__row:last-child {
+      border-bottom: 0;
+    }
+    .payment-sheet-print-summary__label {
+      color: #333;
+      font-weight: 600;
+    }
+    .payment-sheet-print-summary__value {
+      font-weight: 700;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .payment-sheet-print-signatures {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+      padding-top: 0.35rem;
+      page-break-inside: avoid;
+    }
+    .payment-sheet-print-sign {
+      text-align: center;
+      min-height: 3.25rem;
+    }
+    .payment-sheet-print-sign__line {
+      border-top: 1px solid #333;
+      margin: 2.1rem 0.75rem 0.35rem;
+    }
+    .payment-sheet-print-sign__title {
+      font-size: 9pt;
+      font-weight: 700;
+      color: #111;
+    }
+    .payment-sheet-print-sign__hint {
+      font-size: 7pt;
+      color: #555;
+    }
+  }
+  .payment-sheet-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin: 0 0 0.85rem;
+  }
+  .payment-sheet-summary__item {
+    min-width: 0;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid #e7edf5;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .payment-sheet-summary__label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+  }
+  .payment-sheet-summary__value {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+  .payment-sheet-summary__hint {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.72rem;
+    color: #94a3b8;
+  }
+  .payment-sheet-summary__item--cash .payment-sheet-summary__value { color: #0f766e; }
+  .payment-sheet-summary__item--bank .payment-sheet-summary__value { color: #1d4ed8; }
+  .payment-sheet-summary--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 992px) {
+    .payment-sheet-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .payment-sheet-method-col {
+    width: 1%;
+    min-width: 8.75rem;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .payment-sheet-method-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    padding: 2px;
+    gap: 2px;
+    background: #f1f5f9;
+    border: 1px solid #dbe3ef;
+    border-radius: 999px;
+  }
+  .payment-sheet-method-toggle__btn {
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 0.28rem 0.6rem;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .payment-sheet-method-toggle__btn.is-active {
+    background: #fff;
+    color: #0f766e;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .payment-sheet-method-toggle__btn.is-active[data-payment-method="bank_transfer"] {
+    color: #1d4ed8;
+  }
+  .payment-sheet-method-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+  }
+</style>
+{% endblock %}
+{% block content %}
+{% if can_add_advance and can_view_payment_settlement %}
+<div class="card payment-sheet-card mb-3 payment-sheet-no-print">
+  <div class="card-body payment-sheet-advance">
+    <div class="payment-sheet-card__title">Record advance payment</div>
+    <p class="payment-sheet-card__hint">Advance is deducted from net pay when the advance date falls within the generated payment period. View all advances under <a href="{% url 'farmer-advance-list' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}">Farmer advances</a>.</p>
+    {{ farmer_balance_data|json_script:"farmer-balance-data" }}
+    <form method="post" action="{% url 'farmer-advance-add' %}" id="payment-sheet-advance-form">
+      {% csrf_token %}
+      <input type="hidden" name="return_start" value="{{ start|date:'Y-m-d' }}">
+      <input type="hidden" name="return_end" value="{{ end|date:'Y-m-d' }}">
+      <input type="hidden" name="return_to" value="payment-sheet">
+      {% for branch_id in selected_branches %}
+      <input type="hidden" name="return_branches" value="{{ branch_id }}">
+      {% endfor %}
+      <div id="advance-balance-panel" class="advance-balance-panel d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <span class="text-muted">Balance due this period:</span>
+            <span class="advance-balance-net ms-1" id="advance-balance-net">—</span>
+          </div>
+          <div class="text-muted">
+            After this advance:
+            <span class="advance-balance-after text-dark" id="advance-balance-after">—</span>
+          </div>
+        </div>
+        <div class="small text-muted mt-1" id="advance-balance-breakdown"></div>
+      </div>
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="{{ advance_form.farmer.id_for_label }}">{{ advance_form.farmer.label }}</label>
+          {{ advance_form.farmer }}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ advance_form.advance_type.id_for_label }}">{{ advance_form.advance_type.label }}</label>
+          {{ advance_form.advance_type }}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ advance_form.date.id_for_label }}">{{ advance_form.date.label }}</label>
+          {{ advance_form.date }}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ advance_form.amount.id_for_label }}">{{ advance_form.amount.label }}</label>
+          {{ advance_form.amount }}
+        </div>
+        <div class="col-12 col-md-auto advance-form-actions">
+          <button type="submit" class="btn btn-primary"><i class="bi bi-cash-coin me-1"></i>Save advance</button>
+        </div>
+      </div>
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          {{ advance_form.note }}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% url 'farmer-payment-sheet' as farmer_payment_sheet_reset_url %}
+{% url 'paid-farmer-payment-sheet-list' as farmer_paid_sheets_url %}
+{% include "reports/_payment_sheet_period_filter.html" with sheet_kind="farmer" reset_url=farmer_payment_sheet_reset_url paid_sheets_url=farmer_paid_sheets_url hint="Choose the payment period and branches, then generate the sheet." %}
+
+{% if paid_sheet_record %}
+<div class="alert alert-info py-2 px-3 mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <span class="small mb-0">
+    <i class="bi bi-clock-history me-1"></i>
+    Paid payment sheet — {{ paid_sheet_record.farmer_count }} farmer(s), last paid {{ paid_sheet_record.last_paid_at|date:"Y-m-d H:i" }}.
+    Rates and totals reflect values recorded at payment time.
+  </span>
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'paid-farmer-payment-sheet-list' %}">All paid sheets</a>
+</div>
+{% endif %}
+
+<div class="card card-table payment-sheet-table-card">
+  <div class="card-body table-wrap">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <div class="payment-sheet-card__title mb-0">Payment details</div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="small text-muted">{{ start|date:"Y-m-d" }} → {{ end|date:"Y-m-d" }}</span>
+        {% if rows %}
+        <div class="payment-sheet-export-actions payment-sheet-no-print d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="payment-sheet-print-table" title="Print full payment sheet">
+            <i class="bi bi-printer me-1"></i>Print sheet
+          </button>
+          {% if route_groups %}
+          <label class="visually-hidden" for="payment-sheet-print-route-select">Route</label>
+          <select
+            id="payment-sheet-print-route-select"
+            class="form-select form-select-sm"
+            style="width: auto; min-width: 8rem; max-width: 11rem;"
+            title="Select route to print"
+          >
+            <option value="">Select route…</option>
+            {% for group in route_groups %}
+            <option value="{{ group.route_id }}">{% if group.route %}{{ group.route.name }}{% else %}{{ group.route_label }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="payment-sheet-print-route" disabled title="Print selected route">
+            <i class="bi bi-printer me-1"></i>Print route
+          </button>
+          {% endif %}
+          <a
+            class="btn btn-sm btn-outline-success"
+            href="{% url 'farmer-payment-sheet-export-excel' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+            title="Download Excel"
+          >
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+          </a>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary"
+            id="payment-sheet-bank-file"
+            title="Download CEFT bank payment file for Bank method rows"
+          >
+            <i class="bi bi-bank me-1"></i>Bank file
+          </button>
+          <a
+            class="btn btn-sm btn-outline-danger"
+            href="{% url 'farmer-payment-sheet-export-pdf' %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}"
+            title="Download PDF"
+          >
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+          </a>
+        </div>
+        <form
+          id="payment-sheet-bank-file-form"
+          method="post"
+          action="{% url 'farmer-payment-sheet-export-bank-file' %}"
+          class="d-none"
+        >
+          {% csrf_token %}
+          <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+          <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+          <input type="hidden" name="debit_account_id" id="payment-sheet-bank-file-debit-account-id" value="">
+          <input type="hidden" name="value_date" id="payment-sheet-bank-file-value-date-hidden" value="">
+          {% for branch_id in selected_branches %}
+          <input type="hidden" name="branches" value="{{ branch_id }}">
+          {% endfor %}
+          <div id="payment-sheet-bank-file-farmers"></div>
+        </form>
+        {% include "reports/_payment_sheet_debit_account_modal.html" %}
+        <div
+          class="payment-sheet-bulk-actions payment-sheet-no-print d-flex flex-wrap gap-2"
+          id="payment-sheet-bulk-print"
+          data-bulk-url="{% url 'farmer-payslip-bulk' %}"
+          data-bulk-pay-url="{% url 'farmer-bulk-period-payment-record' %}"
+          data-start="{{ start|date:'Y-m-d' }}"
+          data-end="{{ end|date:'Y-m-d' }}"
+          data-branches="{{ selected_branches|join:',' }}"
+        >
+          <button type="button" class="btn btn-sm btn-outline-primary" id="payment-sheet-print-all">
+            <i class="bi bi-printer me-1"></i>Print all payslips
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="payment-sheet-print-selected" disabled>
+            <i class="bi bi-printer me-1"></i>Print selected
+          </button>
+          {% if can_record_farmer_payment %}
+          <button type="button" class="btn btn-sm btn-success" id="payment-sheet-pay-selected" disabled>
+            <i class="bi bi-cash-stack me-1"></i>Pay selected
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% if rows %}
+    <div class="payment-sheet-summary{% if not can_view_payment_settlement %} payment-sheet-summary--two{% endif %}" aria-label="Payment sheet totals">
+      {% if can_view_payment_settlement %}
+      <div class="payment-sheet-summary__item payment-sheet-summary__item--cash">
+        <span class="payment-sheet-summary__label">Cash payments</span>
+        <span class="payment-sheet-summary__value" id="payment-sheet-cash-total">{{ sheet_totals.cash_method_total|money }}</span>
+        <span class="payment-sheet-summary__hint" id="payment-sheet-cash-hint">{{ sheet_totals.cash_method_count }} farmer{{ sheet_totals.cash_method_count|pluralize }} · by method</span>
+      </div>
+      <div class="payment-sheet-summary__item payment-sheet-summary__item--bank">
+        <span class="payment-sheet-summary__label">Bank payments</span>
+        <span class="payment-sheet-summary__value" id="payment-sheet-bank-total">{{ sheet_totals.bank_method_total|money }}</span>
+        <span class="payment-sheet-summary__hint" id="payment-sheet-bank-hint">{{ sheet_totals.bank_method_count }} farmer{{ sheet_totals.bank_method_count|pluralize }} · by method</span>
+      </div>
+      {% endif %}
+      <div class="payment-sheet-summary__item">
+        <span class="payment-sheet-summary__label">Avg farmer rate</span>
+        <span class="payment-sheet-summary__value">{% if sheet_totals.avg_farmer_rate is not None %}{{ sheet_totals.avg_farmer_rate|money }}{% else %}—{% endif %}</span>
+        <span class="payment-sheet-summary__hint">Mean of {{ sheet_totals.farmer_count }} farmer rate{{ sheet_totals.farmer_count|pluralize }}</span>
+      </div>
+      <div class="payment-sheet-summary__item">
+        <span class="payment-sheet-summary__label">Avg farmer daily collection</span>
+        <span class="payment-sheet-summary__value">{% if sheet_totals.avg_farmer_collection is not None %}{{ sheet_totals.avg_farmer_collection|money }} L{% else %}—{% endif %}</span>
+        <span class="payment-sheet-summary__hint">Total ÷ {{ sheet_totals.farmer_count }} farmers ÷ {{ sheet_totals.day_count }} days</span>
+      </div>
+    </div>
+    {% endif %}
+    <div class="payment-sheet-scroll" id="payment-sheet-root" data-period-start="{{ start|date:'Y-m-d' }}" data-period-end="{{ end|date:'Y-m-d' }}" data-branches="{{ selected_branches|join:',' }}" data-can-record-payment="{% if can_record_farmer_payment %}1{% else %}0{% endif %}">
+      {% if rows and can_view_payment_settlement %}
+      <div class="payment-sheet-day-legend" aria-label="Daily collection payment status">
+        <span class="payment-sheet-day-legend__item"><span class="payment-sheet-day-legend__swatch payment-sheet-day-legend__swatch--paid"></span>Paid collection</span>
+        <span class="payment-sheet-day-legend__item"><span class="payment-sheet-day-legend__swatch payment-sheet-day-legend__swatch--unpaid"></span>Unpaid collection</span>
+        <span class="payment-sheet-day-legend__item"><span class="payment-sheet-day-legend__swatch payment-sheet-day-legend__swatch--partial"></span>Partly paid</span>
+      </div>
+      <p class="payment-sheet-paid-note mb-0">
+        <strong>Paid</strong> = gross milk from collection days marked paid.
+        <strong>Balance</strong> = net payable on unpaid collections (after pending deductions).
+      </p>
+      {% endif %}
+      {% if rows %}
+      {% include "reports/_farmer_payment_sheet_print_summary.html" %}
+      {% include "reports/_farmer_payment_sheet_print_details.html" %}
+      {% for group in route_groups %}
+      {% include "reports/_farmer_payment_sheet_print_route.html" with group=group %}
+      {% endfor %}
+      {% endif %}
+      <table class="table table-sm table-hover align-middle payment-sheet-table" id="farmer-payment-sheet-table">
+        {% if rows %}
+        <colgroup>
+          <col class="payment-sheet-col-select">
+        </colgroup>
+        {% endif %}
+        <thead>
+          <tr>
+            {% if rows %}
+            <th class="payment-sheet-select-col">
+              <input type="checkbox" class="form-check-input" id="payment-sheet-select-all" title="Select all farmers" aria-label="Select all farmers">
+            </th>
+            {% endif %}
+            <th class="sticky-col-farmer">Farmer</th>
+            <th class="sticky-col-rate text-end">Rate</th>
+            {% for d in date_cols %}
+            <th class="day-col">{{ d|date:"m-d" }}</th>
+            {% endfor %}
+            <th class="text-end">Total L</th>
+            <th class="text-end">Gross</th>
+            {% if can_view_payment_settlement %}
+            <th class="text-end">Advance</th>
+            <th class="text-end">Goods Ded.</th>
+            <th class="text-end">Bank Loan</th>
+            <th class="text-end">Net</th>
+            <th class="text-end payment-sheet-paid-col">Paid</th>
+            <th class="text-end">Balance</th>
+            {% if can_record_farmer_payment %}
+            <th class="payment-sheet-method-col">Method</th>
+            {% endif %}
+            {% endif %}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr
+            class="{% if r.is_fully_settled %}payment-sheet-row--settled{% endif %}{% if r.has_unpaid_collections %} payment-sheet-row--has-unpaid{% endif %}"
+            data-farmer-id="{{ r.farmer.pk }}"
+            data-farmer-name="{{ r.farmer.common_name|default:r.farmer.full_name }}"
+            data-balance="{{ r.balance_amount }}"
+            data-can-pay="{% if r.can_make_payment and can_record_farmer_payment %}1{% else %}0{% endif %}"
+            data-gross="{{ r.gross_amount }}"
+            data-advance="{{ r.advance_amount }}"
+            data-goods="{{ r.goods_deduction }}"
+            data-paid="{{ r.paid_amount }}"
+            data-cash-paid="{{ r.cash_paid }}"
+            data-primary-bank-id="{{ r.primary_bank_account_id|default:'' }}"
+            data-bank-accounts="{{ r.bank_accounts_json|default:'[]' }}"
+            data-ceft-ready="{% if r.primary_bank_ceft_ready %}1{% else %}0{% endif %}"
+            data-payment-method="{% if r.period_payment %}{{ r.period_payment.payment_method }}{% elif r.primary_bank_account_id %}bank_transfer{% else %}cash{% endif %}"
+            data-has-unpaid-collections="{% if r.has_unpaid_collections %}1{% else %}0{% endif %}"
+          >
+            {% if rows %}
+            <td class="payment-sheet-select-col">
+              <input type="checkbox" class="form-check-input payment-sheet-row-select" value="{{ r.farmer.pk }}" aria-label="Select {{ r.farmer.common_name|default:r.farmer.full_name }}">
+            </td>
+            {% endif %}
+            <td class="sticky-col-farmer">
+              <a
+                href="{% url 'farmer-detail' r.farmer.pk %}?from={{ start|date:'Y-m-d' }}&amp;to={{ end|date:'Y-m-d' }}"
+                target="_blank"
+                rel="noopener"
+                title="Open farmer details for {{ start|date:'Y-m-d' }} → {{ end|date:'Y-m-d' }}"
+              >{{ r.farmer.common_name|default:r.farmer.full_name }}</a>
+            </td>
+            <td class="sticky-col-rate money-col"{% if r.uses_payment_snapshot %} title="Rate recorded at payment"{% endif %}>{{ r.rate|money }}</td>
+            {% for day in r.day_cols %}
+            <td class="day-col{% if can_view_payment_settlement %} day-col--{{ day.status }}{% endif %}" title="{% if can_view_payment_settlement %}{% if day.status == 'paid' %}Collection paid{% elif day.status == 'unpaid' %}Collection unpaid{% elif day.status == 'partial' %}Partly paid ({{ day.paid_liters|money }} / {{ day.liters|money }} L){% else %}No collection{% endif %}{% endif %}">{{ day.liters|money }}</td>
+            {% endfor %}
+            <td class="money-col">{{ r.total_liters|money }}</td>
+            <td class="money-col">{{ r.gross_amount|money }}</td>
+            {% if can_view_payment_settlement %}
+            <td class="money-col advance-deduct-cell{% if r.advance_amount > 0 and r.advance_pending <= 0 %} payment-sheet-cell--settled{% endif %}"{% if r.advance_amount > 0 and r.advance_pending <= 0 %} title="Advance recovered"{% endif %}>
+              {% if can_manage_payment_deductions and r.advance_in_period > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-farmer-id="{{ r.farmer.pk }}" data-farmer-name="{{ r.farmer.common_name|default:r.farmer.full_name }}" data-focus="advance" title="Select advances to deduct"><span class="deduction-picker-amount{% if r.advance_amount <= 0 %} is-skipped{% endif %}">{{ r.advance_amount|money }}</span><i class="bi bi-ui-checks small"></i></button>
+              {% elif r.advance_amount > 0 %}
+              {{ r.advance_amount|money }}{% if r.advance_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}
+              {% else %}
+              {{ r.advance_amount|money }}
+              {% endif %}
+            </td>
+            <td class="money-col goods-deduct-cell{% if r.goods_deduction > 0 and r.goods_pending <= 0 %} payment-sheet-cell--settled{% endif %}"{% if r.goods_deduction > 0 and r.goods_pending <= 0 %} title="Goods settled"{% endif %}>
+              {% if can_manage_payment_deductions and r.goods_in_period > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-farmer-id="{{ r.farmer.pk }}" data-farmer-name="{{ r.farmer.common_name|default:r.farmer.full_name }}" data-focus="goods" title="Select products to deduct"><span class="deduction-picker-amount{% if r.goods_deduction <= 0 %} is-skipped{% endif %}">{{ r.goods_deduction|money }}</span><i class="bi bi-ui-checks small"></i></button>
+              {% elif r.goods_deduction > 0 %}
+              {{ r.goods_deduction|money }}{% if r.goods_pending <= 0 %}<span class="payment-sheet-settled-mark" aria-hidden="true">✓</span>{% endif %}
+              {% else %}
+              {{ r.goods_deduction|money }}
+              {% endif %}
+            </td>
+            <td class="loan-deduct-cell{% if r.loan_deduction_calculated > 0 and r.loan_pending_calculated <= 0 %} payment-sheet-cell--settled{% endif %}">
+              {% if can_manage_payment_deductions and r.loan_in_period > 0 %}
+              <button type="button" class="deduction-picker-trigger js-deduction-picker-trigger" data-farmer-id="{{ r.farmer.pk }}" data-farmer-name="{{ r.farmer.common_name|default:r.farmer.full_name }}" data-focus="loan" title="Select loan instalments to deduct">
+                <span class="loan-deduct-amount deduction-picker-amount{% if r.loan_deduction_calculated <= 0 or not r.deduct_loan %} is-skipped{% endif %}">{{ r.loan_deduction_calculated|money }}</span><i class="bi bi-ui-checks small"></i>
+              </button>
+              {% if not r.deduct_loan %}
+              <span class="loan-deduct-hint">Skipped this payment</span>
+              {% endif %}
+              {% elif can_manage_loan_deduction and r.loan_in_period > 0 %}
+              <label class="mb-0 d-inline-flex align-items-center justify-content-end">
+                <input
+                  type="checkbox"
+                  class="form-check-input loan-deduct-toggle"
+                  data-toggle-url="{% url 'farmer-payment-loan-deduction-toggle' %}"
+                  data-start="{{ start|date:'Y-m-d' }}"
+                  data-end="{{ end|date:'Y-m-d' }}"
+                  {% if r.deduct_loan %}checked{% endif %}
+                  title="Deduct loan from this payment"
+                >
+                <span class="loan-deduct-amount{% if not r.deduct_loan %} is-skipped{% endif %}">{{ r.loan_pending_calculated|money }}</span>
+              </label>
+              {% if not r.deduct_loan %}
+              <span class="loan-deduct-hint">Skipped this payment</span>
+              {% endif %}
+              {% elif r.loan_deduction_calculated > 0 %}
+              <span class="loan-deduct-amount">{{ r.loan_deduction_calculated|money }}</span>{% if r.loan_pending_calculated <= 0 %}<span class="payment-sheet-settled-mark" title="Loan instalments paid" aria-hidden="true">✓</span>{% endif %}
+              {% else %}
+              <span class="loan-deduct-amount">{{ r.loan_deduction_calculated|money }}</span>
+              {% endif %}
+            </td>
+            <td class="money-col net-amount-cell" title="Period net (gross − deductions)">{{ r.net_amount|money }}</td>
+            {% include "reports/_farmer_payment_paid_cell.html" with amount=r.paid_amount cash=r.cash_paid advance=r.paid_advance goods=r.paid_goods loan=r.paid_loan method=r.period_payment.get_payment_method_display|default:"" bank_label=r.period_payment.bank_label|default:"" %}
+            <td class="money-col balance-amount-cell{% if r.balance_amount > 0 %} text-danger{% elif r.is_fully_settled %} text-success{% endif %}" title="Gross − paid − pending deductions">{{ r.balance_amount|money }}</td>
+            {% if can_record_farmer_payment %}
+            <td class="payment-sheet-method-col">
+              {% if r.can_make_payment %}
+                {% if r.period_payment.payment_method == "bank_transfer" or not r.period_payment and r.primary_bank_account_id %}
+                {% include "reports/_collection_point_payment_method_toggle.html" with method="bank_transfer" %}
+                {% else %}
+                {% include "reports/_collection_point_payment_method_toggle.html" with method="cash" %}
+                {% endif %}
+              {% elif r.period_payment %}
+              <span class="payment-sheet-method-label">{{ r.period_payment.get_payment_method_display }}</span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            {% endif %}
+            {% endif %}
+            <td class="payment-sheet-actions-col text-nowrap">
+              <div class="payment-sheet-row-actions">
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="{% url 'farmer-payslip' r.farmer.pk %}?start={{ start|date:'Y-m-d' }}&amp;end={{ end|date:'Y-m-d' }}{% for branch_id in selected_branches %}&amp;branches={{ branch_id }}{% endfor %}">PaySlip</a>
+                {% if can_view_payment_settlement %}
+                {% if can_record_farmer_payment %}
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success js-open-period-payment"
+                  data-payment-type="farmer"
+                  data-entity-id="{{ r.farmer.pk }}"
+                  data-entity-name="{{ r.farmer.common_name|default:r.farmer.full_name }}"
+                  data-amount="{{ r.balance_amount }}"
+                  data-deduct-loan="{% if r.deduct_loan %}1{% else %}0{% endif %}"
+                  data-bank-accounts="{{ r.bank_accounts_json|default:'[]' }}"
+                  data-primary-bank-id="{{ r.primary_bank_account_id|default:'' }}"
+                  {% if not r.can_make_payment %}hidden{% endif %}
+                >Pay</button>
+                {% endif %}
+                <span class="badge text-bg-success-subtle text-success-emphasis payment-sheet-settled-badge"{% if r.can_make_payment or not r.is_fully_settled %} hidden{% endif %}>Settled</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="20" class="text-center text-muted py-4">No farmer collections in the selected period.</td></tr>
+          {% endfor %}
+        </tbody>
+        {% if rows %}
+        <tfoot>
+          <tr class="payment-sheet-total-row">
+            <td class="payment-sheet-select-col"></td>
+            <th class="sticky-col-farmer">Total</th>
+            <td class="sticky-col-rate money-col">—</td>
+            {% for v in sheet_totals.day_vals %}
+            <td class="day-col">{{ v|money }}</td>
+            {% endfor %}
+            <td class="money-col">{{ sheet_totals.total_liters|money }}</td>
+            <td class="money-col">{{ sheet_totals.gross_amount|money }}</td>
+            {% if can_view_payment_settlement %}
+            <td class="money-col">{{ sheet_totals.advance_amount|money }}</td>
+            <td class="money-col">{{ sheet_totals.goods_deduction|money }}</td>
+            <td class="money-col loan-deduct-cell">{{ sheet_totals.loan_deduction|money }}</td>
+            <td class="money-col net-amount-cell">{{ sheet_totals.net_amount|money }}</td>
+            {% include "reports/_farmer_payment_paid_cell.html" with amount=sheet_totals.paid_amount cash=sheet_totals.cash_paid advance=sheet_totals.paid_advance goods=sheet_totals.paid_goods loan=sheet_totals.paid_loan %}
+            <td class="money-col">{{ sheet_totals.balance_amount|money }}</td>
+            {% if can_record_farmer_payment %}
+            <td class="payment-sheet-method-col"></td>
+            {% endif %}
+            {% endif %}
+            <td></td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+      {% if rows %}
+      {% include "reports/_farmer_payment_sheet_print_final.html" %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if can_record_farmer_payment %}
+{% include "reports/_period_payment_modal.html" %}
+<form method="post" action="{% url 'farmer-bulk-period-payment-record' %}" id="payment-sheet-bulk-pay-form" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" name="start" value="{{ start|date:'Y-m-d' }}">
+  <input type="hidden" name="end" value="{{ end|date:'Y-m-d' }}">
+  <input type="hidden" name="return_url" value="">
+  <input type="hidden" name="payment_date" value="">
+  {% for branch_id in selected_branches %}
+  <input type="hidden" name="branches" value="{{ branch_id }}">
+  {% endfor %}
+  <div id="payment-sheet-bulk-pay-farmer-ids"></div>
+</form>
+{% endif %}
+{% if can_manage_payment_deductions %}
+{% include "reports/_farmer_payment_deduction_modal.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{% include "reports/_payment_sheet_period_filter_script.html" %}
+<script>
+(function () {
+  function parseAmount(value) {
+    var n = Number(String(value || "0").replace(/,/g, ""));
+    return isFinite(n) ? n : 0;
+  }
+
+  function formatAmount(value) {
+    return parseAmount(value).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function rowMethodAmount(tr) {
+    if (!tr) return 0;
+    if (tr.dataset.canPay === "1") return parseAmount(tr.dataset.balance);
+    return parseAmount(tr.dataset.cashPaid);
+  }
+
+  function refreshMethodTotals() {
+    var cashEl = document.getElementById("payment-sheet-cash-total");
+    var bankEl = document.getElementById("payment-sheet-bank-total");
+    if (!cashEl || !bankEl) return;
+    var checks = Array.from(document.querySelectorAll(".payment-sheet-row-select"));
+    var selectedChecks = checks.filter(function (cb) { return cb.checked; });
+    var rows;
+    if (selectedChecks.length) {
+      rows = selectedChecks.map(function (cb) { return cb.closest("tr"); }).filter(Boolean);
+    } else {
+      rows = Array.from(document.querySelectorAll("#farmer-payment-sheet-table tbody tr[data-farmer-id]"));
+    }
+    var cashTotal = 0;
+    var bankTotal = 0;
+    var cashCount = 0;
+    var bankCount = 0;
+    rows.forEach(function (tr) {
+      var amount = rowMethodAmount(tr);
+      if (!(amount > 0)) return;
+      if ((tr.getAttribute("data-payment-method") || "") === "bank_transfer") {
+        bankTotal += amount;
+        bankCount += 1;
+      } else {
+        cashTotal += amount;
+        cashCount += 1;
+      }
+    });
+    cashEl.textContent = formatAmount(cashTotal);
+    bankEl.textContent = formatAmount(bankTotal);
+    var scope = selectedChecks.length ? "selected" : "by method";
+    var cashHint = document.getElementById("payment-sheet-cash-hint");
+    var bankHint = document.getElementById("payment-sheet-bank-hint");
+    if (cashHint) cashHint.textContent = cashCount + " farmer" + (cashCount === 1 ? "" : "s") + " · " + scope;
+    if (bankHint) bankHint.textContent = bankCount + " farmer" + (bankCount === 1 ? "" : "s") + " · " + scope;
+  }
+
+  document.querySelectorAll(".payment-sheet-method-toggle").forEach(function (toggle) {
+    toggle.addEventListener("click", function (event) {
+      var btn = event.target.closest("[data-payment-method]");
+      if (!btn || !toggle.contains(btn)) return;
+      event.preventDefault();
+      var method = btn.getAttribute("data-payment-method") === "bank_transfer" ? "bank_transfer" : "cash";
+      toggle.querySelectorAll("[data-payment-method]").forEach(function (item) {
+        var active = item.getAttribute("data-payment-method") === method;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      var row = toggle.closest("tr");
+      if (row) row.setAttribute("data-payment-method", method);
+      refreshMethodTotals();
+    });
+  });
+
+  document.addEventListener("change", function (event) {
+    if (event.target && event.target.classList.contains("payment-sheet-row-select")) {
+      refreshMethodTotals();
+    }
+    if (event.target && event.target.id === "payment-sheet-select-all") {
+      refreshMethodTotals();
+    }
+  });
+
+  refreshMethodTotals();
+
+  var bankFileBtn = document.getElementById("payment-sheet-bank-file");
+  var bankFileForm = document.getElementById("payment-sheet-bank-file-form");
+  var bankFileFarmers = document.getElementById("payment-sheet-bank-file-farmers");
+  var debitModalEl = document.getElementById("paymentSheetDebitAccountModal");
+  var debitSelect = document.getElementById("payment-sheet-debit-account-id");
+  var debitConfirm = document.getElementById("payment-sheet-debit-account-confirm");
+  var debitHidden = document.getElementById("payment-sheet-bank-file-debit-account-id");
+  var valueDateInput = document.getElementById("payment-sheet-bank-file-value-date");
+  var valueDateHidden = document.getElementById("payment-sheet-bank-file-value-date-hidden");
+  if (bankFileBtn && bankFileForm && bankFileFarmers) {
+    bankFileBtn.addEventListener("click", function () {
+      var checks = Array.from(document.querySelectorAll(".payment-sheet-row-select"));
+      var selectedChecks = checks.filter(function (cb) { return cb.checked; });
+      var rows;
+      if (selectedChecks.length) {
+        rows = selectedChecks.map(function (cb) { return cb.closest("tr"); }).filter(Boolean);
+      } else {
+        rows = Array.from(document.querySelectorAll("#farmer-payment-sheet-table tbody tr[data-farmer-id]"));
+      }
+      var farmerIds = [];
+      var missingCodes = [];
+      rows.forEach(function (tr) {
+        if (!tr) return;
+        if ((tr.getAttribute("data-payment-method") || "") !== "bank_transfer") return;
+        if (!(rowMethodAmount(tr) > 0)) return;
+        var farmerId = tr.getAttribute("data-farmer-id");
+        if (!farmerId) return;
+        if (tr.getAttribute("data-ceft-ready") !== "1") {
+          missingCodes.push(tr.getAttribute("data-farmer-name") || farmerId);
+          return;
+        }
+        farmerIds.push(farmerId);
+      });
+      if (!farmerIds.length) {
+        var msg = missingCodes.length
+          ? "Bank accounts need bank code and branch code before download.\n" + missingCodes.slice(0, 5).join("\n")
+          : "No Bank-method payable rows to include. Select Bank on rows (and select rows if needed).";
+        if (window.Swal) {
+          Swal.fire({ icon: "warning", title: "Bank file", text: msg });
+        } else {
+          alert(msg);
+        }
+        return;
+      }
+      bankFileFarmers.innerHTML = "";
+      farmerIds.forEach(function (id) {
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "farmer_ids";
+        input.value = id;
+        bankFileFarmers.appendChild(input);
+      });
+      if (!debitSelect || !debitSelect.options.length) {
+        if (debitModalEl && window.bootstrap) {
+          bootstrap.Modal.getOrCreateInstance(debitModalEl).show();
+        } else {
+          var noAcct = "Add a company bank account under Setup → Company before generating the bank file.";
+          if (window.Swal) Swal.fire({ icon: "warning", title: "Bank file", text: noAcct });
+          else alert(noAcct);
+        }
+        return;
+      }
+      if (debitModalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(debitModalEl).show();
+      } else if (debitHidden) {
+        debitHidden.value = debitSelect.value;
+        if (valueDateInput && valueDateHidden) valueDateHidden.value = valueDateInput.value;
+        bankFileForm.submit();
+      }
+    });
+    if (debitConfirm) {
+      debitConfirm.addEventListener("click", function () {
+        if (!debitSelect || !debitSelect.value) {
+          var need = "Select a company debit account.";
+          if (window.Swal) Swal.fire({ icon: "warning", title: "Bank file", text: need });
+          else alert(need);
+          return;
+        }
+        if (debitHidden) debitHidden.value = debitSelect.value;
+        if (valueDateInput && valueDateHidden) {
+          if (!valueDateInput.value) {
+            var needDate = "Enter the payment date.";
+            if (window.Swal) Swal.fire({ icon: "warning", title: "Bank file", text: needDate });
+            else alert(needDate);
+            return;
+          }
+          valueDateHidden.value = valueDateInput.value;
+        }
+        if (debitModalEl && window.bootstrap) {
+          var modal = bootstrap.Modal.getInstance(debitModalEl);
+          if (modal) modal.hide();
+        }
+        bankFileForm.submit();
+      });
+    }
+  }
+
+  function focusNextField(form, current) {
+    var fields = Array.from(
+      form.querySelectorAll('select, input:not([type="hidden"]), textarea, button[type="submit"]')
+    ).filter(function (el) {
+      return !el.disabled && el.type !== "hidden" && el.offsetParent !== null;
+    });
+    var index = fields.indexOf(current);
+    if (index >= 0 && index < fields.length - 1) {
+      fields[index + 1].focus();
+      if (typeof fields[index + 1].select === "function") {
+        fields[index + 1].select();
+      }
+    }
+  }
+
+  document.querySelectorAll(".js-no-enter-submit").forEach(function (form) {
+    form.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      var tag = (event.target && event.target.tagName) || "";
+      if (tag === "TEXTAREA") return;
+      if (event.target && event.target.type === "submit") return;
+      event.preventDefault();
+    });
+  });
+
+  function loadFarmerBalances() {
+    try {
+      var balanceEl = document.getElementById("farmer-balance-data");
+      if (!balanceEl) return {};
+      var parsed = JSON.parse(balanceEl.textContent || "{}");
+      if (typeof parsed === "string") {
+        parsed = JSON.parse(parsed);
+      }
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  var advanceForm = document.getElementById("payment-sheet-advance-form");
+  var farmerBalances = loadFarmerBalances();
+
+  function updateAdvanceBalance() {
+    if (!advanceForm) return;
+    var panel = document.getElementById("advance-balance-panel");
+    var netEl = document.getElementById("advance-balance-net");
+    var afterEl = document.getElementById("advance-balance-after");
+    var breakdownEl = document.getElementById("advance-balance-breakdown");
+    var farmerSelect = advanceForm.querySelector('[name="farmer"]');
+    var amountInput = advanceForm.querySelector('[name="amount"]');
+    if (!panel || !farmerSelect || !netEl || !afterEl || !breakdownEl) return;
+
+    var farmerId = String(farmerSelect.value || "");
+    var data = farmerBalances[farmerId];
+    if (!farmerId || data == null) {
+      panel.classList.add("d-none");
+      return;
+    }
+    var net = parseAmount(data.net);
+    var pendingAdvance = parseAmount(amountInput ? amountInput.value : 0);
+    var after = net - pendingAdvance;
+
+    panel.classList.remove("d-none");
+    netEl.textContent = formatAmount(net);
+    netEl.classList.toggle("is-negative", net < 0);
+    afterEl.textContent = formatAmount(after);
+    afterEl.classList.toggle("text-danger", after < 0);
+    breakdownEl.textContent =
+      "Gross " + formatAmount(data.gross) +
+      " · Already advanced " + formatAmount(data.advanced) +
+      " · Goods " + formatAmount(data.goods) +
+      " · Loan " + formatAmount(data.loan);
+  }
+
+  function bindFarmerBalanceUpdates(farmerSelect) {
+    if (!farmerSelect) return;
+    farmerSelect.addEventListener("change", updateAdvanceBalance);
+    farmerSelect.addEventListener("input", updateAdvanceBalance);
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+      var $farmer = window.jQuery(farmerSelect);
+      if (!$farmer.hasClass("select2-hidden-accessible")) {
+        $farmer.select2({
+          width: "100%",
+          placeholder: "Select farmer",
+        });
+      }
+      $farmer.on("change select2:select select2:clear", updateAdvanceBalance);
+    }
+    updateAdvanceBalance();
+  }
+
+  if (advanceForm) {
+    advanceForm.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      var tag = (event.target && event.target.tagName) || "";
+      if (tag === "TEXTAREA") return;
+      if (event.target && event.target.type === "submit") return;
+      event.preventDefault();
+      focusNextField(advanceForm, event.target);
+    });
+    advanceForm.addEventListener("focusin", function (event) {
+      var target = event.target;
+      if (!target.classList || !target.classList.contains("js-money-input")) return;
+      target.value = String(target.value || "").replace(/,/g, "");
+      if (typeof target.select === "function") target.select();
+    });
+    advanceForm.addEventListener("focusout", function (event) {
+      var target = event.target;
+      if (!target.classList || !target.classList.contains("js-money-input")) return;
+      if (!String(target.value || "").trim()) return;
+      target.value = formatAmount(target.value);
+      updateAdvanceBalance();
+    });
+    advanceForm.addEventListener("input", function (event) {
+      if (event.target && event.target.name === "amount") updateAdvanceBalance();
+    });
+    bindFarmerBalanceUpdates(advanceForm.querySelector('[name="farmer"]'));
+    advanceForm.addEventListener("submit", function () {
+      advanceForm.querySelectorAll(".js-money-input").forEach(function (el) {
+        el.value = String(el.value || "").replace(/,/g, "");
+      });
+    });
+  }
+
+  function getCsrfToken() {
+    var input = document.querySelector('#payment-sheet-advance-form input[name="csrfmiddlewaretoken"]')
+      || document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : "";
+  }
+
+  function applyRowTotals(farmerId, rowData) {
+    if (!rowData) return;
+    var row = document.querySelector('tr[data-farmer-id="' + farmerId + '"]');
+    if (!row) return;
+    var sheetRoot = document.getElementById("payment-sheet-root");
+    var canRecordPayment = sheetRoot && sheetRoot.dataset.canRecordPayment === "1";
+    function setCell(selector, value) {
+      var cell = row.querySelector(selector);
+      if (!cell) return;
+      var amountNode = cell.querySelector(".deduction-picker-amount");
+      if (amountNode) {
+        amountNode.textContent = formatAmount(value);
+        return;
+      }
+      var mark = cell.querySelector(".payment-sheet-settled-mark");
+      var textNode = cell.childNodes[0];
+      if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+        textNode.textContent = formatAmount(value);
+      } else if (!cell.querySelector(".deduction-picker-trigger")) {
+        cell.insertBefore(document.createTextNode(formatAmount(value)), cell.firstChild);
+      }
+      if (mark) cell.appendChild(mark);
+    }
+    function setPickerCell(selector, value, inPeriod, forceSkipped) {
+      var cell = row.querySelector(selector);
+      if (!cell) return;
+      var amountNode = cell.querySelector(".deduction-picker-amount");
+      if (!amountNode) {
+        setCell(selector, value);
+        return;
+      }
+      amountNode.textContent = formatAmount(value);
+      var skipped = !!forceSkipped || (parseAmount(inPeriod) > 0 && parseAmount(value) <= 0);
+      amountNode.classList.toggle("is-skipped", skipped);
+    }
+    function updateDeductionSettled(cellSelector, amount, pending, settledTitle) {
+      var cell = row.querySelector(cellSelector);
+      if (!cell || cell.querySelector(".deduction-picker-trigger")) return;
+      var isSettled = parseAmount(amount) > 0 && parseAmount(pending) <= 0;
+      cell.classList.toggle("payment-sheet-cell--settled", isSettled);
+      if (isSettled && settledTitle) {
+        cell.title = settledTitle;
+      } else if (!isSettled) {
+        cell.removeAttribute("title");
+      }
+      var mark = cell.querySelector(".payment-sheet-settled-mark");
+      if (isSettled) {
+        if (!mark) {
+          mark = document.createElement("span");
+          mark.className = "payment-sheet-settled-mark";
+          mark.setAttribute("aria-hidden", "true");
+          mark.textContent = "✓";
+          cell.appendChild(mark);
+        }
+      } else if (mark) {
+        mark.remove();
+      }
+    }
+    setPickerCell(".advance-deduct-cell", rowData.advance_amount, rowData.advance_in_period, false);
+    setPickerCell(".goods-deduct-cell", rowData.goods_deduction, rowData.goods_in_period, false);
+    var loanSkipped = !rowData.deduct_loan || parseAmount(rowData.loan_deduction_calculated) <= 0;
+    setPickerCell(
+      ".loan-deduct-cell",
+      rowData.loan_deduction_calculated || rowData.loan_deduction,
+      rowData.loan_in_period,
+      loanSkipped && parseAmount(rowData.loan_in_period) > 0
+    );
+    var loanHint = row.querySelector(".loan-deduct-cell .loan-deduct-hint");
+    if (loanHint) {
+      loanHint.style.display = rowData.deduct_loan ? "none" : "block";
+    }
+    updateDeductionSettled(".advance-deduct-cell", rowData.advance_amount, rowData.advance_pending, "Advance recovered");
+    updateDeductionSettled(".goods-deduct-cell", rowData.goods_deduction, rowData.goods_pending, "Goods settled");
+    updateDeductionSettled(
+      ".loan-deduct-cell",
+      rowData.loan_deduction_calculated,
+      rowData.loan_pending_calculated,
+      "Loan instalments paid"
+    );
+    var netCell = row.querySelector(".net-amount-cell");
+    if (netCell) netCell.textContent = formatAmount(rowData.net_amount);
+    var balanceCell = row.querySelector(".balance-amount-cell");
+    if (balanceCell) {
+      balanceCell.textContent = formatAmount(rowData.balance_amount);
+      balanceCell.classList.toggle("text-danger", parseAmount(rowData.balance_amount) > 0);
+      balanceCell.classList.toggle("text-success", parseAmount(rowData.balance_amount) <= 0);
+    }
+    var payBtn = row.querySelector(".js-open-period-payment");
+    var settledBadge = row.querySelector(".payment-sheet-settled-badge");
+    var showPay = !!rowData.can_make_payment && canRecordPayment;
+    var showSettled = !!rowData.is_fully_settled && !rowData.can_make_payment;
+    if (payBtn) {
+      payBtn.hidden = !showPay;
+      payBtn.dataset.amount = rowData.balance_amount;
+    }
+    if (settledBadge) {
+      settledBadge.hidden = !showSettled;
+    }
+    row.dataset.balance = rowData.balance_amount;
+    row.dataset.advance = rowData.advance_amount;
+    row.dataset.goods = rowData.goods_deduction;
+    row.dataset.canPay = showPay ? "1" : "0";
+    row.classList.toggle("payment-sheet-row--settled", !!rowData.is_fully_settled);
+    document.dispatchEvent(new CustomEvent("payment-sheet-row-updated"));
+  }
+
+{% if can_manage_loan_deduction %}
+  function recalcNet(row, appliedLoan) {
+    var gross = parseAmount(row.dataset.gross);
+    var advance = parseAmount(row.dataset.advance);
+    var goods = parseAmount(row.dataset.goods);
+    var paid = parseAmount(row.dataset.paid);
+    var net = gross - advance - goods - parseAmount(appliedLoan);
+    var netCell = row.querySelector(".net-amount-cell");
+    var balanceCell = row.querySelector(".balance-amount-cell");
+    if (netCell) netCell.textContent = formatAmount(net);
+    if (balanceCell) {
+      var balance = Math.max(0, net - paid);
+      balanceCell.textContent = formatAmount(balance);
+      balanceCell.classList.toggle("text-danger", balance > 0);
+      balanceCell.classList.toggle("text-success", balance <= 0);
+    }
+  }
+
+  document.querySelectorAll(".loan-deduct-toggle").forEach(function (checkbox) {
+    checkbox.addEventListener("change", function () {
+      var row = checkbox.closest("tr");
+      var amountEl = row ? row.querySelector(".loan-deduct-amount") : null;
+      var hintEl = row ? row.querySelector(".loan-deduct-hint") : null;
+      var farmerId = row ? row.dataset.farmerId : "";
+      var body = new FormData();
+      body.append("farmer", farmerId);
+      body.append("start", checkbox.dataset.start || "");
+      body.append("end", checkbox.dataset.end || "");
+      body.append("deduct_loan", checkbox.checked ? "1" : "0");
+      body.append("csrfmiddlewaretoken", getCsrfToken());
+      checkbox.disabled = true;
+      fetch(checkbox.dataset.toggleUrl, {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok || !result.data.ok) {
+            throw new Error((result.data && result.data.error) || "Could not save loan deduction setting.");
+          }
+          if (amountEl) {
+            amountEl.textContent = formatAmount(result.data.loan_deduction_calculated);
+            amountEl.classList.toggle("is-skipped", !result.data.deduct_loan);
+          }
+          if (row && result.data.row) {
+            applyRowTotals(farmerId, result.data.row);
+          } else if (row) {
+            recalcNet(row, result.data.loan_deduction);
+          }
+          if (hintEl) {
+            hintEl.textContent = result.data.deduct_loan ? "" : "Skipped this payment";
+            hintEl.style.display = result.data.deduct_loan ? "none" : "block";
+          } else if (row && !result.data.deduct_loan) {
+            var hint = document.createElement("span");
+            hint.className = "loan-deduct-hint";
+            hint.textContent = "Skipped this payment";
+            checkbox.closest(".loan-deduct-cell").appendChild(hint);
+          }
+        })
+        .catch(function (err) {
+          checkbox.checked = !checkbox.checked;
+          if (typeof Swal !== "undefined") {
+            Swal.fire({ icon: "error", title: "Could not save", text: err.message || "Try again." });
+          }
+        })
+        .finally(function () {
+          checkbox.disabled = false;
+        });
+    });
+  });
+{% endif %}
+
+{% if can_manage_payment_deductions %}
+  (function () {
+    var pickerModalEl = document.getElementById("farmerDeductionPickerModal");
+    if (!pickerModalEl || !window.bootstrap) return;
+    var pickerModal = new bootstrap.Modal(pickerModalEl);
+    var sheetRoot = document.getElementById("payment-sheet-root");
+    var pickerUrl = "{% url 'farmer-payment-deduction-picker' %}";
+    var toggleUrl = "{% url 'farmer-payment-deduction-skip-toggle' %}";
+    var loanAllUrl = "{% url 'farmer-payment-loan-deduction-toggle' %}";
+    var state = { farmerId: "", farmerName: "" };
+
+    function appendBranches(body) {
+      (sheetRoot.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        body.append("branches", id);
+      });
+    }
+
+    function renderPicker(picker, row) {
+      var advancesEl = document.getElementById("deduction-picker-advances");
+      var goodsEl = document.getElementById("deduction-picker-goods");
+      var loansEl = document.getElementById("deduction-picker-loans");
+      var totalsEl = document.getElementById("deduction-picker-totals");
+      advancesEl.innerHTML = "";
+      goodsEl.innerHTML = "";
+      loansEl.innerHTML = "";
+
+      if (!picker.advances.length) {
+        advancesEl.innerHTML = '<p class="text-muted small mb-0">No pending advances in this period.</p>';
+      } else {
+        var advanceTable = createPickerTable([
+          { label: "", width: "2rem" },
+          { label: "Date" },
+          { label: "Type" },
+          { label: "Note" },
+          { label: "Amount", align: "end" },
+        ]);
+        picker.advances.forEach(function (item) {
+          advanceTable.tbody.appendChild(buildAdvanceRow(item));
+        });
+        advancesEl.appendChild(advanceTable.table);
+      }
+
+      if (!picker.goods_receipts.length && !picker.goods_lines.length) {
+        goodsEl.innerHTML = '<p class="text-muted small mb-0">No pending product deductions in this period.</p>';
+      } else {
+        var productTable = createPickerTable([
+          { label: "", width: "2rem" },
+          { label: "Product" },
+          { label: "Qty", align: "end" },
+          { label: "Unit", align: "end" },
+          { label: "Amount", align: "end" },
+        ]);
+
+        picker.goods_receipts.forEach(function (receipt) {
+          var receiptLabel = "Receipt " + receipt.batch_ref.slice(0, 8).toUpperCase() + " · " + receipt.date.slice(0, 10);
+          productTable.tbody.appendChild(buildProductReceiptRow(receipt.batch_ref, receipt.date, receipt.amount, receiptLabel, receipt.deduct));
+          receipt.lines.forEach(function (line) {
+            productTable.tbody.appendChild(buildProductRow(line, true));
+          });
+        });
+        picker.goods_lines.forEach(function (line) {
+          productTable.tbody.appendChild(buildProductRow(line, false));
+        });
+
+        goodsEl.appendChild(productTable.table);
+      }
+
+      if (!picker.loan_instalments.length) {
+        loansEl.innerHTML = '<p class="text-muted small mb-0">No pending loan instalments in this period.</p>';
+      } else {
+        var loanTable = createPickerTable([
+          { label: "", width: "2rem" },
+          { label: "Loan #" },
+          { label: "Inst.", align: "end" },
+          { label: "Due date" },
+          { label: "Amount", align: "end" },
+        ]);
+        picker.loan_instalments.forEach(function (item) {
+          loanTable.tbody.appendChild(buildLoanRow(item));
+        });
+        loansEl.appendChild(loanTable.table);
+      }
+
+      var loanAllWrap = document.getElementById("deduction-picker-loan-all-wrap");
+      var loanAll = document.getElementById("deduction-picker-loan-all");
+      if (picker.loan_instalments.length) {
+        loanAllWrap.hidden = false;
+        loanAll.checked = !!picker.deduct_loan_all;
+      } else {
+        loanAllWrap.hidden = true;
+      }
+
+      if (row) {
+        totalsEl.innerHTML =
+          "Advance " + formatAmount(row.advance_amount) +
+          " · Goods " + formatAmount(row.goods_deduction) +
+          " · Loan " + formatAmount(row.loan_deduction) +
+          " · Net " + formatAmount(row.net_amount) +
+          " · Balance " + formatAmount(row.balance_amount);
+      }
+    }
+
+    function createPickerTable(headers) {
+      var table = document.createElement("table");
+      table.className = "table table-sm deduction-picker-items-table";
+      var thead = document.createElement("thead");
+      var headerRow = document.createElement("tr");
+      headers.forEach(function (header) {
+        var th = document.createElement("th");
+        if (header.align === "end") th.className = "text-end";
+        if (header.width) th.style.width = header.width;
+        th.textContent = header.label;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      var tbody = document.createElement("tbody");
+      table.appendChild(tbody);
+      return { table: table, tbody: tbody };
+    }
+
+    function bindSkipToggle(input, kind, refId, refKey) {
+      input.addEventListener("change", function () {
+        postSkipToggle(kind, refId, refKey, !input.checked, input);
+      });
+    }
+
+    function buildAdvanceRow(item) {
+      var tr = document.createElement("tr");
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!item.deduct;
+      tdCheck.appendChild(input);
+      var tdDate = document.createElement("td");
+      tdDate.textContent = item.date.slice(0, 10);
+      var tdType = document.createElement("td");
+      tdType.textContent = item.type_label || "Advance Payment";
+      var tdNote = document.createElement("td");
+      tdNote.textContent = item.note || "—";
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(item.amount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdDate);
+      tr.appendChild(tdType);
+      tr.appendChild(tdNote);
+      tr.appendChild(tdAmount);
+      bindSkipToggle(input, "advance", item.id, "");
+      return tr;
+    }
+
+    function buildLoanRow(item) {
+      var tr = document.createElement("tr");
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!item.deduct;
+      tdCheck.appendChild(input);
+      var tdLoan = document.createElement("td");
+      tdLoan.textContent = "#" + item.loan_id;
+      var tdInst = document.createElement("td");
+      tdInst.className = "text-end";
+      tdInst.textContent = item.installment_number;
+      var tdDue = document.createElement("td");
+      tdDue.textContent = item.due_date.slice(0, 10);
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(item.amount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdLoan);
+      tr.appendChild(tdInst);
+      tr.appendChild(tdDue);
+      tr.appendChild(tdAmount);
+      bindSkipToggle(input, "loan_instalment", item.schedule_id, "");
+      return tr;
+    }
+
+    function buildProductReceiptRow(batchRef, dateLabel, amount, label, checked) {
+      var tr = document.createElement("tr");
+      tr.className = "deduction-picker-receipt-row";
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!checked;
+      tdCheck.appendChild(input);
+      var tdLabel = document.createElement("td");
+      tdLabel.colSpan = 3;
+      tdLabel.textContent = label;
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(amount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdLabel);
+      tr.appendChild(tdAmount);
+      bindSkipToggle(input, "goods_receipt", 0, batchRef);
+      return tr;
+    }
+
+    function buildProductRow(line, nested) {
+      var tr = document.createElement("tr");
+      tr.className = "deduction-picker-product-row" + (nested ? " is-nested" : "");
+      var tdCheck = document.createElement("td");
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "form-check-input js-deduction-skip-toggle";
+      input.checked = !!line.deduct;
+      tdCheck.appendChild(input);
+      var tdProduct = document.createElement("td");
+      tdProduct.textContent = line.product_name;
+      var tdQty = document.createElement("td");
+      tdQty.className = "text-end";
+      tdQty.textContent = formatAmount(line.quantity);
+      var tdUnit = document.createElement("td");
+      tdUnit.className = "text-end";
+      tdUnit.textContent = formatAmount(line.unit_price || "0");
+      var tdAmount = document.createElement("td");
+      tdAmount.className = "text-end";
+      tdAmount.textContent = formatAmount(line.amount);
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdProduct);
+      tr.appendChild(tdQty);
+      tr.appendChild(tdUnit);
+      tr.appendChild(tdAmount);
+      bindSkipToggle(input, "goods_line", line.id, "");
+      return tr;
+    }
+
+    function postSkipToggle(kind, refId, refKey, skip, inputEl) {
+      var body = new FormData();
+      body.append("farmer", state.farmerId);
+      body.append("start", sheetRoot.dataset.periodStart || "");
+      body.append("end", sheetRoot.dataset.periodEnd || "");
+      body.append("kind", kind);
+      body.append("reference_id", refId || "0");
+      body.append("reference_key", refKey || "");
+      body.append("skip", skip ? "1" : "0");
+      body.append("csrfmiddlewaretoken", getCsrfToken());
+      appendBranches(body);
+      if (inputEl) inputEl.disabled = true;
+      fetch(toggleUrl, { method: "POST", body: body, credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (result) {
+          if (!result.ok || !result.data.ok) throw new Error((result.data && result.data.error) || "Could not save.");
+          applyRowTotals(state.farmerId, result.data.row);
+          renderPicker(result.data.picker, result.data.row);
+        })
+        .catch(function (err) {
+          if (inputEl) inputEl.checked = !inputEl.checked;
+          if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save", text: err.message });
+        })
+        .finally(function () { if (inputEl) inputEl.disabled = false; });
+    }
+
+    function openPicker(farmerId, farmerName, focus) {
+      state.farmerId = farmerId;
+      state.farmerName = farmerName;
+      document.getElementById("deduction-picker-farmer-name").textContent = farmerName;
+      var params = new URLSearchParams();
+      params.set("farmer", farmerId);
+      params.set("start", sheetRoot.dataset.periodStart || "");
+      params.set("end", sheetRoot.dataset.periodEnd || "");
+      (sheetRoot.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        params.append("branches", id);
+      });
+      fetch(pickerUrl + "?" + params.toString(), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) throw new Error(data.error || "Could not load deductions.");
+          renderPicker(data.picker, data.row);
+          if (focus) {
+            var tabBtn = document.getElementById("deduction-tab-" + focus);
+            if (tabBtn && window.bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+          }
+          pickerModal.show();
+        })
+        .catch(function (err) {
+          if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not load", text: err.message });
+        });
+    }
+
+    document.querySelectorAll(".js-deduction-picker-trigger").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        openPicker(btn.dataset.farmerId, btn.dataset.farmerName || "", btn.dataset.focus || "advance");
+      });
+    });
+
+    var loanAll = document.getElementById("deduction-picker-loan-all");
+    if (loanAll) {
+      loanAll.addEventListener("change", function () {
+        var body = new FormData();
+        body.append("farmer", state.farmerId);
+        body.append("start", sheetRoot.dataset.periodStart || "");
+        body.append("end", sheetRoot.dataset.periodEnd || "");
+        body.append("deduct_loan", loanAll.checked ? "1" : "0");
+        body.append("csrfmiddlewaretoken", getCsrfToken());
+        appendBranches(body);
+        loanAll.disabled = true;
+        fetch(loanAllUrl, { method: "POST", body: body, credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (result) {
+            if (!result.ok || !result.data.ok) throw new Error("Could not save loan setting.");
+            applyRowTotals(state.farmerId, result.data.row);
+            return fetch(pickerUrl + "?farmer=" + state.farmerId + "&start=" + sheetRoot.dataset.periodStart + "&end=" + sheetRoot.dataset.periodEnd, { credentials: "same-origin" });
+          })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.ok) renderPicker(data.picker, data.row);
+          })
+          .catch(function (err) {
+            loanAll.checked = !loanAll.checked;
+            if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Could not save", text: err.message });
+          })
+          .finally(function () { loanAll.disabled = false; });
+      });
+    }
+  })();
+{% endif %}
+
+  var bulkPrintWrap = document.getElementById("payment-sheet-bulk-print");
+  if (bulkPrintWrap) {
+    var selectAll = document.getElementById("payment-sheet-select-all");
+    var printAllBtn = document.getElementById("payment-sheet-print-all");
+    var printSelectedBtn = document.getElementById("payment-sheet-print-selected");
+    var paySelectedBtn = document.getElementById("payment-sheet-pay-selected");
+    var bulkPayForm = document.getElementById("payment-sheet-bulk-pay-form");
+    var bulkPayFarmerIds = document.getElementById("payment-sheet-bulk-pay-farmer-ids");
+    var rowChecks = Array.from(document.querySelectorAll(".payment-sheet-row-select"));
+
+    function bulkPayslipUrl(printAll, farmerIds) {
+      var params = new URLSearchParams();
+      params.set("start", bulkPrintWrap.dataset.start || "");
+      params.set("end", bulkPrintWrap.dataset.end || "");
+      (bulkPrintWrap.dataset.branches || "").split(",").filter(Boolean).forEach(function (id) {
+        params.append("branches", id);
+      });
+      if (printAll) {
+        params.set("print_all", "1");
+      } else {
+        farmerIds.forEach(function (id) {
+          params.append("farmers", id);
+        });
+      }
+      return bulkPrintWrap.dataset.bulkUrl + "?" + params.toString();
+    }
+
+    function selectedRows() {
+      return rowChecks
+        .filter(function (cb) { return cb.checked; })
+        .map(function (cb) { return cb.closest("tr"); })
+        .filter(Boolean);
+    }
+
+    function payableSelectedRows() {
+      return selectedRows().filter(function (tr) {
+        return tr.dataset.canPay === "1" && parseAmount(tr.dataset.balance) > 0;
+      });
+    }
+
+    function updateBulkActionState() {
+      var selected = rowChecks.filter(function (cb) { return cb.checked; });
+      var payable = payableSelectedRows();
+      if (printSelectedBtn) {
+        printSelectedBtn.disabled = selected.length === 0;
+      }
+      if (paySelectedBtn) {
+        paySelectedBtn.disabled = payable.length === 0;
+        paySelectedBtn.title = payable.length
+          ? "Pay balance for " + payable.length + " selected farmer(s)"
+          : "Select farmers with a balance due";
+      }
+      if (selectAll) {
+        selectAll.indeterminate = selected.length > 0 && selected.length < rowChecks.length;
+        selectAll.checked = rowChecks.length > 0 && selected.length === rowChecks.length;
+      }
+    }
+
+    function submitBulkPayment(rows, paymentDate) {
+      if (!bulkPayForm) return;
+      var paidOn = paymentDate || (window.periodPaymentTodayYmd ? window.periodPaymentTodayYmd() : "");
+      var total = rows.reduce(function (sum, tr) {
+        return sum + parseAmount(tr.dataset.balance);
+      }, 0);
+      var payUrl =
+        window.PERIOD_PAYMENT_FARMER_URL ||
+        "{% url 'farmer-period-payment-record' %}";
+      var startVal = (bulkPayForm.querySelector('input[name="start"]') || {}).value || "";
+      var endVal = (bulkPayForm.querySelector('input[name="end"]') || {}).value || "";
+      var branchInputs = bulkPayForm.querySelectorAll('input[name="branches"]');
+      var csrf = getCsrfToken();
+      var items = rows.map(function (tr) {
+        return {
+          id: tr.dataset.farmerId || "",
+          name: tr.dataset.farmerName || ("#" + (tr.dataset.farmerId || "")),
+          amount: tr.dataset.balance || "0",
+          paymentMethod: tr.getAttribute("data-payment-method") || "cash",
+          primaryBankId: tr.getAttribute("data-primary-bank-id") || "",
+        };
+      });
+
+      function buildBody(item) {
+        var body = new FormData();
+        body.append("csrfmiddlewaretoken", csrf);
+        body.append("farmer_id", item.id);
+        body.append("amount", String(item.amount).replace(/,/g, ""));
+        body.append("start", startVal);
+        body.append("end", endVal);
+        body.append("note", "");
+        body.append("payment_method", item.paymentMethod || "cash");
+        if (item.primaryBankId) body.append("bank_account_id", item.primaryBankId);
+        if (paidOn) body.append("payment_date", paidOn);
+        body.append("return_url", window.location.pathname + window.location.search);
+        branchInputs.forEach(function (input) {
+          if (input.value) body.append("branches", input.value);
+        });
+        return body;
+      }
+
+      function fallbackBulkSubmit() {
+        if (!bulkPayFarmerIds) return;
+        bulkPayFarmerIds.innerHTML = "";
+        rows.forEach(function (tr) {
+          var input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "farmer_ids";
+          input.value = tr.dataset.farmerId || "";
+          bulkPayFarmerIds.appendChild(input);
+        });
+        var returnInput = bulkPayForm.querySelector('input[name="return_url"]');
+        if (returnInput) {
+          returnInput.value = window.location.pathname + window.location.search;
+        }
+        var dateInput = bulkPayForm.querySelector('input[name="payment_date"]');
+        if (dateInput) dateInput.value = paidOn;
+        var startSubmit = function () {
+          HTMLFormElement.prototype.submit.call(bulkPayForm);
+        };
+        if (typeof window.markPaymentSheetLoading === "function") {
+          window.markPaymentSheetLoading({
+            kind: "farmer",
+            title: "Reloading payment sheet…",
+          });
+        }
+        if (typeof window.runPaymentWithProgress === "function") {
+          window.runPaymentWithProgress({
+            title: "Paying selected farmers…",
+            subtitle: rows.length + " farmer(s) · total " + formatAmount(total),
+            detail: "Settling payments and linked deductions. This can take a while.",
+            steps:
+              (window.PAYMENT_PROGRESS_STEPS && window.PAYMENT_PROGRESS_STEPS.bulkFarmer) ||
+              undefined,
+            submitFn: startSubmit,
+          });
+          return;
+        }
+        startSubmit();
+      }
+
+      if (typeof window.runSequentialPaymentWithProgress === "function" && payUrl) {
+        window.runSequentialPaymentWithProgress({
+          title: "Paying selected farmers…",
+          subtitle: rows.length + " farmer(s) · total " + formatAmount(total),
+          detail:
+            "Settling each farmer with linked deductions. Progress updates after each farmer.",
+          payUrl: payUrl,
+          items: items,
+          buildBody: buildBody,
+          onDone: function () {
+            if (typeof window.navigateWithPaymentSheetProgress === "function") {
+              window.navigateWithPaymentSheetProgress({
+                sheetKind: "farmer",
+                title: "Reloading payment sheet…",
+                subtitle: "Refreshing paid totals and balances after settlement",
+              });
+            } else {
+              window.location.reload();
+            }
+          },
+        });
+        return;
+      }
+      fallbackBulkSubmit();
+    }
+
+    rowChecks.forEach(function (cb) {
+      cb.addEventListener("change", updateBulkActionState);
+    });
+    document.addEventListener("payment-sheet-row-updated", updateBulkActionState);
+
+    if (selectAll) {
+      selectAll.addEventListener("change", function () {
+        rowChecks.forEach(function (cb) {
+          cb.checked = selectAll.checked;
+        });
+        updateBulkActionState();
+      });
+    }
+
+    if (printAllBtn) {
+      printAllBtn.addEventListener("click", function () {
+        window.open(bulkPayslipUrl(true, []), "_blank", "noopener");
+      });
+    }
+
+    if (printSelectedBtn) {
+      printSelectedBtn.addEventListener("click", function () {
+        var ids = rowChecks.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.value; });
+        if (!ids.length) return;
+        window.open(bulkPayslipUrl(false, ids), "_blank", "noopener");
+      });
+    }
+
+    if (paySelectedBtn) {
+      paySelectedBtn.addEventListener("click", function () {
+        var rows = payableSelectedRows();
+        if (!rows.length) return;
+        var total = rows.reduce(function (sum, tr) {
+          return sum + parseAmount(tr.dataset.balance);
+        }, 0);
+        var preview = rows
+          .slice(0, 6)
+          .map(function (tr) { return tr.dataset.farmerName; })
+          .join(", ");
+        if (rows.length > 6) {
+          preview += " …";
+        }
+        var summary =
+          rows.length + " farmer(s) · total " + formatAmount(total) +
+          "<br><span class=\"text-muted\">" + preview + "</span>";
+
+        var today = window.periodPaymentTodayYmd ? window.periodPaymentTodayYmd() : "";
+        var dateHtml =
+          '<label class="form-label text-start d-block mt-3 mb-1" for="bulk-payment-date">Payment date</label>' +
+          '<input type="text" class="form-control js-datepicker js-datepicker-in-modal" id="bulk-payment-date" value="' + today + '" placeholder="YYYY-MM-DD" required autocomplete="off" inputmode="none">' +
+          '<div class="form-text text-start">Date this payment was made.</div>';
+
+        function confirmPay(paymentDate) {
+          paySelectedBtn.disabled = true;
+          submitBulkPayment(rows, paymentDate);
+        }
+
+        if (typeof Swal !== "undefined") {
+          Swal.fire({
+            title: "Pay selected farmers?",
+            html: summary + "<p class=\"small text-muted mb-0 mt-2\">Each farmer is paid their full balance. Advances, goods, and loans are settled per payment rules.</p>" + dateHtml,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Record payments",
+            confirmButtonColor: "#059669",
+            buttonsStyling: false,
+            reverseButtons: true,
+            focusConfirm: false,
+            didOpen: function () {
+              var el = document.getElementById("bulk-payment-date");
+              if (el && window.CanmeeDatepicker) {
+                window.CanmeeDatepicker.initSingle(el, { appendTo: document.body });
+              }
+            },
+            willClose: function () {
+              var el = document.getElementById("bulk-payment-date");
+              if (el && window.CanmeeDatepicker) window.CanmeeDatepicker.destroy(el);
+            },
+            customClass: {
+              popup: "app-swal-popup",
+              confirmButton: "btn btn-success",
+              cancelButton: "btn btn-outline-secondary",
+            },
+            preConfirm: function () {
+              var input = document.getElementById("bulk-payment-date");
+              var value = input ? input.value : "";
+              if (!value) {
+                Swal.showValidationMessage("Enter the payment date.");
+                return false;
+              }
+              return value;
+            },
+          }).then(function (result) {
+            if (result.isConfirmed) confirmPay(result.value);
+          });
+          return;
+        }
+        if (typeof window.appConfirm === "function") {
+          window
+            .appConfirm(
+              "Record payment for " +
+                rows.length +
+                " farmer(s), total " +
+                formatAmount(total) +
+                "?",
+              {
+                title: "Pay selected farmers?",
+                confirmText: "Record payments",
+                cancelText: "Cancel",
+                icon: "question",
+              }
+            )
+            .then(function (ok) {
+              if (ok) confirmPay(today);
+            });
+          return;
+        }
+        if (window.confirm("Record payment for " + rows.length + " farmer(s), total " + formatAmount(total) + "?")) {
+          confirmPay(today);
+        }
+      });
+    }
+
+    updateBulkActionState();
+  }
+
+  var printSheetBtn = document.getElementById("payment-sheet-print-table");
+  var printRouteSelect = document.getElementById("payment-sheet-print-route-select");
+  var printRouteBtn = document.getElementById("payment-sheet-print-route");
+
+  function clearPrintRouteMode() {
+    document.body.classList.remove("payment-sheet-is-printing", "payment-sheet-print-route-mode");
+    document.querySelectorAll(".payment-sheet-print-route-pack.is-print-active").forEach(function (el) {
+      el.classList.remove("is-print-active");
+    });
+  }
+
+  if (printSheetBtn) {
+    printSheetBtn.addEventListener("click", function () {
+      clearPrintRouteMode();
+      document.body.classList.add("payment-sheet-is-printing");
+      window.print();
+    });
+  }
+
+  if (printRouteSelect && printRouteBtn) {
+    printRouteSelect.addEventListener("change", function () {
+      printRouteBtn.disabled = !printRouteSelect.value;
+    });
+    printRouteBtn.addEventListener("click", function () {
+      var routeId = printRouteSelect.value;
+      if (!routeId) return;
+      clearPrintRouteMode();
+      var pack = document.querySelector('.payment-sheet-print-route-pack[data-route-id="' + routeId + '"]');
+      if (!pack) return;
+      pack.classList.add("is-print-active");
+      document.body.classList.add("payment-sheet-is-printing", "payment-sheet-print-route-mode");
+      window.print();
+    });
+  }
+
+  window.addEventListener("afterprint", function () {
+    clearPrintRouteMode();
+  });
+
+  {% if can_view_payment_settlement %}
+  function initPaidBreakdownPopovers(root) {
+    if (!window.bootstrap || !bootstrap.Popover) return;
+    (root || document).querySelectorAll(".payment-sheet-paid-popover").forEach(function (trigger) {
+      if (trigger.dataset.popoverReady === "1") return;
+      var template = trigger.nextElementSibling;
+      if (!template || template.tagName !== "TEMPLATE") return;
+      new bootstrap.Popover(trigger, {
+        html: true,
+        sanitize: false,
+        title: "Paid milk collections",
+        content: template.innerHTML,
+        trigger: "hover focus",
+        placement: "left",
+        container: "body",
+        customClass: "payment-sheet-paid-popover-pop",
+      });
+      trigger.dataset.popoverReady = "1";
+    });
+  }
+
+  initPaidBreakdownPopovers();
+  {% endif %}
+})();
+</script>
+{% if can_record_farmer_payment %}
+{% include "reports/_period_payment_modal_script.html" %}
+{% endif %}
+{% endblock %}

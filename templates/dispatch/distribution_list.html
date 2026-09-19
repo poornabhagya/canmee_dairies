@@ -1,0 +1,1126 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Dispatch · Canmee Dairies{% endblock %}
+{% block page_heading %}Dispatch{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/_inline_qty_styles.html" %}
+{% include "dispatch/_distribution_table_styles.html" %}
+<style>
+  .dispatch-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .dispatch-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .dispatch-list-card a.smart-dt-chip {
+    text-decoration: none;
+  }
+  .dispatch-list-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+  .dispatch-list-card .dt-smart-filters-wrap {
+    display: flex;
+    flex: 1 0 100%;
+    min-width: 0;
+    align-items: center;
+  }
+  .dispatch-list-card .smart-dt-filters {
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+  .dispatch-list-card.smart-list-card div.dt-smart-toolbar .dt-smart-actions {
+    flex: 1 0 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.45rem;
+    margin-left: 0;
+  }
+  .dispatch-list-card .dt-smart-actions .dispatch-toolbar-cluster {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 0;
+  }
+  .dispatch-list-card .dt-smart-actions .dispatch-qty-toggle {
+    margin-left: auto;
+    margin-right: auto;
+    flex-shrink: 0;
+  }
+  .dispatch-toolbar-tabs {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .dispatch-toolbar-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .dispatch-toolbar-tabs .nav-link:hover,
+  .dispatch-toolbar-tabs .nav-link:focus {
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+  .dispatch-toolbar-tabs .nav-link.active {
+    border-color: rgba(5, 150, 105, 0.35);
+    background: rgba(5, 150, 105, 0.08);
+    color: #047857;
+  }
+  .dispatch-toolbar-tabs-scope {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    margin-left: 0.15rem;
+    padding-left: 0.4rem;
+    border-left: 1px solid #e2e8f0;
+  }
+  .dispatch-period-filter {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .dispatch-period-filter .form-control,
+  .dispatch-period-filter .form-select {
+    width: auto !important;
+    min-width: 7rem;
+    max-width: 11rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .dispatch-period-filter .form-select {
+    min-width: 6.75rem;
+    padding-right: 1.6rem;
+  }
+  .dispatch-period-filter .form-select.dispatch-branch-select[multiple] {
+    min-width: 8.5rem;
+    max-width: 10rem;
+    height: auto !important;
+    min-height: 2rem !important;
+  }
+  .dispatch-period-filter .dispatch-branch-select + .select2 {
+    min-width: 8.5rem !important;
+    max-width: 10rem;
+    width: 8.5rem !important;
+  }
+  .dispatch-period-filter .dispatch-branch-select + .select2 .select2-selection--multiple {
+    min-height: 2rem !important;
+    height: auto !important;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    padding: 0.1rem 0.55rem;
+    overflow: hidden;
+  }
+  .dispatch-period-filter .dispatch-branch-select + .select2 .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+  }
+  .dispatch-period-filter .dispatch-branch-select + .select2 .select2-selection--multiple .select2-selection__choice {
+    margin: 0 !important;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+  .dispatch-period-filter .dispatch-branch-select + .select2 .select2-search--inline .select2-search__field {
+    margin-top: 0 !important;
+    height: 1.4rem;
+    font-size: 0.76rem;
+  }
+  .dispatch-period-filter .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.65rem;
+    border-radius: 999px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .dispatch-period-filter .input-group {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+  .dispatch-period-filter .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .dispatch-period-filter .input-group .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 9.5rem;
+    max-width: 11rem;
+  }
+  .dispatch-filter-buyer--muted {
+    opacity: 0.55;
+  }
+  @media (max-width: 1199.98px) {
+    .dispatch-list-card div.dt-smart-toolbar > [class*="col-"],
+    .dispatch-list-card .smart-dt-filters,
+    .dispatch-period-filter,
+    .dispatch-list-card .dt-smart-actions {
+      flex-wrap: wrap;
+    }
+  }
+  .dispatch-payment-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    min-width: 5.5rem;
+  }
+  .dispatch-payment-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: #0f172a;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .dispatch-payment-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.35rem;
+    line-height: 1.2;
+  }
+  .dispatch-payment-badge--pending {
+    color: #92400e;
+    background: #fef3c7;
+  }
+  .dispatch-payment-badge--partial {
+    color: #1e40af;
+    background: #dbeafe;
+  }
+  .dispatch-payment-badge--paid {
+    color: #166534;
+    background: #dcfce7;
+  }
+  .dispatch-payment-meta {
+    font-size: 0.75rem;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .dispatch-qty-toggle {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  .dispatch-qty-toggle .qty-segment__btn {
+    border: none;
+    background: transparent;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    border-radius: 999px;
+    color: #64748b;
+    line-height: 1.2;
+  }
+  .dispatch-qty-toggle .qty-segment__btn.is-active {
+    background: #fff;
+    color: #047857;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  .dispatch-table.is-qty-kg .js-qty-col-liters,
+  .dispatch-table.is-qty-liters .js-qty-col-kg {
+    display: none;
+  }
+  .dispatch-table th.dispatch-rate-col,
+  .dispatch-table td.dispatch-rate-col,
+  table.dataTable thead th.dispatch-rate-col,
+  table.dataTable tbody td.dispatch-rate-col {
+    text-align: right !important;
+  }
+  .dispatch-rate-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.12rem;
+    width: 100%;
+  }
+  .dispatch-rate-amount {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    color: #0f172a;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .dispatch-rate-unit {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    line-height: 1.2;
+  }
+  .dispatch-rate-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 1.75rem;
+    width: 100%;
+  }
+  .dispatch-rate-display {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0.15rem 0.35rem;
+    margin: 0;
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .dispatch-rate-display:hover,
+  .dispatch-rate-display:focus {
+    background: rgba(5, 150, 105, 0.08);
+    outline: none;
+  }
+  .dispatch-rate-display .dispatch-rate-edit-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .dispatch-rate-display:hover .dispatch-rate-edit-icon,
+  .dispatch-rate-display:focus .dispatch-rate-edit-icon,
+  tr:hover .dispatch-rate-display .dispatch-rate-edit-icon {
+    opacity: 1;
+  }
+  .dispatch-rate-display.is-empty {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+  .dispatch-rate-editor {
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+    width: 100%;
+  }
+  .dispatch-rate-inline.is-editing .dispatch-rate-display { display: none; }
+  .dispatch-rate-inline.is-editing .dispatch-rate-editor { display: inline-flex; }
+  .dispatch-rate-editor .js-dispatch-rate-input {
+    width: 6.75rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    border-radius: 8px;
+    padding: 0.22rem 0.4rem;
+    font-size: 0.8rem;
+  }
+  .dispatch-rate-editor .js-dispatch-rate-unit {
+    width: auto;
+    min-width: 4.25rem;
+    border-radius: 8px;
+    padding: 0.22rem 1.5rem 0.22rem 0.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+  .dispatch-rate-inline.is-saving { opacity: 0.65; pointer-events: none; }
+  .dispatch-rate-inline.is-saved .dispatch-rate-display {
+    background: rgba(5, 150, 105, 0.12);
+  }
+  .dispatch-rate-inline.is-error .js-dispatch-rate-input {
+    border-color: #f87171;
+  }
+  .dispatch-rate-readonly {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  #dispatchRateAmount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+{% block topbar_actions %}
+{% if perms.dispatch.add_milkdistribution %}
+<a class="btn btn-primary" href="{% url 'distribution-add' %}">
+  <i class="bi bi-plus-lg me-1"></i>Add dispatch
+</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card card-table dispatch-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    {% if filter_tab == 'all' %}
+    <p class="small text-muted px-0 mb-2">All buyer and branch dispatches you can access (from or to your branches).</p>
+    {% endif %}
+
+    <div class="smart-dt-stats smart-dt-stats--three" aria-label="Dispatch summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Dispatches</span>
+        <span class="smart-dt-stat-value">{{ dispatch_totals.count }}</span>
+      </div>
+      {% include "includes/_smart_stat_dual_qty.html" with label="Total quantity" kg=dispatch_totals.total_kg liters=dispatch_totals.total_liters %}
+      <div class="smart-dt-stat {% if dispatch_payment_counts.pending or dispatch_payment_counts.partial %}smart-dt-stat--warn{% endif %}">
+        <span class="smart-dt-stat-label">Unpaid / partial</span>
+        <span class="smart-dt-stat-value">{{ dispatch_payment_counts.pending|add:dispatch_payment_counts.partial }}</span>
+      </div>
+    </div>
+
+    <div id="dispatchViewTabs" class="dispatch-toolbar-cluster d-none">
+      <div class="dispatch-toolbar-tabs" role="tablist" aria-label="Dispatch view">
+      <a
+        class="nav-link {% if filter_tab == 'buyer' %}active{% endif %}"
+        href="{% url 'distribution-list' %}{% if dispatch_tab_query %}?{{ dispatch_tab_query }}&{% else %}?{% endif %}filter_tab=buyer"
+        role="tab"
+      >Buyer</a>
+      <a
+        class="nav-link {% if filter_tab == 'branch' %}active{% endif %}"
+        href="{% url 'distribution-list' %}{% if dispatch_tab_query %}?{{ dispatch_tab_query }}&{% else %}?{% endif %}filter_tab=branch&branch_scope={{ branch_scope|default:'all' }}"
+        role="tab"
+      >Branch</a>
+      <a
+        class="nav-link {% if filter_tab == 'all' %}active{% endif %}"
+        href="{% url 'distribution-list' %}{% if dispatch_tab_query %}?{{ dispatch_tab_query }}&{% else %}?{% endif %}filter_tab=all"
+        role="tab"
+      >View all</a>
+      {% if filter_tab == 'branch' %}
+      <span class="dispatch-toolbar-tabs-scope" aria-label="Branch scope">
+        <a
+          class="nav-link {% if branch_scope == 'all' or not branch_scope %}active{% endif %}"
+          href="{% url 'distribution-list' %}{% if dispatch_tab_query %}?{{ dispatch_tab_query }}&{% else %}?{% endif %}filter_tab=branch&branch_scope=all"
+          role="tab"
+          title="All branch transfers for selected branches"
+        >All</a>
+        <a
+          class="nav-link {% if branch_scope == 'outgoing' %}active{% endif %}"
+          href="{% url 'distribution-list' %}{% if dispatch_tab_query %}?{{ dispatch_tab_query }}&{% else %}?{% endif %}filter_tab=branch&branch_scope=outgoing"
+          role="tab"
+          title="Outgoing transfers from selected branches"
+        >Outgoing</a>
+        <a
+          class="nav-link {% if branch_scope == 'incoming' %}active{% endif %}"
+          href="{% url 'distribution-list' %}{% if dispatch_tab_query %}?{{ dispatch_tab_query }}&{% else %}?{% endif %}filter_tab=branch&branch_scope=incoming"
+          role="tab"
+          title="Incoming transfers received at selected branches"
+        >Incoming</a>
+      </span>
+      {% endif %}
+      </div>
+      <div class="dispatch-qty-toggle qty-segment" id="dispatchQtyToggle" role="group" aria-label="Quantity unit">
+        <button type="button" class="qty-segment__btn" data-qty-unit="kg" aria-pressed="false">Kg</button>
+        <button type="button" class="qty-segment__btn is-active" data-qty-unit="liters" aria-pressed="true">Liters</button>
+      </div>
+    </div>
+
+    <div id="dispatchDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Dispatch filters">
+      <form method="get" class="dispatch-period-filter" id="dispatch-filter-form">
+        <input type="hidden" name="filter_tab" id="dispatch-filter-tab" value="{{ filter_tab|default:'buyer' }}">
+        {% if filter_tab == 'branch' %}
+        <input type="hidden" name="branch_scope" value="{{ branch_scope|default:'all' }}">
+        {% endif %}
+        <label class="visually-hidden" for="dispatch-filter-payment">Payment</label>
+        <select id="dispatch-filter-payment" name="payment_status" class="form-select form-select-sm no-global-select2" aria-label="Payment status">
+          <option value="" {% if not selected_payment_status %}selected{% endif %}>All payments ({{ dispatch_payment_counts.all }})</option>
+          <option value="pending" {% if selected_payment_status == 'pending' %}selected{% endif %}>Pending ({{ dispatch_payment_counts.pending }})</option>
+          <option value="partial" {% if selected_payment_status == 'partial' %}selected{% endif %}>Partial ({{ dispatch_payment_counts.partial }})</option>
+          <option value="paid" {% if selected_payment_status == 'paid' %}selected{% endif %}>Paid ({{ dispatch_payment_counts.paid }})</option>
+        </select>
+        <label class="visually-hidden" for="dispatch-filter-branches">Branches</label>
+        <select
+          id="dispatch-filter-branches"
+          name="{% if filter_tab == 'branch' %}destination_branches{% else %}branches{% endif %}"
+          class="form-select form-select-sm dispatch-branch-select no-global-select2"
+          multiple
+          size="1"
+          aria-label="Branches"
+        >
+          {% for b in branches %}
+          <option
+            value="{{ b.id }}"
+            {% if filter_tab == 'buyer' or filter_tab == 'all' %}
+              {% if b.id|stringformat:'d' in selected_branches %}selected{% endif %}
+            {% endif %}
+            {% if filter_tab == 'branch' %}
+              {% if b.id|stringformat:'d' in selected_destination_branches %}selected{% endif %}
+            {% endif %}
+          >{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <span class="dispatch-filter-buyer-wrap{% if filter_tab == 'branch' %} dispatch-filter-buyer--muted{% endif %}">
+          <label class="visually-hidden" for="dispatch-filter-buyer">Buyer</label>
+          <select id="dispatch-filter-buyer" name="buyer" class="form-select form-select-sm no-global-select2" aria-label="Buyer">
+            <option value="">All buyers</option>
+            {% for buyer in buyers %}
+            <option value="{{ buyer.id }}" {% if buyer.id|stringformat:'d' == selected_buyer %}selected{% endif %}>{{ buyer.name }}</option>
+            {% endfor %}
+          </select>
+        </span>
+        <label class="visually-hidden" for="dispatch-filter-status">Status</label>
+        <select id="dispatch-filter-status" name="status" class="form-select form-select-sm no-global-select2" aria-label="Status">
+          <option value="">All statuses</option>
+          {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text" title="Open calendar"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+          <input
+            type="text"
+            id="dispatch-filter-date-range"
+            class="form-control js-datepicker-range"
+            data-range-start="date_from"
+            data-range-end="date_to"
+            placeholder="Period"
+            autocomplete="off"
+            readonly
+            aria-label="Date range"
+            value="{% if date_from and date_to %}{{ date_from }} to {{ date_to }}{% elif date_from %}{{ date_from }}{% elif date_to %}{{ date_to }}{% endif %}"
+          >
+        </div>
+        <input type="hidden" name="date_from" value="{{ date_from }}">
+        <input type="hidden" name="date_to" value="{{ date_to }}">
+        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters" aria-label="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+        <a href="{% url 'distribution-list' %}?filter_tab={{ filter_tab|default:'buyer' }}{% if filter_tab == 'branch' %}&branch_scope={{ branch_scope|default:'all' }}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Clear filters" aria-label="Clear filters">Clear</a>
+      </form>
+    </div>
+
+    <p class="small text-muted d-md-none mb-2">Tap a row to expand from/to details. Kg, liters, and actions stay on the row; change status or payment from the table on larger screens or via Actions.</p>
+    {% if show_dispatch_select_col %}
+    <form method="post" id="dispatch-bulk-form" class="js-swal-submit-guard" action="{% url 'distribution-list' %}">
+      {% csrf_token %}
+      <input type="hidden" name="redirect_query" value="{{ request.GET.urlencode }}">
+      <input type="hidden" name="one_id" id="dispatch-one-id" value="">
+      <div class="px-0 pt-0 pb-2 d-flex flex-wrap gap-2 align-items-center">
+        {% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+        <button type="button" class="btn btn-sm btn-outline-primary" id="dispatch-bulk-rate-btn" hidden>
+          <i class="bi bi-currency-exchange me-1"></i>Apply rate to selected
+        </button>
+        {% endif %}
+        {% if perms.dispatch.change_milkdistribution %}
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-success"
+          id="dispatch-bulk-payment-btn"
+          hidden
+          data-url="{% url 'distribution-bulk-payment' %}"
+        >
+          <i class="bi bi-cash-coin me-1"></i>Record bulk payment
+        </button>
+        {% endif %}
+        {% if user.is_superuser %}
+        <button type="submit" class="btn btn-sm btn-outline-danger delete-selected-btn js-swal-submit-trigger" name="bulk_action" value="delete_selected" hidden data-swal-title="Delete selected dispatches?" data-swal-text="All checked dispatch rows on this page will be removed.">Delete selected</button>
+        <button type="submit" class="btn btn-sm btn-danger js-swal-submit-trigger" name="bulk_action" value="delete_all" data-swal-title="Delete all filtered dispatch records?" data-swal-text="This removes every row matching your current filters (superuser only).">Delete all (superuser)</button>
+        {% endif %}
+        <span class="small text-muted" id="dispatch-bulk-hint">Select rows to apply a rate, record a bulk payment{% if user.is_superuser %}, or delete{% endif %}.</span>
+      </div>
+    </form>
+    {% endif %}
+    <table
+      class="table table-hover datatable datatable-smart datatable-server-paged dispatch-table smart-dt-table mb-0 w-100 is-qty-liters"
+      data-page-length="25"
+      data-empty-table="No dispatches match these filters."
+      data-filters-target="dispatchDtFilters"
+      data-tabs-target="dispatchViewTabs"
+      data-smart-order="{% if show_dispatch_select_col %}1{% else %}0{% endif %},desc"
+      data-qty-kg-col="{% if show_dispatch_select_col %}{% if filter_tab != 'buyer' %}9{% else %}8{% endif %}{% else %}{% if filter_tab != 'buyer' %}8{% else %}7{% endif %}{% endif %}"
+      data-qty-liters-col="{% if show_dispatch_select_col %}{% if filter_tab != 'buyer' %}10{% else %}9{% endif %}{% else %}{% if filter_tab != 'buyer' %}9{% else %}8{% endif %}{% endif %}"
+    >
+      <thead>
+        <tr>
+          {% if show_dispatch_select_col %}<th class="all dispatch-select-col" data-orderable="false" data-searchable="false"><input type="checkbox" class="form-check-input custom-check js-select-all-rows" form="dispatch-bulk-form" aria-label="Select all rows"></th>{% endif %}
+          <th class="all">Date</th>
+          <th class="min-tablet-l">From</th>
+          <th class="all">To</th>
+          <th class="min-tablet-l">Dispatch</th>
+          {% if filter_tab != 'buyer' %}
+          <th class="min-tablet-l">Branch status</th>
+          {% endif %}
+          <th class="min-tablet-l">Status</th>
+          <th class="min-tablet-l text-end">Payment</th>
+          <th class="min-desktop text-end dt-right dispatch-rate-col">Rate</th>
+          <th class="all js-qty-col-kg">Kg</th>
+          <th class="all js-qty-col-liters">Liters</th>
+          <th class="all text-end" data-orderable="false" data-searchable="false">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in object_list %}
+        <tr>
+          {% if show_dispatch_select_col %}<td class="all dispatch-select-col"><input type="checkbox" class="form-check-input custom-check js-row-select" form="dispatch-bulk-form" name="selected_ids" value="{{ o.pk }}" aria-label="Select row" data-buyer-id="{{ o.buyer_id|default:'' }}" data-buyer-name="{{ o.buyer|default:'' }}" data-dispatch-no="{{ o.dispatch_no }}" data-total="{{ o.total_amount|default:'0' }}" data-outstanding="{{ o.outstanding_amount }}"{% if o.buyer_id %} data-account-url="{% url 'buyer-account' o.buyer_id %}"{% endif %}></td>{% endif %}
+          <td class="all text-start dt-date" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date|date:"Y-m-d" }}</td>
+          <td class="min-tablet-l">{% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+          <td class="all">{{ o.destination_label }}</td>
+          <td class="min-tablet-l">{{ o.dispatch_no }}</td>
+          {% if filter_tab != 'buyer' %}
+          <td class="min-tablet-l small">
+            {% include "dispatch/_branch_dispatch_status_cell.html" %}
+          </td>
+          {% endif %}
+          <td class="min-tablet-l">{% include "dispatch/_distribution_status_controls.html" %}</td>
+          <td class="min-tablet-l text-end" data-order="{{ o.total_amount|default:'0' }}">{% include "dispatch/_distribution_payment_controls.html" %}</td>
+          <td class="min-desktop text-end dt-right dispatch-rate-col" data-order="{{ o.unit_rate|default:'0' }}">
+            {% if o.buyer_id %}
+            {% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+              {% if o.paid_amount > 0 %}
+              <span class="dispatch-rate-readonly">{% if o.unit_rate %}<span class="dispatch-rate-amount">{{ o.unit_rate|money }}</span><span class="dispatch-rate-unit">{% if o.rate_unit == 'kg' %}per kg{% else %}per L{% endif %}</span>{% else %}—{% endif %}</span>
+              {% else %}
+              <div
+                class="dispatch-rate-inline"
+                data-rate-url="{% url 'distribution-rate' o.pk %}"
+                data-rate="{{ o.unit_rate|default:'0' }}"
+                data-rate-unit="{{ o.rate_unit|default:'liter' }}"
+              >
+                <button type="button" class="dispatch-rate-display js-dispatch-rate-edit {% if not o.unit_rate %}is-empty{% endif %}" title="Edit rate">
+                  <span class="js-dispatch-rate-label dispatch-rate-stack">
+                    {% if o.unit_rate %}
+                      <span class="dispatch-rate-amount">{{ o.unit_rate|money }}</span>
+                      <span class="dispatch-rate-unit">{% if o.rate_unit == 'kg' %}per kg{% else %}per L{% endif %}</span>
+                    {% else %}
+                      <span class="dispatch-rate-amount">Set rate</span>
+                    {% endif %}
+                  </span>
+                  <i class="bi bi-pencil dispatch-rate-edit-icon" aria-hidden="true"></i>
+                </button>
+                <div class="dispatch-rate-editor">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm js-dispatch-rate-input no-global-select2"
+                    value="{% if o.unit_rate %}{{ o.unit_rate|money }}{% endif %}"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    aria-label="Rate"
+                  >
+                  <select class="form-select form-select-sm js-dispatch-rate-unit no-global-select2" aria-label="Rate unit">
+                    <option value="liter" {% if o.rate_unit != 'kg' %}selected{% endif %}>liter</option>
+                    <option value="kg" {% if o.rate_unit == 'kg' %}selected{% endif %}>kg</option>
+                  </select>
+                </div>
+              </div>
+              {% endif %}
+            {% else %}
+              <span class="dispatch-rate-readonly">{% if o.unit_rate %}<span class="dispatch-rate-amount">{{ o.unit_rate|money }}</span><span class="dispatch-rate-unit">{% if o.rate_unit == 'kg' %}per kg{% else %}per L{% endif %}</span>{% else %}—{% endif %}</span>
+            {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          {% include "includes/_inline_qty_cell.html" with field="kg" value=o.kg record_id=o.pk url_name="distribution-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" all dispatch-qty js-qty-col-kg" %}
+          {% include "includes/_inline_qty_cell.html" with field="liters" value=o.liters_equivalent record_id=o.pk url_name="distribution-inline-qty" can_inline_edit=user.is_superuser extra_cell_class=" all dispatch-qty js-qty-col-liters" %}
+          <td class="all text-end dispatch-actions-cell dispatch-actions">
+            {% if perms.dispatch.change_milkdistribution or perms.dispatch.respond_branch_dispatch or perms.dispatch.delete_milkdistribution or user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+            <div class="dropdown d-inline-block">
+              <button
+                class="btn btn-sm btn-outline-secondary dropdown-toggle dispatch-actions-trigger"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="bi bi-three-dots-vertical me-1"></i><span class="dispatch-actions-label">Actions</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end dispatch-actions-menu">
+                {% if perms.dispatch.change_milkdistribution %}
+                <li>
+                  {% with pay_status=o.payment_status_from_amounts %}
+                  <a
+                    class="dropdown-item js-dispatch-edit-modal"
+                    href="{% url 'distribution-edit' o.pk %}"
+                    data-edit-url="{% url 'distribution-edit' o.pk %}?modal=1"
+                    data-dispatch-no="{{ o.dispatch_no }}"
+                    data-view-only="{% if pay_status == 'paid' %}1{% else %}0{% endif %}"
+                  >{% if pay_status == 'paid' %}<i class="bi bi-eye me-2"></i>View{% else %}<i class="bi bi-pencil-square me-2"></i>Edit{% endif %}</a>
+                  {% endwith %}
+                </li>
+                {% endif %}
+                {% if o.buyer_id %}
+                {% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+                <li>
+                  <a
+                    class="dropdown-item js-dispatch-rate-modal"
+                    href="#"
+                    data-rate-url="{% url 'distribution-rate' o.pk %}"
+                    data-dispatch-no="{{ o.dispatch_no }}"
+                    data-buyer-name="{{ o.buyer }}"
+                    data-buyer-id="{{ o.buyer_id }}"
+                    data-date="{{ o.date|date:'Y-m-d' }}"
+                    data-rate="{{ o.unit_rate|default:'0' }}"
+                    data-rate-unit="{{ o.rate_unit|default:'liter' }}"
+                    data-manual="{% if o.is_rate_manual %}1{% else %}0{% endif %}"
+                    data-paid-locked="{% if o.paid_amount > 0 %}1{% else %}0{% endif %}"
+                  ><i class="bi bi-currency-exchange me-2"></i>{% if o.unit_rate %}Change rate{% else %}Add rate{% endif %}</a>
+                </li>
+                {% endif %}
+                {% endif %}
+                {% if perms.dispatch.change_milkdistribution or perms.dispatch.respond_branch_dispatch %}
+                {% if o.pk in branch_dispatch_respond_ids %}
+                <li><a class="dropdown-item js-dispatch-notification-modal" data-modal-type="respond" href="{% url 'distribution-branch-respond' o.pk %}?{{ request.GET.urlencode }}"><i class="bi bi-inbox me-2"></i>Collect / return / divert</a></li>
+                {% endif %}
+                {% if o.pk in branch_dispatch_return_ids %}
+                <li><a class="dropdown-item js-dispatch-notification-modal" data-modal-type="return" href="{% url 'distribution-branch-return' o.pk %}?{{ request.GET.urlencode }}"><i class="bi bi-arrow-return-left me-2"></i>Accept return</a></li>
+                {% endif %}
+                {% if perms.dispatch.change_milkdistribution %}
+                {% if o.buyer_id and o.pk not in buyer_return_received_ids %}
+                <li><a class="dropdown-item js-dispatch-return-modal" href="{% url 'distribution-buyer-result' o.pk %}"><i class="bi bi-clipboard-check me-2"></i>Buyer result</a></li>
+                {% if o.outstanding_amount > 0 %}
+                <li>
+                  <a
+                    class="dropdown-item js-dispatch-payment-modal"
+                    href="{% url 'distribution-payment' o.pk %}"
+                    data-payment-url="{% url 'distribution-payment' o.pk %}"
+                    data-account-url="{% url 'buyer-account' o.buyer_id %}"
+                    data-dispatch-no="{{ o.dispatch_no }}"
+                    data-buyer-name="{{ o.buyer }}"
+                    data-total="{{ o.total_amount|default:'0' }}"
+                    data-paid="{{ o.paid_amount|default:'0' }}"
+                    data-outstanding="{{ o.outstanding_amount }}"
+                  ><i class="bi bi-cash-coin me-2"></i>Receive payment</a>
+                </li>
+                {% elif perms.masters.view_buyer %}
+                <li><a class="dropdown-item" href="{% url 'buyer-account' o.buyer_id %}"><i class="bi bi-wallet2 me-2"></i>Buyer account</a></li>
+                {% endif %}
+                {% endif %}
+                {% endif %}
+                {% endif %}
+                {% if perms.dispatch.delete_milkdistribution or user.is_superuser %}
+                {% if perms.dispatch.change_milkdistribution or perms.dispatch.respond_branch_dispatch %}<li><hr class="dropdown-divider"></li>{% endif %}
+                <li>
+                  <a
+                    href="{% url 'distribution-delete' o.pk %}"
+                    class="dropdown-item text-danger js-swal-delete-post"
+                    data-swal-title="Delete dispatch {{ o.dispatch_no }}?"
+                    data-swal-text="This cannot be undone."
+                  ><i class="bi bi-trash3 me-2"></i>Delete</a>
+                </li>
+                {% endif %}
+              </ul>
+            </div>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% include "dispatch/_distribution_table_footer.html" with totals=dispatch_totals has_select_col=show_dispatch_select_col branch_status_col=show_branch_status_col %}
+    </table>
+  </div>
+  {% include "includes/_server_list_pagination.html" %}
+</div>
+
+{% if perms.dispatch.change_milkdistribution %}
+{% include "dispatch/_distribution_return_modal.html" %}
+{% include "dispatch/_distribution_payment_modal.html" %}
+{% include "dispatch/_distribution_edit_modal.html" %}
+{% endif %}
+{% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+{% include "dispatch/_distribution_rate_modal.html" %}
+<div class="modal fade" id="dispatchBulkRateModal" tabindex="-1" aria-labelledby="dispatchBulkRateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <form method="post" id="dispatchBulkRateForm" action="{% url 'distribution-bulk-rate' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="dispatchBulkRateModalLabel">Apply rate</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="dispatchBulkRateSubtitle">Selected dispatches</p>
+          <div id="dispatchBulkRateFormErrors" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="use_period_rate" id="dispatchBulkRateUsePeriod" value="on">
+            <label class="form-check-label" for="dispatchBulkRateUsePeriod">Use each buyer’s period rate</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="dispatchBulkRateAmount">Rate</label>
+            <input type="text" class="form-control text-end" name="unit_rate" id="dispatchBulkRateAmount" inputmode="decimal" autocomplete="off">
+            <div class="form-text" id="dispatchBulkRateHint">Applied to every selected unpaid buyer dispatch.</div>
+          </div>
+          <div class="mb-0">
+            <label class="form-label" for="dispatchBulkRateUnit">Rate unit</label>
+            <select class="form-select" name="rate_unit" id="dispatchBulkRateUnit">
+              <option value="liter">Per liter</option>
+              <option value="kg">Per kg</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="dispatchBulkRateSave"><i class="bi bi-check2 me-1"></i>Apply rate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if user.is_superuser %}
+{% include "includes/_inline_qty_editor.html" %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% load static %}
+{% if perms.dispatch.change_milkdistribution %}
+<script src="{% static 'js/distribution-form.js' %}"></script>
+{% include "dispatch/_distribution_inline_script.html" %}
+{% endif %}
+{% if user.is_superuser or user.is_staff or perms.dispatch.change_dispatch_billing_rate %}
+{% include "dispatch/_distribution_rate_script.html" %}
+{% endif %}
+{% if show_dispatch_select_col %}
+<script>
+(function () {
+  var form = document.getElementById("dispatch-bulk-form");
+  if (!form) return;
+  var master = document.querySelector(".js-select-all-rows");
+  var rows = document.querySelectorAll(".js-row-select");
+  var deleteBtn = form.querySelector(".delete-selected-btn");
+  var rateBtn = document.getElementById("dispatch-bulk-rate-btn");
+  var payBtn = document.getElementById("dispatch-bulk-payment-btn");
+  var hint = document.getElementById("dispatch-bulk-hint");
+
+  function selectedBoxes() {
+    return Array.prototype.filter.call(rows, function (cb) { return cb.checked; });
+  }
+
+  function syncBulkActions() {
+    var n = selectedBoxes().length;
+    if (deleteBtn) deleteBtn.hidden = n === 0;
+    if (rateBtn) rateBtn.hidden = n === 0;
+    if (payBtn) payBtn.hidden = n === 0;
+    if (hint) {
+      hint.textContent = n
+        ? (n + " selected")
+        : "Select rows to apply a rate, record a bulk payment{% if user.is_superuser %}, or delete{% endif %}.";
+    }
+    if (master && rows.length) {
+      master.checked = n === rows.length;
+      master.indeterminate = n > 0 && n < rows.length;
+    }
+  }
+
+  if (master) {
+    master.addEventListener("change", function () {
+      rows.forEach(function (cb) { cb.checked = master.checked; });
+      syncBulkActions();
+    });
+  }
+  rows.forEach(function (cb) {
+    cb.addEventListener("change", syncBulkActions);
+  });
+  syncBulkActions();
+
+  var modalEl = document.getElementById("dispatchBulkRateModal");
+  var modal = modalEl && window.bootstrap ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  var bulkForm = document.getElementById("dispatchBulkRateForm");
+  var errorsEl = document.getElementById("dispatchBulkRateFormErrors");
+  var subtitleEl = document.getElementById("dispatchBulkRateSubtitle");
+  var usePeriodEl = document.getElementById("dispatchBulkRateUsePeriod");
+  var amountEl = document.getElementById("dispatchBulkRateAmount");
+  var unitEl = document.getElementById("dispatchBulkRateUnit");
+  var hintEl = document.getElementById("dispatchBulkRateHint");
+
+  function showBulkErrors(messages) {
+    if (!errorsEl) return;
+    if (!messages || !messages.length) {
+      errorsEl.classList.add("d-none");
+      errorsEl.textContent = "";
+      return;
+    }
+    errorsEl.classList.remove("d-none");
+    errorsEl.textContent = messages.join(" ");
+  }
+
+  function extractErrors(data) {
+    var messages = [];
+    var errors = (data && data.errors) || {};
+    Object.keys(errors).forEach(function (key) {
+      (errors[key] || []).forEach(function (msg) {
+        if (msg) messages.push(msg);
+      });
+    });
+    if (data && data.error) messages.push(data.error);
+    return messages;
+  }
+
+  function setManualEnabled(enabled) {
+    if (amountEl) amountEl.readOnly = !enabled;
+    if (unitEl) unitEl.disabled = !enabled;
+    if (hintEl) {
+      hintEl.textContent = enabled
+        ? "This rate is applied to every selected unpaid buyer dispatch."
+        : "Each selected dispatch uses that buyer’s period rate for its date.";
+    }
+  }
+
+  if (usePeriodEl) {
+    usePeriodEl.addEventListener("change", function () {
+      setManualEnabled(!usePeriodEl.checked);
+    });
+  }
+
+  if (rateBtn) {
+    rateBtn.addEventListener("click", function () {
+      var n = selectedBoxes().length;
+      if (!n || !modal) return;
+      showBulkErrors([]);
+      if (subtitleEl) subtitleEl.textContent = n + " dispatch" + (n === 1 ? "" : "es") + " selected";
+      if (usePeriodEl) usePeriodEl.checked = false;
+      if (amountEl) amountEl.value = "";
+      if (unitEl) unitEl.value = "liter";
+      setManualEnabled(true);
+      modal.show();
+    });
+  }
+
+  if (bulkForm) {
+    bulkForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      showBulkErrors([]);
+      if (unitEl) unitEl.disabled = false;
+      var body = new FormData(bulkForm);
+      selectedBoxes().forEach(function (cb) {
+        body.append("selected_ids", cb.value);
+      });
+      if (amountEl) {
+        body.set("unit_rate", String(amountEl.value || "").replace(/,/g, ""));
+      }
+      fetch(bulkForm.action, {
+        method: "POST",
+        body: body,
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (result.ok && result.data && result.data.ok) {
+            if (modal) modal.hide();
+            window.location.reload();
+            return;
+          }
+          var messages = extractErrors(result.data);
+          if (!messages.length) messages.push("Could not apply rate to the selected dispatches.");
+          showBulkErrors(messages);
+        })
+        .catch(function () {
+          showBulkErrors(["Could not apply rate to the selected dispatches."]);
+        });
+    });
+  }
+})();
+</script>
+{% endif %}
+{% if user.is_superuser %}
+{% include "includes/_inline_qty_script.html" %}
+{% endif %}
+<script>
+(function () {
+  var form = document.getElementById("dispatch-filter-form");
+  if (!form) return;
+
+  var tabInput = document.getElementById("dispatch-filter-tab");
+  var branchSelect = document.getElementById("dispatch-filter-branches");
+  var buyerSelect = document.getElementById("dispatch-filter-buyer");
+  var buyerFieldWrap = buyerSelect
+    ? (buyerSelect.closest(".dispatch-filter-buyer-wrap") || buyerSelect.closest("[class*='col-']"))
+    : null;
+
+  function activeTab() {
+    return tabInput ? tabInput.value : "buyer";
+  }
+
+  function syncFilterFields() {
+    var tab = activeTab();
+    if (branchSelect) {
+      branchSelect.disabled = false;
+      branchSelect.name = tab === "branch" ? "destination_branches" : "branches";
+    }
+    if (buyerSelect) {
+      var buyerActive = tab !== "branch";
+      buyerSelect.disabled = !buyerActive;
+      buyerSelect.name = buyerActive ? "buyer" : "";
+      if (buyerFieldWrap) {
+        buyerFieldWrap.classList.toggle("dispatch-filter-buyer--muted", !buyerActive);
+      }
+    }
+  }
+
+  form.addEventListener("submit", function () {
+    syncFilterFields();
+  });
+
+  syncFilterFields();
+
+  if (branchSelect && window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+    var $branch = window.jQuery(branchSelect);
+    if (!$branch.hasClass("select2-hidden-accessible")) {
+      $branch.select2({
+        width: "100%",
+        closeOnSelect: false,
+        placeholder: "Branches…",
+      });
+    }
+  }
+
+  function mergeParamsForTabLink(link) {
+    syncFilterFields();
+    var params = new URLSearchParams(window.location.search);
+    var fd = new FormData(form);
+    var touched = {};
+    fd.forEach(function (value, key) {
+      if (key === "filter_tab" || key === "branch_scope") return;
+      if (!touched[key]) {
+        params.delete(key);
+        touched[key] = true;
+      }
+      params.append(key, value);
+    });
+    var target = new URL(link.href, window.location.origin);
+    target.searchParams.forEach(function (value, key) {
+      if (key === "filter_tab" || key === "branch_scope") {
+        params.set(key, value);
+      }
+    });
+    return "?" + params.toString();
+  }
+
+  document.querySelectorAll("#dispatchViewTabs .nav-link[href]").forEach(function (link) {
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      window.location.search = mergeParamsForTabLink(link);
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  document.querySelectorAll(".js-server-page-length").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      var params = new URLSearchParams(window.location.search);
+      params.set("per_page", sel.value);
+      if (sel.value === "all") {
+        params.delete("page");
+      } else {
+        params.set("page", "1");
+      }
+      window.location.search = params.toString();
+    });
+  });
+})();
+</script>
+<script>
+(function () {
+  var table = document.querySelector(".dispatch-table");
+  var toggle = document.getElementById("dispatchQtyToggle");
+  if (!table || !toggle) return;
+
+  var storageKey = "dispatch-list-qty-unit";
+  var defaultUnit = "liters";
+  var kgCol = parseInt(table.getAttribute("data-qty-kg-col") || "7", 10);
+  var litersCol = parseInt(table.getAttribute("data-qty-liters-col") || "8", 10);
+
+  function currentUnit() {
+    try {
+      var saved = window.localStorage.getItem(storageKey);
+      if (saved === "kg" || saved === "liters") return saved;
+    } catch (err) {}
+    return defaultUnit;
+  }
+
+  function dataTableApi() {
+    if (!window.jQuery || !jQuery.fn || !jQuery.fn.DataTable) return null;
+    if (!jQuery.fn.DataTable.isDataTable(table)) return null;
+    return jQuery(table).DataTable();
+  }
+
+  function applyUnit(unit) {
+    if (unit !== "kg" && unit !== "liters") unit = defaultUnit;
+    table.classList.toggle("is-qty-kg", unit === "kg");
+    table.classList.toggle("is-qty-liters", unit === "liters");
+    toggle.querySelectorAll("[data-qty-unit]").forEach(function (btn) {
+      var on = btn.getAttribute("data-qty-unit") === unit;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    var api = dataTableApi();
+    if (api) {
+      api.column(kgCol).visible(unit === "kg", false);
+      api.column(litersCol).visible(unit === "liters", false);
+      api.columns.adjust();
+      if (api.responsive && typeof api.responsive.recalc === "function") {
+        api.responsive.recalc();
+      }
+    }
+    try { window.localStorage.setItem(storageKey, unit); } catch (err) {}
+  }
+
+  toggle.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("[data-qty-unit]");
+    if (!btn || !toggle.contains(btn)) return;
+    applyUnit(btn.getAttribute("data-qty-unit"));
+  });
+
+  applyUnit(currentUnit());
+  if (window.jQuery) {
+    jQuery(table).on("init.dt", function () {
+      applyUnit(currentUnit());
+    });
+  }
+})();
+</script>
+{% endblock %}

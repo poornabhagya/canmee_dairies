@@ -1,0 +1,328 @@
+<style>
+  #dispatchEditModal {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  #dispatchEditModal .modal-dialog {
+    max-width: 960px;
+    width: calc(100% - 1.5rem);
+    margin: 0.75rem auto;
+    max-height: calc(100vh - 1.5rem);
+  }
+  #dispatchEditModal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 1.5rem);
+    overflow: hidden;
+    border: 1px solid #e8eef5;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    background: #fff;
+  }
+  #dispatchEditModal .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(100vh - 1.5rem);
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+  #dispatchEditModal .modal-header {
+    flex: 0 0 auto;
+    align-items: flex-start;
+    padding: 1rem 1.2rem 0.9rem;
+    border-bottom: 1px solid #edf2f7;
+    background: #fff;
+  }
+  #dispatchEditModal .modal-title {
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.25;
+  }
+  #dispatchEditModal .modal-header .text-muted {
+    font-size: 0.82rem;
+    margin-top: 0.15rem;
+  }
+  #dispatchEditModal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: calc(100vh - 12.5rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #e2e8f0;
+    padding: 0.95rem 1.15rem 1.05rem;
+    background: #f8fafc;
+  }
+  #dispatchEditModal .modal-footer {
+    flex: 0 0 auto;
+    background: #fff;
+    border-top: 1px solid #edf2f7;
+    gap: 0.5rem;
+    padding: 0.8rem 1.15rem;
+  }
+  #dispatchEditModal .dispatch-form-section {
+    background: #fff;
+    border: 1px solid #eef2f7;
+    border-radius: 14px;
+    padding: 0.75rem 0.85rem 0.65rem;
+    margin-bottom: 0.65rem;
+    box-shadow: none;
+  }
+  #dispatchEditModal .dispatch-form-section:last-child { margin-bottom: 0; }
+  #dispatchEditModal .dispatch-form-section__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.55rem;
+  }
+  #dispatchEditModal .dispatch-form-section__title i {
+    color: #059669;
+    font-size: 0.85rem;
+  }
+  #dispatchEditModal .form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.28rem;
+  }
+  #dispatchEditModal .form-control,
+  #dispatchEditModal .form-select {
+    min-height: 38px;
+    height: 38px;
+    font-size: 0.875rem;
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    padding: 0.35rem 0.75rem;
+  }
+  #dispatchEditModal textarea.form-control {
+    height: auto;
+    min-height: 4.25rem;
+  }
+  #dispatchEditModal .form-control:focus,
+  #dispatchEditModal .form-select:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.12);
+  }
+  #dispatchEditModal .select2-container {
+    width: 100% !important;
+  }
+  #dispatchEditModal .select2-container .select2-selection--single {
+    min-height: 38px !important;
+    height: 38px !important;
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+  }
+  #dispatchEditModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 2rem !important;
+    font-size: 0.875rem;
+    color: #0f172a;
+  }
+  #dispatchEditModal .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px !important;
+    width: 28px;
+  }
+  #dispatchEditModal .select2-container--focus .select2-selection--single,
+  #dispatchEditModal .select2-container--open .select2-selection--single {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.12);
+  }
+  #dispatchEditModal .select2-dropdown {
+    border-color: #dbe3ef;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #dispatchEditModal .select2-search--dropdown .select2-search__field {
+    border-radius: 8px;
+    min-height: 34px;
+    font-size: 0.875rem;
+  }
+  #dispatchEditModal .dispatch-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 0.7rem;
+  }
+  #dispatchEditModal .dispatch-form-grid .full,
+  #dispatchEditModal .dispatch-form-grid .quality-grid { grid-column: 1 / -1; }
+  #dispatchEditModal .dispatch-modal-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem 0.7rem;
+    align-items: end;
+  }
+  #dispatchEditModal .dispatch-modal-row-3 > div {
+    min-width: 0;
+  }
+  #dispatchEditModal .dispatch-modal-combo {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+  #dispatchEditModal .dispatch-modal-combo > .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  #dispatchEditModal .dispatch-modal-combo__grow {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  #dispatchEditModal .dispatch-modal-combo__grow .select2-container {
+    width: 100% !important;
+  }
+  #dispatchEditModal .dispatch-modal-row-quality {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.45rem 0.5rem;
+    align-items: start;
+  }
+  #dispatchEditModal .dispatch-modal-static {
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    cursor: default;
+  }
+  #dispatchEditModal .dispatch-modal-paid-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+  #dispatchEditModal .dispatch-modal-view-note {
+    font-size: 0.82rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+  }
+  #dispatchEditModal .is-view-only .qty-segment,
+  #dispatchEditModal .is-view-only .dispatch-to-segment {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  #dispatchEditModal .quality-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 0.7rem;
+  }
+  #dispatchEditModal .dispatch-snf-hint { display: none; }
+  #dispatchEditModal .dispatch-segment,
+  #dispatchEditModal .qty-segment {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+  }
+  #dispatchEditModal .dispatch-to-segment,
+  #dispatchEditModal .qty-segment {
+    width: auto;
+    margin-left: 0;
+    flex: 0 0 auto;
+    height: 38px;
+    align-items: center;
+  }
+  #dispatchEditModal .dispatch-segment__option {
+    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: 0;
+  }
+  #dispatchEditModal .dispatch-segment__option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #dispatchEditModal .dispatch-segment__option span,
+  #dispatchEditModal .qty-segment__btn {
+    display: block;
+    margin: 0;
+    border: none;
+    background: transparent;
+    padding: 0.32rem 0.75rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #64748b;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #dispatchEditModal .dispatch-segment__option:has(input:checked) span,
+  #dispatchEditModal .qty-segment__btn.is-active {
+    background: #fff;
+    color: #059669;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  }
+  #dispatchEditModal .dispatch-snf-auto {
+    background: #f8fafc !important;
+    font-weight: 600;
+  }
+  #dispatchEditModal .dispatch-snf-hint {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 0.2rem;
+  }
+  #dispatchEditModal .dispatch-buyer-wrap {
+    width: 100%;
+  }
+  #dispatchEditModal .dispatch-buyer-wrap .form-select,
+  #dispatchEditModal .dispatch-buyer-wrap .select2-container {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  #dispatchEditModal #id_kg,
+  #dispatchEditModal #id_buyer,
+  #dispatchEditModal #id_branch,
+  #dispatchEditModal #id_destination_branch {
+    display: block;
+    width: 100%;
+  }
+  @media (max-width: 991.98px) {
+    #dispatchEditModal .dispatch-modal-row-quality { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 767.98px) {
+    #dispatchEditModal .dispatch-form-grid,
+    #dispatchEditModal .quality-grid,
+    #dispatchEditModal .dispatch-modal-row-3,
+    #dispatchEditModal .dispatch-modal-row-quality { grid-template-columns: 1fr; }
+  }
+</style>
+<div class="modal fade" id="dispatchEditModal" tabindex="-1" aria-labelledby="dispatchEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" id="dispatchEditModalContent">
+      <div class="modal-header">
+        <h5 class="modal-title" id="dispatchEditModalLabel">Edit dispatch</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-center text-muted py-5 mb-0">Loading…</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Employees · Canmee Dairies{% endblock %}
+{% block page_heading %}Employees{% endblock %}
+{% block topbar_actions %}
+{% if perms.hrm.view_department %}
+<a class="btn btn-outline-secondary me-2" href="{% url 'hrm:department_manage' %}">
+  <i class="bi bi-diagram-3 me-1"></i>Departments
+</a>
+{% endif %}
+{% if perms.hrm.add_employee %}
+<a class="btn btn-primary" href="{% url 'hrm:employee_create' %}">
+  <i class="bi bi-plus-lg me-1"></i>Add employee
+</a>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+<style>
+  .employee-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .employee-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .employee-list-card .table-wrap,
+  .employee-list-card .dataTables_wrapper,
+  .employee-list-card div.dt-container,
+  .employee-list-card div.dt-scroll,
+  .employee-list-card div.dt-scroll-body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+  .employee-list-card .employee-table {
+    width: 100% !important;
+  }
+  .employee-list-card .employee-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .employee-list-card .employee-table tbody td {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.4rem;
+    vertical-align: middle;
+  }
+  .employee-list-card .employee-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .employee-list-card .employee-table .smart-dt-name-row {
+    min-width: 0;
+  }
+  .employee-list-card .employee-table .smart-dt-name-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(16rem, 36vw);
+    vertical-align: bottom;
+  }
+  .employee-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+  .employee-list-card div.dt-smart-toolbar .dt-smart-actions {
+    margin-left: auto;
+  }
+  .employee-list-card div.dt-container .dt-search {
+    margin: 0;
+  }
+  .employee-list-card div.dt-container .dt-search label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+  .employee-list-card div.dt-container .dt-search input {
+    min-width: min(220px, 42vw);
+    border-radius: 999px;
+    border: 1px solid #dbe3ef;
+    padding: 0.38rem 0.85rem 0.38rem 2rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.06a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.65rem center;
+    box-shadow: none;
+  }
+  .employee-list-card div.dt-container .dt-search input:focus {
+    border-color: rgba(5, 150, 105, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.1);
+  }
+  .employee-row--inactive td,
+  .smart-row--inactive td {
+    background-color: rgba(254, 243, 199, 0.22);
+  }
+  .employee-row--resigned td,
+  .smart-row--resigned td {
+    background-color: rgba(255, 237, 213, 0.35);
+  }
+  .employee-row--terminated td,
+  .smart-row--terminated td {
+    background-color: rgba(254, 226, 226, 0.35);
+  }
+  .employee-status-select {
+    width: 100%;
+    max-width: 7.5rem;
+    padding: 0.2rem 1.35rem 0.2rem 0.35rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+  .employee-status-select.is-inactive,
+  .employee-status-select.is-resigned {
+    border-color: #f59e0b;
+    background-color: #fffbeb;
+    color: #b45309;
+    font-weight: 600;
+  }
+  .employee-status-select.is-terminated {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+    color: #b91c1c;
+    font-weight: 600;
+  }
+  .employee-status-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .employee-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .employee-view-swal {
+    text-align: left;
+  }
+  .employee-view-swal .swal2-html-container {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .employee-view-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+    text-align: left;
+  }
+  .employee-view-section {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.7rem 0.8rem;
+    background: #fff;
+  }
+  .employee-view-section--wide { grid-column: 1 / -1; }
+  .employee-view-section h3 {
+    margin: 0 0 0.45rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+  }
+  .employee-view-dl {
+    display: grid;
+    grid-template-columns: 7.2rem 1fr;
+    gap: 0.28rem 0.65rem;
+    margin: 0;
+    font-size: 0.84rem;
+  }
+  .employee-view-dl dt {
+    margin: 0;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .employee-view-dl dd {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  @media (max-width: 640px) {
+    .employee-view-grid { grid-template-columns: 1fr; }
+    .employee-view-section--wide { grid-column: auto; }
+  }
+  .smart-dt-chip--danger.is-active {
+    border-color: rgba(220, 38, 38, 0.4);
+    background: rgba(254, 226, 226, 0.55);
+    color: #b91c1c;
+  }
+  .smart-dt-chip--danger.is-active .smart-dt-chip-count {
+    background: rgba(220, 38, 38, 0.14);
+    color: #b91c1c;
+  }
+  .smart-dt-stat--danger .smart-dt-stat-value { color: #b91c1c; }
+  @media (max-width: 767.98px) {
+    .employee-list-card .card-body.table-wrap { padding: 0.75rem; }
+    .employee-list-card div.dt-container .dt-search input {
+      min-width: 8rem;
+      width: 100%;
+      max-width: none;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card card-table employee-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats smart-dt-stats--four" aria-label="Employee summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Employees</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.all }}</span>
+      </div>
+      <button type="button" class="smart-dt-stat smart-dt-stat--active smart-dt-stat--clickable js-employee-stat-filter" data-smart-filter="active">
+        <span class="smart-dt-stat-label">Active</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.active }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--warn smart-dt-stat--clickable js-employee-stat-filter" data-smart-filter="inactive">
+        <span class="smart-dt-stat-label">Inactive</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.inactive }}</span>
+      </button>
+      <button type="button" class="smart-dt-stat smart-dt-stat--danger smart-dt-stat--clickable js-employee-stat-filter" data-smart-filter="terminated">
+        <span class="smart-dt-stat-label">Terminated</span>
+        <span class="smart-dt-stat-value">{{ status_tab_counts.terminated }}</span>
+      </button>
+    </div>
+
+    <div id="employeeDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Employee filters">
+      <button type="button" class="smart-dt-chip{% if filter_status == 'all' %} is-active{% endif %}" data-smart-filter="all">
+        All<span class="smart-dt-chip-count">{{ status_tab_counts.all }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip{% if filter_status == 'active' %} is-active{% endif %}" data-smart-filter="active">
+        Active<span class="smart-dt-chip-count">{{ status_tab_counts.active }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip{% if filter_status == 'inactive' %} is-active{% endif %}" data-smart-filter="inactive">
+        Inactive<span class="smart-dt-chip-count">{{ status_tab_counts.inactive }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--warn{% if filter_status == 'resigned' %} is-active{% endif %}" data-smart-filter="resigned">
+        Resigned<span class="smart-dt-chip-count">{{ status_tab_counts.resigned }}</span>
+      </button>
+      <button type="button" class="smart-dt-chip smart-dt-chip--danger{% if filter_status == 'terminated' %} is-active{% endif %}" data-smart-filter="terminated">
+        Terminated<span class="smart-dt-chip-count">{{ status_tab_counts.terminated }}</span>
+      </button>
+    </div>
+
+    <table
+      class="table table-hover datatable datatable-smart employee-table smart-dt-table mb-0 w-100"
+      data-page-length="25"
+      data-empty-table="No employees yet."
+      data-filters-target="employeeDtFilters"
+      data-default-filter="{{ filter_status|default:'all' }}"
+    >
+      <thead>
+        <tr>
+          <th class="min-tablet-l dt-seq">#</th>
+          <th class="all">Name</th>
+          <th class="all">Employee #</th>
+          <th class="min-tablet-l">Department</th>
+          <th class="all">Status</th>
+          <th class="min-desktop">User account</th>
+          <th class="all text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in employees %}
+        <tr class="employee-row--{{ e.status }} smart-row--{{ e.status }}" data-employee-id="{{ e.pk }}">
+          <td class="fw-medium min-tablet-l dt-seq"></td>
+          <td class="all">
+            <div class="smart-dt-name-row">
+              <a href="{% url 'hrm:employee_detail' e.pk %}" class="smart-dt-name-link">{{ e.get_full_name|default:e.first_name }}</a>
+            </div>
+          </td>
+          <td class="all text-nowrap">{{ e.employee_number|default:"—" }}</td>
+          <td class="min-tablet-l">{{ e.department|default:"—" }}</td>
+          <td class="all employee-status-cell">
+            {% if perms.hrm.change_employee %}
+            <select
+              class="form-select form-select-sm employee-status-select js-employee-status-select employee-status-select--{{ e.status }}"
+              data-employee-id="{{ e.pk }}"
+              data-employee-name="{{ e.get_full_name|default:e.first_name }}"
+              data-resign-url="{% url 'hrm:employee_resign' e.pk %}"
+              data-terminate-url="{% url 'hrm:employee_terminate' e.pk %}"
+              data-status-url="{% url 'hrm:employee_status_update' e.pk %}"
+              aria-label="Status for {{ e.get_full_name|default:e.first_name }}"
+            >
+              <option value="active" {% if e.status == 'active' %}selected{% endif %}>Active</option>
+              <option value="inactive" {% if e.status == 'inactive' %}selected{% endif %}>Inactive</option>
+              <option value="resigned" {% if e.status == 'resigned' %}selected{% endif %}>Resigned</option>
+              <option value="terminated" {% if e.status == 'terminated' %}selected{% endif %}>Terminated</option>
+            </select>
+            {% elif e.status == 'active' %}
+            <span class="badge text-bg-success-subtle text-success employee-status-badge">Active</span>
+            {% elif e.status == 'inactive' %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis employee-status-badge">Inactive</span>
+            {% elif e.status == 'resigned' %}
+            <span class="badge text-bg-warning-subtle text-warning-emphasis employee-status-badge">Resigned</span>
+            {% elif e.status == 'terminated' %}
+            <span class="badge text-bg-danger-subtle text-danger employee-status-badge">Terminated</span>
+            {% else %}
+            <span class="badge text-bg-light border employee-status-badge">{{ e.get_status_display }}</span>
+            {% endif %}
+          </td>
+          <td class="min-desktop">{% if e.user_account %}{{ e.user_account.username|capfirst }}{% else %}—{% endif %}</td>
+          <td class="all text-end">
+            <span class="employee-row-actions">
+              <button
+                type="button"
+                class="icon-action-btn js-employee-view"
+                data-json-url="{% url 'hrm:employee_detail_json' e.pk %}"
+                title="View employee"
+                aria-label="View {{ e.get_full_name|default:e.first_name }}"
+              ><i class="bi bi-eye" aria-hidden="true"></i></button>
+              {% if perms.hrm.change_employee %}
+              <a
+                class="icon-action-btn"
+                href="{% url 'hrm:employee_edit' e.pk %}"
+                title="Edit employee"
+                aria-label="Edit {{ e.get_full_name|default:e.first_name }}"
+              ><i class="bi bi-pen-fill" aria-hidden="true"></i></a>
+              {% if e.status != 'resigned' %}
+              <button
+                type="button"
+                class="icon-action-btn js-employee-resign-btn"
+                data-employee-id="{{ e.pk }}"
+                data-employee-name="{{ e.get_full_name|default:e.first_name }}"
+                data-resign-url="{% url 'hrm:employee_resign' e.pk %}"
+                title="Record resignation"
+                aria-label="Record resignation for {{ e.get_full_name|default:e.first_name }}"
+              ><i class="bi bi-box-arrow-right" aria-hidden="true"></i></button>
+              {% endif %}
+              {% if e.status != 'terminated' %}
+              <button
+                type="button"
+                class="icon-action-btn icon-action-danger js-employee-terminate-btn"
+                data-employee-id="{{ e.pk }}"
+                data-employee-name="{{ e.get_full_name|default:e.first_name }}"
+                data-terminate-url="{% url 'hrm:employee_terminate' e.pk %}"
+                title="Record termination"
+                aria-label="Record termination for {{ e.get_full_name|default:e.first_name }}"
+              ><i class="bi bi-person-x" aria-hidden="true"></i></button>
+              {% endif %}
+              {% endif %}
+              {% if perms.hrm.delete_employee %}
+              <a
+                class="icon-action-btn icon-action-danger js-swal-delete-post"
+                href="{% url 'hrm:employee_delete' e.pk %}"
+                data-swal-title="Delete employee {{ e.get_full_name|default:e.first_name }}?"
+                data-swal-text="This cannot be undone."
+                title="Delete employee"
+                aria-label="Delete {{ e.get_full_name|default:e.first_name }}"
+              ><i class="bi bi-trash3" aria-hidden="true"></i></a>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if perms.hrm.change_employee %}
+<div class="modal fade" id="employeeResignModal" tabindex="-1" aria-labelledby="employeeResignModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="employee-resign-form" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="employeeResignModalLabel">Record resignation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Record resignation for <strong id="employee-resign-name"></strong>. Employee details are kept; status will change to <strong>Resigned</strong>.
+          </p>
+          <div class="mb-3">
+            <label class="form-label" for="id_resignation_date">Resignation date</label>
+            {{ resign_form.resignation_date }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_resignation_reason">Reason</label>
+            {{ resign_form.resignation_reason }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_resignation_notes">Notes</label>
+            {{ resign_form.resignation_notes }}
+          </div>
+          <div class="form-check">
+            {{ resign_form.deactivate_user }}
+            <label class="form-check-label" for="id_deactivate_user">{{ resign_form.deactivate_user.label }}</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning"><i class="bi bi-box-arrow-right me-1"></i>Save resignation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="employeeTerminateModal" tabindex="-1" aria-labelledby="employeeTerminateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="employee-terminate-form" action="">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="employeeTerminateModalLabel">Record termination</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Record termination for <strong id="employee-terminate-name"></strong>. Employee details are kept; status will change to <strong>Terminated</strong>.
+          </p>
+          <div class="mb-3">
+            <label class="form-label" for="id_termination_date">Termination date</label>
+            {{ terminate_form.termination_date }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_termination_reason">Reason</label>
+            {{ terminate_form.termination_reason }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_termination_notes">Notes</label>
+            {{ terminate_form.termination_notes }}
+          </div>
+          <div class="form-check">
+            {{ terminate_form.deactivate_user }}
+            <label class="form-check-label" for="id_deactivate_user_terminate">{{ terminate_form.deactivate_user.label }}</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-person-x me-1"></i>Save termination</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+  window.EMPLOYEE_CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+<script src="{% static 'js/employee-list.js' %}"></script>
+<script>
+(function () {
+  function applyInitialEmployeeFilter() {
+    var table = document.querySelector(".employee-table[data-default-filter]");
+    if (!table) return;
+    var filter = table.getAttribute("data-default-filter") || "all";
+    if (!filter || filter === "all") return;
+    var chip = document.querySelector('#employeeDtFilters [data-smart-filter="' + filter + '"]');
+    if (chip) chip.click();
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".js-employee-stat-filter").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var filter = btn.getAttribute("data-smart-filter");
+        var chip = document.querySelector('#employeeDtFilters [data-smart-filter="' + filter + '"]');
+        if (chip) chip.click();
+      });
+    });
+    // Wait a tick so DataTables smart filters bind first.
+    window.setTimeout(applyInitialEmployeeFilter, 80);
+  });
+})();
+</script>
+{% endblock %}

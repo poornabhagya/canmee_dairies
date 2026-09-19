@@ -1,0 +1,519 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}{{ supplier.name }} · Raw milk supplier · Canmee Dairies{% endblock %}
+{% block page_heading %}Raw milk supplier{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .rms-detail-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+  .rms-meta-table th {
+    width: 220px;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+  }
+  .rms-meta-table td {
+    color: #0f172a;
+  }
+  .rms-section-title {
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 700;
+    margin-bottom: 0.65rem;
+  }
+  .rms-collection-section {
+    margin-top: 1.25rem;
+  }
+  .rms-collection-list-card {
+    margin-top: 0;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .rms-collection-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .rms-collection-list-card .rms-collection-table tbody td.dt-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .rms-collection-list-card a.smart-dt-chip {
+    text-decoration: none;
+  }
+  .rms-collection-period-filter {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .rms-collection-period-filter .form-control,
+  .rms-collection-period-filter .form-select {
+    width: auto;
+    min-width: 8.5rem;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 0.28rem 0.75rem;
+    height: auto;
+  }
+  .rms-collection-period-filter .form-select {
+    min-width: 7.5rem;
+    padding-right: 1.75rem;
+  }
+  .rms-collection-period-filter .btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    line-height: 1.2;
+  }
+  .rms-collection-period-filter .input-group {
+    width: auto;
+    flex-wrap: nowrap;
+  }
+  .rms-collection-period-filter .input-group-text {
+    border-radius: 999px 0 0 999px;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.76rem;
+    padding: 0.28rem 0.55rem;
+  }
+  .rms-collection-period-filter .input-group .form-control {
+    border-radius: 0 999px 999px 0;
+    min-width: 11.5rem;
+  }
+  .raw-milk-payment-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    min-width: 5.5rem;
+  }
+  .raw-milk-payment-badge {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.35rem;
+    line-height: 1.2;
+  }
+  .raw-milk-payment-badge--pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .raw-milk-payment-badge--partial {
+    background: #ffedd5;
+    color: #9a3412;
+  }
+  .raw-milk-payment-badge--paid {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .raw-milk-payment-meta {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+  .raw-milk-field-inline {
+    min-width: 7.5rem;
+    max-width: 9rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border-radius: 999px;
+    border-color: #e2e8f0;
+    padding: 0.22rem 1.6rem 0.22rem 0.65rem;
+  }
+  .rms-collection-list-card div.dt-smart-toolbar > [class*="col-"] {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+  .rms-collection-list-card div.dt-smart-toolbar .dt-smart-filters-wrap {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+  }
+  .rms-collection-list-card div.dt-smart-toolbar .dt-smart-actions {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    margin-left: auto;
+  }
+  .rms-collection-list-card .smart-dt-filters {
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+  .rms-collection-period-filter {
+    flex-wrap: nowrap;
+  }
+  .rms-collection-table thead th.dt-date,
+  .rms-collection-table tbody td.dt-date,
+  .rms-collection-table thead th.dt-type-date,
+  .rms-collection-table tbody td.dt-type-date {
+    text-align: left !important;
+  }
+  .rms-collection-table thead th.text-end,
+  .rms-collection-table tbody td.text-end,
+  .rms-collection-table tfoot th.text-end,
+  .rms-collection-table thead th.dt-num,
+  .rms-collection-table tbody td.dt-num,
+  .rms-collection-table tfoot th.dt-num {
+    text-align: right !important;
+  }
+  @media (max-width: 991.98px) {
+    .rms-collection-list-card .smart-dt-filters,
+    .rms-collection-period-filter,
+    .rms-collection-list-card div.dt-smart-toolbar > [class*="col-"] {
+      flex-wrap: wrap;
+    }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ supplier.name }}</h1>
+    <p class="page-subtitle">Raw milk supplier details</p>
+  </div>
+  <div class="page-actions d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{% url 'supplier-list' %}?category=raw_milk_supplier">Back</a>
+    <a class="btn btn-outline-primary" href="{% url 'raw-milk-supplier-account' supplier.pk %}">Supplier account</a>
+    {% if perms.suppliers.add_rawmilksuppliercollection %}
+    <a class="btn btn-outline-secondary" href="{% url 'raw-milk-collection-add' %}?supplier={{ supplier.pk }}">Add collection</a>
+    {% endif %}
+    {% if perms.suppliers.change_supplier %}
+    <a class="btn btn-primary" href="{% url 'supplier-edit' supplier.pk %}">Edit</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card rms-detail-card">
+  <div class="card-body p-0">
+    <table class="table table-bordered align-middle mb-0 rms-meta-table">
+      <tbody>
+        <tr><th>Name</th><td>{{ supplier.name }}</td></tr>
+        <tr><th>Contact</th><td>{{ supplier.contact_number|default:"—" }}</td></tr>
+        <tr><th>Email</th><td>{{ supplier.email|default:"—" }}</td></tr>
+        <tr>
+          <th>Branches</th>
+          <td>
+            {% for b in supplier.branches.all %}{{ b.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+          </td>
+        </tr>
+        <tr><th>Status</th><td>{{ supplier.get_status_display }}</td></tr>
+        <tr>
+          <th>Current rate</th>
+          <td>
+            {% if supplier.rate %}
+              {{ supplier.rate|money }} <span class="text-muted">{{ supplier.get_rate_unit_display }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <th>Account balance</th>
+          <td>
+            <a href="{% url 'raw-milk-supplier-account' supplier.pk %}">{{ account_summary.balance|money }}</a>
+            <span class="text-muted small ms-1">(payable)</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card rms-detail-card mt-3">
+  <div class="card-body">
+    <div class="rms-section-title mb-2">Rate management</div>
+    <p class="text-muted small mb-3">Toggle per liter or per kg. Each change is effective from the date you set; “to” is the day before the next change.</p>
+    {% if perms.suppliers.change_supplierrate or perms.suppliers.change_supplier %}
+    <form method="post" action="{% url 'raw-milk-supplier-rate-update' supplier.pk %}" id="supplierRateForm" class="row g-2 align-items-end mb-3">
+      {% csrf_token %}
+      <div class="col-md-3">
+        <label class="form-label mb-1" for="{{ rate_form.rate.id_for_label }}">Rate</label>
+        {{ rate_form.rate }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label mb-1" for="{{ rate_form.rate_unit.id_for_label }}">Unit</label>
+        {{ rate_form.rate_unit }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label mb-1" for="{{ rate_form.effective_from.id_for_label }}">Effective from</label>
+        {{ rate_form.effective_from }}
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary js-focus-next">Save rate</button>
+      </div>
+      {% if rate_form.errors %}
+      <div class="col-12 text-danger small">
+        {% for field in rate_form %}
+          {% for error in field.errors %}<div>{{ error }}</div>{% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </form>
+    {% endif %}
+    <table class="table table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Effective from</th>
+          <th>Effective to</th>
+          <th>Rate</th>
+          <th>Unit</th>
+          {% if user.is_superuser %}<th class="text-end">Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in supplier_rate_history %}
+        <tr>
+          <td>{{ item.effective_from|date:"Y-m-d" }}</td>
+          <td>{% if item.effective_until %}{{ item.effective_until|date:"Y-m-d" }}{% else %}<span class="text-success">Current</span>{% endif %}</td>
+          <td>{{ item.rate|money }}</td>
+          <td>{{ item.get_rate_unit_display }}</td>
+          {% if user.is_superuser %}
+          <td class="text-end">
+            <a
+              class="btn btn-outline-danger btn-sm js-swal-delete-post"
+              href="{% url 'raw-milk-supplier-rate-history-delete' supplier.pk item.pk %}"
+              data-swal-title="Delete this rate record?"
+              data-swal-text="Current rate will be recalculated from remaining history."
+            >Delete</a>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{% if user.is_superuser %}5{% else %}4{% endif %}" class="text-center text-muted py-3">No rate history yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="rms-collection-section">
+  <div class="card card-table rms-collection-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+        <div class="rms-section-title mb-0">Raw Milk Bulk Collection</div>
+        {% if perms.suppliers.add_rawmilksuppliercollection %}
+        <a class="btn btn-sm btn-primary" href="{% url 'raw-milk-collection-add' %}?supplier={{ supplier.pk }}">
+          <i class="bi bi-plus-lg me-1"></i>Add collection
+        </a>
+        {% endif %}
+      </div>
+
+      <div class="smart-dt-stats smart-dt-stats--four" aria-label="Collection summary">
+        <div class="smart-dt-stat">
+          <span class="smart-dt-stat-label">Entries{% if collection_filters.period_active %} <span class="text-muted fw-normal">(filtered)</span>{% endif %}</span>
+          <span class="smart-dt-stat-value">{{ supplier_collections.total_entries }}</span>
+        </div>
+        {% include "includes/_smart_stat_dual_qty.html" with label="Total milk" kg=supplier_collection_totals.total_kg|money liters=supplier_collection_totals.total_liters|money %}
+        <div class="smart-dt-stat">
+          <span class="smart-dt-stat-label">Latest collection</span>
+          <span class="smart-dt-stat-value">{% if supplier_collections.latest_date %}{{ supplier_collections.latest_date|date:"Y-m-d" }}{% else %}—{% endif %}</span>
+        </div>
+        <div class="smart-dt-stat">
+          <span class="smart-dt-stat-label">Billed / paid{% if collection_filters.period_active %} <span class="text-muted fw-normal">(filtered)</span>{% endif %}</span>
+          <span class="smart-dt-stat-value">
+            {{ supplier_collection_totals.total_amount|default:0|money }}
+            <small>/ {{ supplier_collection_totals.total_paid|default:0|money }}</small>
+          </span>
+        </div>
+      </div>
+
+      <div id="rmsCollectionDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter collections">
+        <a
+          class="smart-dt-chip {% if not collection_filters.payment_status %}is-active{% endif %}"
+          href="?{% if collection_filters.date_from %}date_from={{ collection_filters.date_from }}&amp;{% endif %}{% if collection_filters.date_to %}date_to={{ collection_filters.date_to }}&amp;{% endif %}{% if collection_filters.branch %}branch={{ collection_filters.branch }}&amp;{% endif %}{% if collection_filters.status %}status={{ collection_filters.status }}{% endif %}"
+        >All<span class="smart-dt-chip-count">{{ collection_filters.payment_counts.all }}</span></a>
+        <a
+          class="smart-dt-chip {% if collection_filters.payment_status == 'pending' %}is-active{% endif %}"
+          href="?payment_status=pending{% if collection_filters.date_from %}&amp;date_from={{ collection_filters.date_from }}{% endif %}{% if collection_filters.date_to %}&amp;date_to={{ collection_filters.date_to }}{% endif %}{% if collection_filters.branch %}&amp;branch={{ collection_filters.branch }}{% endif %}{% if collection_filters.status %}&amp;status={{ collection_filters.status }}{% endif %}"
+        >Pending<span class="smart-dt-chip-count">{{ collection_filters.payment_counts.pending }}</span></a>
+        <a
+          class="smart-dt-chip {% if collection_filters.payment_status == 'partial' %}is-active{% endif %}"
+          href="?payment_status=partial{% if collection_filters.date_from %}&amp;date_from={{ collection_filters.date_from }}{% endif %}{% if collection_filters.date_to %}&amp;date_to={{ collection_filters.date_to }}{% endif %}{% if collection_filters.branch %}&amp;branch={{ collection_filters.branch }}{% endif %}{% if collection_filters.status %}&amp;status={{ collection_filters.status }}{% endif %}"
+        >Partial<span class="smart-dt-chip-count">{{ collection_filters.payment_counts.partial }}</span></a>
+        <a
+          class="smart-dt-chip {% if collection_filters.payment_status == 'paid' %}is-active{% endif %}"
+          href="?payment_status=paid{% if collection_filters.date_from %}&amp;date_from={{ collection_filters.date_from }}{% endif %}{% if collection_filters.date_to %}&amp;date_to={{ collection_filters.date_to }}{% endif %}{% if collection_filters.branch %}&amp;branch={{ collection_filters.branch }}{% endif %}{% if collection_filters.status %}&amp;status={{ collection_filters.status }}{% endif %}"
+        >Paid<span class="smart-dt-chip-count">{{ collection_filters.payment_counts.paid }}</span></a>
+
+        <form method="get" class="rms-collection-period-filter" id="rmsCollectionFilterForm">
+          {% if collection_filters.payment_status %}
+          <input type="hidden" name="payment_status" value="{{ collection_filters.payment_status }}">
+          {% endif %}
+          {% if supplier_collection_branches|length > 1 %}
+          <label class="visually-hidden" for="rms-collection-branch">Branch</label>
+          <select id="rms-collection-branch" name="branch" class="form-select form-select-sm no-global-select2" aria-label="Branch">
+            <option value="">All branches</option>
+            {% for b in supplier_collection_branches %}
+            <option value="{{ b.pk }}" {% if collection_filters.branch == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+          <label class="visually-hidden" for="rms-collection-status">Status</label>
+          <select id="rms-collection-status" name="status" class="form-select form-select-sm no-global-select2" aria-label="Status">
+            <option value="">All statuses</option>
+            {% for code, label in status_choices %}
+            <option value="{{ code }}" {% if collection_filters.status == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="rms-collection-period"
+              class="form-control js-datepicker-range"
+              data-range-start="date_from"
+              data-range-end="date_to"
+              placeholder="Period"
+              autocomplete="off"
+              aria-label="Date period"
+              value="{% if collection_filters.date_from and collection_filters.date_to %}{{ collection_filters.date_from }} to {{ collection_filters.date_to }}{% elif collection_filters.date_from %}{{ collection_filters.date_from }}{% elif collection_filters.date_to %}{{ collection_filters.date_to }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="date_from" value="{{ collection_filters.date_from }}">
+          <input type="hidden" name="date_to" value="{{ collection_filters.date_to }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Apply filters"><i class="bi bi-funnel"></i> Apply</button>
+          {% if collection_filters.period_active %}
+          <a href="{% url 'raw-milk-supplier-detail' supplier.pk %}" class="btn btn-sm btn-outline-secondary" title="Clear filters">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+
+      <table
+        class="table table-hover datatable datatable-smart rms-collection-table smart-dt-table mb-0 w-100"
+        data-page-length="25"
+        data-empty-table="No bulk collections for this supplier{% if collection_filters.period_active %} matching these filters{% endif %}."
+        data-smart-order="0,desc"
+        data-footer-sum-cols="5,6,7,8"
+        data-filters-target="rmsCollectionDtFilters"
+      >
+        <thead>
+          <tr>
+            <th class="all text-start dt-date">Date</th>
+            <th class="all">Branch</th>
+            <th class="all">Dispatch</th>
+            <th class="min-tablet-l">Status</th>
+            <th class="min-tablet-l">Payment</th>
+            <th class="min-desktop text-end">Amount</th>
+            <th class="min-desktop text-end">Paid</th>
+            <th class="min-desktop text-end">Kg</th>
+            <th class="min-desktop text-end">Liters</th>
+            <th class="all text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in supplier_collection_rows %}
+          <tr>
+            <td class="text-start dt-date" data-order="{{ o.date|date:'Y-m-d' }}">{{ o.date }}</td>
+            <td>{% if o.branch %}{{ o.branch.name }}{% else %}—{% endif %}</td>
+            <td>{{ o.dispatch_no }}</td>
+            <td>{% include "suppliers/_raw_milk_collection_status_controls.html" %}</td>
+            <td>{% include "suppliers/_raw_milk_collection_payment_controls.html" %}</td>
+            <td class="text-end dt-num" data-order="{{ o.total_amount|default:'0' }}">{{ o.total_amount|money }}</td>
+            <td class="text-end dt-num" data-order="{{ o.paid_amount|default:'0' }}">{{ o.paid_amount|money }}</td>
+            <td class="text-end dt-num" data-order="{{ o.kg|default:'0' }}">{{ o.kg|money }}</td>
+            <td class="text-end dt-num" data-order="{{ o.liters|default:'0' }}">{{ o.liters|money }}</td>
+            <td class="text-end">
+              <div class="smart-dt-actions justify-content-end">
+                {% if perms.suppliers.change_rawmilksuppliercollection %}
+                <a
+                  class="btn btn-outline-primary btn-sm js-raw-milk-edit-modal"
+                  href="{% url 'raw-milk-collection-edit' o.pk %}"
+                  data-edit-url="{% url 'raw-milk-collection-edit' o.pk %}"
+                  data-dispatch-no="{{ o.dispatch_no }}"
+                >Edit</a>
+                <a
+                  class="btn btn-outline-secondary btn-sm js-raw-milk-result-modal"
+                  href="{% url 'raw-milk-collection-result' o.pk %}"
+                  data-result-url="{% url 'raw-milk-collection-result' o.pk %}"
+                  data-dispatch-no="{{ o.dispatch_no }}"
+                  data-result-qty="{{ o.supplier_result_quantity|default_if_none:'' }}"
+                  data-status="{{ o.status }}"
+                  data-available-liters="{{ o.liters|default:'0' }}"
+                >Result</a>
+                <a class="btn btn-outline-success btn-sm" href="{% url 'raw-milk-supplier-account' supplier.pk %}">Pay</a>
+                {% else %}
+                —
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th class="all"></th>
+            <th class="all"></th>
+            <th class="all text-end">Totals</th>
+            <th class="min-tablet-l"></th>
+            <th class="min-tablet-l"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="min-desktop text-end dt-foot-total"></th>
+            <th class="all"></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if perms.suppliers.change_rawmilksuppliercollection %}
+{% include "suppliers/_raw_milk_collection_edit_modal.html" %}
+{% include "suppliers/_raw_milk_collection_result_modal.html" %}
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+{% if perms.suppliers.change_rawmilksuppliercollection %}
+{% include "suppliers/_raw_milk_collection_inline_script.html" %}
+{% endif %}
+<script>
+(function () {
+  var root = document.getElementById("supplierRateForm");
+  if (!root) return;
+
+  function focusNextField(current) {
+    var fields = Array.prototype.slice.call(root.querySelectorAll(".js-focus-next")).filter(function (el) {
+      return el.offsetParent !== null && !el.disabled && el.type !== "hidden";
+    });
+    var idx = fields.indexOf(current);
+    if (idx < 0) return;
+    var next = fields[idx + 1];
+    if (!next) return;
+    next.focus();
+    if (typeof next.select === "function" && next.tagName === "INPUT") next.select();
+  }
+
+  root.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Enter") return;
+    var t = ev.target;
+    if (!t || t.tagName === "TEXTAREA" || t.tagName === "BUTTON") return;
+    if (t.tagName === "SELECT" || t.classList.contains("js-focus-next")) {
+      ev.preventDefault();
+      focusNextField(t);
+    }
+  });
+})();
+</script>
+{% endblock %}

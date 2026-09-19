@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Depreciation policies · Assets{% endblock %}
+{% block page_heading %}Depreciation policies{% endblock %}
+{% block topbar_actions %}
+{% if perms.assets.add_depreciationpolicy or request.user.is_superuser %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-policy-add' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add policy</a>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block content %}
+<div class="asset-screen">
+  <div class="smart-stat-grid asset-kpi-grid" aria-label="Policy summary">
+    <button type="button" class="smart-stat-card asset-kpi--count js-asset-stat-filter" data-smart-filter="all">
+      <span class="smart-stat-card__icon smart-stat-card__icon--slate"><i class="bi bi-percent" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Policies</span>
+        <span class="smart-stat-card__value">{{ stats.total }}</span>
+        <span class="smart-stat-card__hint">Write-down methods</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--book js-asset-stat-filter" data-smart-filter="active">
+      <span class="smart-stat-card__icon smart-stat-card__icon--emerald"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Active</span>
+        <span class="smart-stat-card__value">{{ stats.active }}</span>
+        <span class="smart-stat-card__hint">Available on assets</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--cost js-asset-stat-filter" data-smart-filter="straight_line">
+      <span class="smart-stat-card__icon smart-stat-card__icon--blue"><i class="bi bi-graph-up" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Straight line</span>
+        <span class="smart-stat-card__value">{{ stats.straight }}</span>
+        <span class="smart-stat-card__hint">Equal periodic charge</span>
+      </span>
+    </button>
+    <button type="button" class="smart-stat-card asset-kpi--written js-asset-stat-filter" data-smart-filter="reducing_balance">
+      <span class="smart-stat-card__icon smart-stat-card__icon--amber"><i class="bi bi-graph-down" aria-hidden="true"></i></span>
+      <span class="smart-stat-card__body">
+        <span class="smart-stat-card__label">Reducing</span>
+        <span class="smart-stat-card__value">{{ stats.reducing }}</span>
+        <span class="smart-stat-card__hint">Declining-balance rate</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <div id="assetPolicyDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Policy filters">
+        <button type="button" class="smart-dt-chip is-active" data-smart-filter="all">All<span class="smart-dt-chip-count">{{ stats.total }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="active">Active<span class="smart-dt-chip-count">{{ stats.active }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="straight_line">Straight line<span class="smart-dt-chip-count">{{ stats.straight }}</span></button>
+        <button type="button" class="smart-dt-chip" data-smart-filter="reducing_balance">Reducing<span class="smart-dt-chip-count">{{ stats.reducing }}</span></button>
+      </div>
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Accounting policy</span>
+            <h2 class="asset-statement__title">Depreciation policies</h2>
+            <p class="asset-statement__meta">Methods applied when monthly depreciation is posted</p>
+          </div>
+          <span class="asset-statement__account">DEP-POL</span>
+        </header>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No policies yet."
+          data-filters-target="assetPolicyDtFilters"
+          data-print-title="Depreciation policies"
+        >
+          <thead>
+            <tr>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Name</th>
+              <th class="all">Method</th>
+              <th class="min-tablet-l text-end">Life (mo)</th>
+              <th class="min-desktop text-end">Annual %</th>
+              <th class="min-desktop">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in policies %}
+            <tr class="smart-row--{{ p.method }}{% if p.is_active %} smart-row--active{% endif %}">
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all">
+                <div class="smart-dt-name-row">
+                  <span class="smart-dt-name-text">{{ p.name }}</span>
+                  <a href="{% url 'asset-policy-edit' p.pk %}" class="smart-dt-edit-btn" title="Edit policy" aria-label="Edit {{ p.name }}">
+                    <i class="bi bi-pen-fill" aria-hidden="true"></i>
+                  </a>
+                </div>
+              </td>
+              <td class="all">{{ p.get_method_display }}</td>
+              <td class="min-tablet-l text-end dt-num">{{ p.useful_life_months }}</td>
+              <td class="min-desktop text-end dt-num">{% if p.annual_rate_percent %}{{ p.annual_rate_percent }}{% else %}—{% endif %}</td>
+              <td class="min-desktop">
+                {% if p.is_active %}
+                <span class="smart-badge smart-badge--success">Active</span>
+                {% else %}
+                <span class="smart-badge smart-badge--secondary">Inactive</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="asset-statement__disclaimer">Computer-generated policy register. Residual % is applied to cost at the end of useful life.</p>
+      </article>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% include "assets/_asset_stat_filter_script.html" %}
+{% endblock %}

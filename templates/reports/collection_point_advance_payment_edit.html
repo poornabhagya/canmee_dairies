@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Edit point advance · Canmee Dairies{% endblock %}
+{% block page_heading %}Edit point advance{% endblock %}
+{% block extra_css %}
+<style>
+  .advance-page-card {
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .advance-page-card .card-body {
+    padding: 1rem 1.1rem;
+  }
+  .advance-page-card__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.15rem;
+  }
+  .advance-page-card__hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 0.85rem;
+  }
+  .advance-page-form .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.25rem;
+  }
+  .advance-page-form .advance-amount-input {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="card advance-page-card mb-3">
+  <div class="card-body advance-page-form">
+    <div class="advance-page-card__title">Edit point advance</div>
+    <p class="advance-page-card__hint">
+      Update advance for {{ advance.collection_point.number }} — {{ advance.collection_point.name }} on {{ advance.date|date:"Y-m-d" }}.
+      Recorded by {{ advance.created_by }}.
+    </p>
+    <form method="post" id="collection-point-advance-edit-form">
+      {% csrf_token %}
+      <input type="hidden" name="return_to" value="advance-list">
+      {% for branch_id in selected_branches %}
+      <input type="hidden" name="return_branches" value="{{ branch_id }}">
+      {% endfor %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="{{ form.collection_point.id_for_label }}">{{ form.collection_point.label }}</label>
+          {{ form.collection_point }}
+          {% if form.collection_point.errors %}<div class="text-danger small">{{ form.collection_point.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ form.advance_type.id_for_label }}">{{ form.advance_type.label }}</label>
+          {{ form.advance_type }}
+          {% if form.advance_type.errors %}<div class="text-danger small">{{ form.advance_type.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+          {{ form.date }}
+          {% if form.date.errors %}<div class="text-danger small">{{ form.date.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6 col-md-3 col-lg-2">
+          <label class="form-label" for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+          {{ form.amount }}
+          {% if form.amount.errors %}<div class="text-danger small">{{ form.amount.errors }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          {{ form.note }}
+          {% if form.note.errors %}<div class="text-danger small">{{ form.note.errors }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save changes</button>
+        <a href="{% url 'collection-point-advance-list' %}{% if selected_branches %}?{% for branch_id in selected_branches %}branches={{ branch_id }}{% if not forloop.last %}&amp;{% endif %}{% endfor %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById("collection-point-advance-edit-form");
+  if (!form) return;
+
+  function formatAmount(value) {
+    var n = Number(String(value || "0").replace(/,/g, ""));
+    if (!isFinite(n)) return value;
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  form.addEventListener("focusin", function (event) {
+    var target = event.target;
+    if (!target.classList || !target.classList.contains("js-money-input")) return;
+    target.value = String(target.value || "").replace(/,/g, "");
+    if (typeof target.select === "function") target.select();
+  });
+  form.addEventListener("focusout", function (event) {
+    var target = event.target;
+    if (!target.classList || !target.classList.contains("js-money-input")) return;
+    if (!String(target.value || "").trim()) return;
+    target.value = formatAmount(target.value);
+  });
+  form.addEventListener("submit", function () {
+    form.querySelectorAll(".js-money-input").forEach(function (el) {
+      el.value = String(el.value || "").replace(/,/g, "");
+    });
+  });
+
+  if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+    var farmerSelect = form.querySelector('[name="collection_point"]');
+    if (farmerSelect) {
+      var $farmer = window.jQuery(farmerSelect);
+      if (!$farmer.hasClass("select2-hidden-accessible")) {
+        $farmer.select2({ width: "100%", placeholder: "Select collection point" });
+      }
+    }
+  }
+})();
+</script>
+{% endblock %}

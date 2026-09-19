@@ -1,0 +1,37 @@
+<script>
+(function () {
+  var nodes = document.querySelectorAll(
+    ".buyer-detail-card .cp-loan-statement__figure-value, body.buyer-page .cp-loan-kpi-grid .smart-stat-card__value"
+  );
+  if (!nodes.length) return;
+
+  function fit(el) {
+    el.style.fontSize = "";
+    var computed = parseFloat(window.getComputedStyle(el).fontSize);
+    if (!computed) return;
+    var minPx = Math.max(9, computed * 0.55);
+    var size = computed;
+    var steps = 36;
+    while (el.scrollWidth > el.clientWidth + 0.5 && size > minPx && steps--) {
+      size -= 0.5;
+      el.style.fontSize = size + "px";
+    }
+  }
+
+  function fitAll() {
+    nodes.forEach(fit);
+  }
+
+  var timer = 0;
+  function onResize() {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(fitAll, 50);
+  }
+
+  fitAll();
+  window.addEventListener("resize", onResize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", onResize);
+  }
+})();
+</script>

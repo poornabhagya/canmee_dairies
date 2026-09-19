@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Bulk rate update · Canmee Dairies{% endblock %}
+{% block page_heading %}Bulk rate update{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'farmer-list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to farmers</a>
+{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+<style>
+  .bulk-rate-list-card {
+    margin-top: 0.5rem;
+    border: 1px solid #e7edf5;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  }
+  .bulk-rate-list-card .card-body.table-wrap {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .bulk-rate-list-card .table-wrap,
+  .bulk-rate-list-card .dataTables_wrapper,
+  .bulk-rate-list-card div.dt-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  .bulk-rate-hint {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin: -0.35rem 0 0.85rem;
+    line-height: 1.35;
+  }
+  .bulk-rate-list-card .bulk-rate-table {
+    width: 100% !important;
+    table-layout: fixed;
+    font-size: 0.8125rem;
+  }
+  .bulk-rate-list-card .bulk-rate-table thead th {
+    white-space: nowrap;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.4rem;
+    vertical-align: bottom;
+  }
+  .bulk-rate-list-card .bulk-rate-table tbody td {
+    padding: 0.45rem 0.4rem;
+    vertical-align: middle;
+  }
+  .bulk-rate-table .bulk-rate-col-seq { width: 2.4rem; }
+  .bulk-rate-table .bulk-rate-col-farmer { min-width: 9rem; }
+  .bulk-rate-table .bulk-rate-col-avg-supply { width: 9rem; }
+  .bulk-rate-table thead th.bulk-rate-col-avg-supply {
+    white-space: normal;
+    line-height: 1.15;
+  }
+  .bulk-rate-table .bulk-rate-col-latest { width: 5.5rem; }
+  .bulk-rate-table .bulk-rate-col-new { width: 6.25rem; }
+  .bulk-rate-table .bulk-rate-col-paid { width: 4.75rem; }
+  .bulk-rate-table .bulk-rate-seq {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+  .bulk-rate-table .bulk-rate-farmer-name {
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.25;
+  }
+  .bulk-rate-table .bulk-rate-farmer-reg {
+    font-size: 0.72rem;
+    color: #64748b;
+    line-height: 1.2;
+    margin-top: 0.1rem;
+  }
+  .bulk-rate-table .bulk-rate-num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bulk-rate-table .bulk-rate-num--muted { color: #64748b; }
+  .bulk-rate-table .bulk-rate-num--current {
+    color: #334155;
+    font-weight: 600;
+  }
+  .bulk-rate-table td.bulk-rate-cell-input { text-align: right; }
+  .bulk-rate-table .js-bulk-rate-input {
+    width: 5.5rem;
+    max-width: 100%;
+    margin-left: auto;
+    text-align: right;
+    padding: 0.22rem 0.45rem;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+    border-radius: 0.375rem;
+  }
+  .bulk-rate-table .js-bulk-rate-apply {
+    width: 4.25rem;
+    min-width: 4.25rem;
+    max-width: 100%;
+    margin-left: auto;
+    padding: 0.2rem 1.35rem 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+  }
+  .bulk-rate-table .js-bulk-rate-input:focus,
+  .bulk-rate-table .js-bulk-rate-apply:focus {
+    border-color: #059669;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.12);
+  }
+  .bulk-rate-list-card .bulk-rate-table tbody tr:hover {
+    background: rgba(5, 150, 105, 0.03);
+  }
+  .bulk-rate-list-card div.dt-smart-toolbar {
+    padding: 0 0 0.65rem;
+    border-bottom: 1px solid #eef2f7;
+    margin-bottom: 0.35rem !important;
+  }
+</style>
+{% endblock %}
+{% block content %}
+{{ bulk_rate_filter_routes|json_script:"bulk-rate-filter-routes-data" }}
+{{ bulk_rate_filter_points|json_script:"bulk-rate-filter-points-data" }}
+<div class="card card-table bulk-rate-list-card smart-list-card">
+  <div class="card-body table-wrap">
+    <div class="smart-dt-stats" aria-label="Bulk rate summary">
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Farmers</span>
+        <span class="smart-dt-stat-value">{{ summary.count }}</span>
+      </div>
+      <div class="smart-dt-stat">
+        <span class="smart-dt-stat-label">Avg daily supply</span>
+        <span class="smart-dt-stat-value">{% if summary.avg_supply != None %}{{ summary.avg_supply|floatformat:2 }} <small>kg</small>{% else %}—{% endif %}</span>
+      </div>
+      <div class="smart-dt-stat smart-dt-stat--active">
+        <span class="smart-dt-stat-label">Rate paid — yes</span>
+        <span class="smart-dt-stat-value">{{ summary.paid_yes }}</span>
+      </div>
+    </div>
+    <p class="bulk-rate-hint">Type a new rate, press Enter to save and move down, or Tab to the next row.</p>
+
+    <div id="bulkRateDtFilters" class="smart-dt-filters d-none" role="toolbar" aria-label="Filter farmers">
+      {% if branches|length > 1 %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by branch</span>
+        <select id="bulkRateBranchFilter" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Filter by branch">
+          <option value="all">All branches</option>
+          {% for b in branches %}
+          <option value="{{ b.pk }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by route</span>
+        <select id="bulkRateRouteFilter" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Filter by route">
+          <option value="all">All routes</option>
+        </select>
+      </label>
+      <label class="smart-dt-branch-filter-wrap mb-0">
+        <span class="visually-hidden">Filter by collection point</span>
+        <select id="bulkRatePointFilter" class="form-select form-select-sm smart-dt-branch-filter no-global-select2" aria-label="Filter by collection point">
+          <option value="all">All points</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="bulk-rate-form">
+      {% csrf_token %}
+      <table
+        class="table table-hover bulk-rate-table datatable datatable-smart datatable-no-responsive smart-dt-table mb-0 w-100"
+        data-page-length="25"
+        data-empty-table="No farmers match these filters."
+        data-filters-target="bulkRateDtFilters"
+        {% if branches|length > 1 %}data-branch-filter-target="bulkRateBranchFilter"{% endif %}
+        data-route-filter-target="bulkRateRouteFilter"
+        data-point-filter-target="bulkRatePointFilter"
+      >
+        <thead>
+          <tr>
+            <th class="bulk-rate-col-seq text-center dt-seq">#</th>
+            <th class="bulk-rate-col-farmer all">Farmer</th>
+            <th class="bulk-rate-col-avg-supply text-end min-tablet-l" title="Average daily milk supply (kg)">Avg daily supply</th>
+            <th class="bulk-rate-col-latest text-end min-tablet-l" title="Current rate">Latest</th>
+            <th class="bulk-rate-col-new text-end all" title="New rate — Enter saves and moves down">New rate</th>
+            <th class="bulk-rate-col-paid text-end min-tablet-l" title="Apply rate to paid collections">Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in farmers %}
+          <tr
+            class="js-bulk-rate-row"
+            data-farmer-id="{{ f.pk }}"
+            data-branch-id="{{ f.branch_id|default:'' }}"
+            data-route-id="{{ f.route_id|default:'' }}"
+            data-point-id="{{ f.collection_point_id|default:'' }}"
+          >
+            <td class="bulk-rate-seq js-bulk-rate-seq dt-seq">{{ forloop.counter }}</td>
+            <td class="bulk-rate-col-farmer all">
+              <div class="bulk-rate-farmer-name text-truncate">{{ f.common_name|default:f.full_name }}</div>
+              <div class="bulk-rate-farmer-reg text-truncate">{{ f.registration_number|default:"—" }}</div>
+            </td>
+            <td class="bulk-rate-num bulk-rate-num--muted text-end min-tablet-l dt-num">
+              {% if f.avg_daily_milk_kg != None %}{{ f.avg_daily_milk_kg|floatformat:2 }}{% else %}—{% endif %}
+            </td>
+            <td class="js-bulk-rate-latest bulk-rate-num bulk-rate-num--current text-end min-tablet-l dt-num">{{ f.rate|money }}</td>
+            <td class="bulk-rate-cell-input all">
+              <input
+                type="number"
+                class="form-control form-control-sm js-bulk-rate-input"
+                step="0.01"
+                min="0.01"
+                name="rate_{{ f.pk }}"
+                value="{{ f.rate }}"
+                data-original-rate="{{ f.rate }}"
+                autocomplete="off"
+                aria-label="New rate for {{ f.common_name|default:f.full_name }}"
+              >
+            </td>
+            <td class="bulk-rate-cell-input min-tablet-l">
+              <select
+                class="form-select form-select-sm js-bulk-rate-apply"
+                name="apply_rate_paid_{{ f.pk }}"
+                data-original-apply="{{ f.apply_rate_paid }}"
+                aria-label="Apply rate paid for {{ f.common_name|default:f.full_name }}"
+              >
+                <option value="yes" {% if f.apply_rate_paid == "yes" %}selected{% endif %}>Yes</option>
+                <option value="no" {% if f.apply_rate_paid == "no" %}selected{% endif %}>No</option>
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{{ block.super }}
+<script>
+  window.FARMER_BULK_RATE = {
+    saveUrl: "{% url 'farmer-bulk-rate-cell-save' %}",
+    csrfToken: "{{ csrf_token }}"
+  };
+</script>
+<script src="{% static 'js/farmer-bulk-rate.js' %}"></script>
+<script>
+(function () {
+  function readJson(id) {
+    try {
+      var el = document.getElementById(id);
+      return el ? JSON.parse(el.textContent || "[]") : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function initBulkRateCascadeFilters() {
+    var branchEl = document.getElementById("bulkRateBranchFilter");
+    var routeEl = document.getElementById("bulkRateRouteFilter");
+    var pointEl = document.getElementById("bulkRatePointFilter");
+    if (!routeEl || !pointEl) return;
+    var routes = readJson("bulk-rate-filter-routes-data");
+    var points = readJson("bulk-rate-filter-points-data");
+
+    function appendOption(selectEl, value, label) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      selectEl.appendChild(opt);
+    }
+
+    function refillRoutes() {
+      var branchId = branchEl ? String(branchEl.value || "all") : "all";
+      routeEl.innerHTML = "";
+      appendOption(routeEl, "all", "All routes");
+      routes.forEach(function (route) {
+        if (branchId === "all" || String(route.branch_id) === branchId) {
+          appendOption(routeEl, String(route.id), route.label);
+        }
+      });
+    }
+
+    function refillPoints() {
+      var branchId = branchEl ? String(branchEl.value || "all") : "all";
+      var routeId = String(routeEl.value || "all");
+      pointEl.innerHTML = "";
+      appendOption(pointEl, "all", "All points");
+      points.forEach(function (point) {
+        var branchOk = branchId === "all" || String(point.branch_id) === branchId;
+        var routeOk = routeId === "all" || String(point.route_id) === routeId;
+        if (branchOk && routeOk) {
+          appendOption(pointEl, String(point.id), point.label);
+        }
+      });
+    }
+
+    refillRoutes();
+    refillPoints();
+    if (branchEl) {
+      branchEl.addEventListener("change", function () {
+        refillRoutes();
+        routeEl.value = "all";
+        refillPoints();
+        pointEl.value = "all";
+        routeEl.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+    routeEl.addEventListener("change", function () {
+      refillPoints();
+      pointEl.value = "all";
+      pointEl.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBulkRateCascadeFilters);
+  } else {
+    initBulkRateCascadeFilters();
+  }
+})();
+</script>
+{% endblock %}

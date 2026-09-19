@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Buyer summary · Canmee Dairies{% endblock %}
+{% block page_heading %}Buyer summary{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Buyer summary</h1>
+    <p class="page-subtitle">Total kg dispatched by buyer.</p>
+  </div>
+</div>
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-6 col-lg-4">
+        <label class="form-label small text-muted mb-1">Branches</label>
+        <select name="branches" class="form-select" multiple>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:'d' in selected_branches %}selected{% endif %}>{{ b.code }} - {{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="form-check mt-4">
+          <input class="form-check-input" type="checkbox" value="1" name="all_branches" id="allBranchesBuyer" {% if request.GET.all_branches == '1' %}checked{% endif %}>
+          <label class="form-check-label" for="allBranchesBuyer">All branches (company total)</label>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <label class="form-label small text-muted mb-1">Buyer</label>
+        <select name="buyer" class="form-select">
+          <option value="">All buyers</option>
+          {% for b in buyers %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="card card-table">
+  <div class="card-body p-0 table-wrap">
+    <table class="table table-hover datatable mb-0">
+      <thead><tr><th>Branch</th><th>Buyer</th><th>Total kg</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ row.branch__name|default:'—' }}</td>
+          <td class="fw-medium">{{ row.buyer__name }}</td>
+          <td>{{ row.total_kg }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{# Print-only final summary + signatures. #}
+<div class="payment-sheet-print-section payment-sheet-print-final payment-sheet-print-all-pack" aria-label="Final summary">
+  <h2 class="payment-sheet-print-heading">Final Summary — {{ branch_summary_label }}</h2>
+  <p class="payment-sheet-print-meta">
+    {% if start.month == end.month and start.year == end.year %}
+      {{ start.day }}-{{ end.day }} {{ end|date:"F Y" }}
+    {% else %}
+      {{ start|date:"j M Y" }} – {{ end|date:"j M Y" }}
+    {% endif %}
+    · {{ sheet_totals.farmer_count }} farmer{{ sheet_totals.farmer_count|pluralize }}
+    · {{ sheet_totals.day_count }} day{{ sheet_totals.day_count|pluralize }}
+  </p>
+  <div class="payment-sheet-print-summary">
+    <div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">Bank Payment</span>
+        <span class="payment-sheet-print-summary__value">{{ sheet_totals.bank_method_total|money }}</span>
+      </div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">Cash Payment</span>
+        <span class="payment-sheet-print-summary__value">{{ sheet_totals.cash_method_total|money }}</span>
+      </div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">Farmers</span>
+        <span class="payment-sheet-print-summary__value">{{ sheet_totals.farmer_count }}</span>
+      </div>
+    </div>
+    <div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">Total Quantity</span>
+        <span class="payment-sheet-print-summary__value">{{ sheet_totals.total_liters|money }} L</span>
+      </div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">Total Payment</span>
+        <span class="payment-sheet-print-summary__value">{{ sheet_totals.total_payment|money }}</span>
+      </div>
+    </div>
+    <div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">AVG Farmer Rate</span>
+        <span class="payment-sheet-print-summary__value">
+          {% if sheet_totals.avg_farmer_rate is not None %}{{ sheet_totals.avg_farmer_rate|money }}{% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="payment-sheet-print-summary__row">
+        <span class="payment-sheet-print-summary__label">AVG Farmer daily collection</span>
+        <span class="payment-sheet-print-summary__value">
+          {% if sheet_totals.avg_farmer_collection is not None %}{{ sheet_totals.avg_farmer_collection|money }} L{% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+  {% include "reports/_collection_point_payment_sheet_print_signatures.html" %}
+</div>

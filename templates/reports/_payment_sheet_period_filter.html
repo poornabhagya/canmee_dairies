@@ -1,0 +1,127 @@
+{% comment %}
+  Modern Period & branches filter for payment sheets.
+  Required context: start, end, branches, selected_branches
+  Required kwargs / with: sheet_kind, reset_url, paid_sheets_url, hint
+{% endcomment %}
+<div class="card payment-sheet-card payment-sheet-period-card mb-3 payment-sheet-no-print">
+  <div class="card-body payment-sheet-filter">
+    <div class="ps-period-head">
+      <div class="ps-period-head__main">
+        <span class="ps-period-head__icon" aria-hidden="true"><i class="bi bi-calendar2-range"></i></span>
+        <div>
+          <div class="payment-sheet-card__title mb-0">Period &amp; branches</div>
+          {% if hint %}
+          <p class="payment-sheet-card__hint mb-0">{{ hint }}</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="ps-period-head__meta" id="ps-period-meta" aria-live="polite">
+        <span class="ps-period-pill" id="ps-period-days-pill">—</span>
+        <span class="ps-period-pill ps-period-pill--muted" id="ps-period-branches-pill">—</span>
+      </div>
+    </div>
+
+    <form
+      method="get"
+      class="js-no-enter-submit payment-sheet-filter-form ps-period-form"
+      data-sheet-kind="{{ sheet_kind }}"
+      id="payment-sheet-period-form"
+    >
+      <div class="ps-period-presets" role="toolbar" aria-label="Quick period">
+        <button type="button" class="ps-period-chip js-ps-period-preset" data-preset="first-half">1st half</button>
+        <button type="button" class="ps-period-chip js-ps-period-preset" data-preset="second-half">2nd half</button>
+        <button type="button" class="ps-period-chip js-ps-period-preset" data-preset="prev-half">Prev half</button>
+        <button type="button" class="ps-period-chip js-ps-period-preset" data-preset="this-month">This month</button>
+      </div>
+
+      <div class="ps-period-grid">
+        <div class="ps-period-field">
+          <label class="form-label" for="payment-sheet-period-range">Payment period</label>
+          <div class="input-group flatpickr-range-wrap">
+            <span class="input-group-text border-end-0 text-muted" title="Open calendar"><i class="bi bi-calendar3" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              id="payment-sheet-period-range"
+              class="form-control border-start-0 js-datepicker-range js-datepicker-range-iso"
+              data-range-start="start"
+              data-range-end="end"
+              placeholder="Select period"
+              autocomplete="off"
+              readonly
+              aria-label="Payment period"
+              value="{% if start and end %}{{ start|date:'Y-m-d' }} to {{ end|date:'Y-m-d' }}{% elif start %}{{ start|date:'Y-m-d' }}{% endif %}"
+            >
+          </div>
+          <input type="hidden" name="start" id="payment-sheet-start" value="{{ start|date:'Y-m-d' }}">
+          <input type="hidden" name="end" id="payment-sheet-end" value="{{ end|date:'Y-m-d' }}">
+        </div>
+
+        <div class="ps-period-field ps-period-field--branches">
+          <div class="ps-branch-picker">
+            <div class="ps-branch-picker__head">
+              <label class="form-label mb-0" id="payment-sheet-branches-label">Branches</label>
+              <div class="ps-branch-picker__tools">
+                <button type="button" class="ps-branch-tool js-ps-branch-all" title="Select all branches">All</button>
+                <button type="button" class="ps-branch-tool js-ps-branch-clear" title="Clear branch selection">None</button>
+              </div>
+            </div>
+            <div
+              class="ps-branch-tiles"
+              role="group"
+              aria-labelledby="payment-sheet-branches-label"
+              id="payment-sheet-branch-tiles"
+            >
+              {% for b in branches %}
+              <button
+                type="button"
+                class="ps-branch-tile js-ps-branch-tile{% if b.pk|stringformat:'s' in selected_branches %} is-selected{% endif %}"
+                data-branch-id="{{ b.pk }}"
+                aria-pressed="{% if b.pk|stringformat:'s' in selected_branches %}true{% else %}false{% endif %}"
+                title="{{ b.name }}"
+              >
+                <span class="ps-branch-tile__check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+                <span class="ps-branch-tile__name">{{ b.name }}</span>
+              </button>
+              {% empty %}
+              <span class="small text-muted">No branches available.</span>
+              {% endfor %}
+            </div>
+            <select
+              id="payment-sheet-branches"
+              name="branches"
+              class="visually-hidden no-global-select2"
+              multiple
+              tabindex="-1"
+              aria-hidden="true"
+            >
+              {% for b in branches %}
+              <option value="{{ b.pk }}" {% if b.pk|stringformat:"s" in selected_branches %}selected{% endif %}>{{ b.code }} — {{ b.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="ps-period-actions" role="group" aria-label="Sheet actions">
+          <button type="submit" class="btn ps-period-generate">
+            <span class="ps-period-generate__icon" aria-hidden="true"><i class="bi bi-lightning-charge-fill"></i></span>
+            <span class="ps-period-generate__copy">
+              <span class="ps-period-generate__label">Generate</span>
+              <span class="ps-period-generate__hint">Build sheet</span>
+            </span>
+          </button>
+          <a
+            href="{{ reset_url }}"
+            class="btn ps-period-icon-btn js-payment-sheet-load-progress"
+            data-sheet-kind="{{ sheet_kind }}"
+            data-load-title="Resetting payment sheet…"
+            title="Reset"
+            aria-label="Reset"
+          ><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></a>
+          <a href="{{ paid_sheets_url }}" class="btn ps-period-secondary" title="Paid sheets">
+            <i class="bi bi-clock-history" aria-hidden="true"></i><span>Paid sheets</span>
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

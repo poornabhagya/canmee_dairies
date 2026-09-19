@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}Asset settings · Canmee Dairies{% endblock %}
+{% block page_heading %}Asset settings{% endblock %}
+{% block extra_css %}
+{% include "assets/_asset_page_styles.html" %}
+{% endblock %}
+{% block topbar_actions %}
+<div class="topbar-actions asset-page-actions">
+  <a href="{% url 'asset-list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Register</a>
+</div>
+{% endblock %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <article class="asset-voucher">
+    <header class="asset-voucher__head">
+      <div>
+        <span class="asset-statement__kicker">Control account</span>
+        <h2 class="asset-statement__title">Asset module policy</h2>
+        <p class="asset-statement__meta">Admin / superuser options. Depreciation is off by default.</p>
+      </div>
+      <span class="asset-statement__account">SET</span>
+    </header>
+    <div class="asset-voucher__body">
+      <section class="asset-voucher__section">
+        <h3 class="asset-voucher__section-title"><span class="asset-voucher__no">01</span> Depreciation</h3>
+        <div class="form-check form-switch mb-2">
+          {% render_field form.enable_depreciation class="form-check-input" %}
+          <label class="form-check-label" for="{{ form.enable_depreciation.id_for_label }}">Enable depreciation policy &amp; runs</label>
+        </div>
+        <p class="form-text mb-0">When on, policies and monthly depreciation appear in the Assets menu and post to the asset account.</p>
+      </section>
+      <section class="asset-voucher__section">
+        <h3 class="asset-voucher__section-title"><span class="asset-voucher__no">02</span> Labelling</h3>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label" for="{{ form.default_label_prefix.id_for_label }}">Default label prefix</label>
+            {% render_field form.default_label_prefix class="form-control" %}
+            <p class="form-text mb-0">Used when generating new asset tags / barcode labels.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="asset-voucher__actions">
+      <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Save policy</button>
+      <a href="{% url 'asset-list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </article>
+</form>
+{% endblock %}

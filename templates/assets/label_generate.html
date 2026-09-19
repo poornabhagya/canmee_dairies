@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load format_extras %}
+{% block title %}Asset labels · Canmee Dairies{% endblock %}
+{% block page_heading %}Asset labels{% endblock %}
+{% block extra_css %}
+{% include "includes/_smart_datatable_styles.html" %}
+{% include "includes/smart_icon_buttons_styles.html" %}
+{% include "assets/_asset_page_styles.html" %}
+<style>
+  .asset-label-note { max-width: 22rem; }
+</style>
+{% endblock %}
+{% block content %}
+<form method="post" id="asset-label-form">
+  {% csrf_token %}
+  <div class="card card-table asset-page-card asset-list-card smart-list-card">
+    <div class="card-body table-wrap">
+      <article class="asset-statement">
+        <header class="asset-statement__head">
+          <div>
+            <span class="asset-statement__kicker">Print register</span>
+            <h2 class="asset-statement__title">Generate asset labels</h2>
+            <p class="asset-statement__meta">Select assets on the register, then post a print batch</p>
+          </div>
+          <span class="asset-statement__account">LBL</span>
+        </header>
+        <div class="d-flex flex-wrap align-items-end gap-2 px-3 pt-3 pb-2">
+          <div class="asset-label-note flex-grow-1">
+            <label class="form-label" for="id_note">Batch narration (optional)</label>
+            <input type="text" name="note" id="id_note" class="form-control form-control-sm" maxlength="255">
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-printer me-1"></i>Generate &amp; print</button>
+        </div>
+        <table
+          class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100"
+          data-page-length="25"
+          data-empty-table="No assets available."
+        >
+          <thead>
+            <tr>
+              <th class="all no-export" style="width:2.4rem"></th>
+              <th class="min-tablet-l dt-seq">#</th>
+              <th class="all">Tag</th>
+              <th class="all">Particulars</th>
+              <th class="min-tablet-l">Classification</th>
+              <th class="min-tablet-l">Branch</th>
+              <th class="min-tablet-l">Category</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asset in assets %}
+            <tr>
+              <td class="all">
+                <input type="checkbox" name="selected_assets" value="{{ asset.pk }}" class="form-check-input" {% if request.GET.ids %}checked{% endif %}>
+              </td>
+              <td class="fw-medium min-tablet-l dt-seq"></td>
+              <td class="all"><span class="asset-tag-code">{{ asset.asset_tag }}</span></td>
+              <td class="all">
+                <a href="{% url 'asset-detail' asset.pk %}" class="smart-dt-name-link">{{ asset.name }}</a>
+              </td>
+              <td class="min-tablet-l">{% if asset.asset_type %}{{ asset.asset_type.name }}{% else %}—{% endif %}</td>
+              <td class="min-tablet-l">{{ asset.branch_label }}</td>
+              <td class="min-tablet-l">{{ asset.category.name }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </article>
+    </div>
+  </div>
+</form>
+{% if recent_batches %}
+<div class="card card-table asset-page-card asset-list-card smart-list-card mt-3">
+  <div class="card-body table-wrap">
+    <article class="asset-statement">
+      <header class="asset-statement__head">
+        <div>
+          <span class="asset-statement__kicker">Batches</span>
+          <h2 class="asset-statement__title">Recent print runs</h2>
+          <p class="asset-statement__meta">Reprint a posted label batch</p>
+        </div>
+      </header>
+      <table class="table table-hover datatable datatable-smart smart-dt-table mb-0 w-100" data-page-length="10" data-empty-table="No batches yet." data-smart-order="0,desc">
+        <thead>
+          <tr>
+            <th class="all">Batch</th>
+            <th class="all text-end">Labels</th>
+            <th class="min-tablet-l">Posted</th>
+            <th class="all text-end no-export">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in recent_batches %}
+          <tr>
+            <td class="all"><span class="asset-tag-code">#{{ b.pk }}</span></td>
+            <td class="all text-end dt-num">{{ b.label_count }}</td>
+            <td class="min-tablet-l" data-order="{{ b.created_at|date:'Y-m-d H:i:s' }}">{{ b.created_at|date:"Y-m-d H:i" }}</td>
+            <td class="all text-end">
+              <a href="{% url 'asset-label-print' b.pk %}" class="btn btn-sm btn-outline-secondary">Reprint</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </article>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
