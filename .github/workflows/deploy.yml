@@ -22,6 +22,10 @@ jobs:
   test:
     name: Code Validation & Testing
     runs-on: ubuntu-latest
+    # ටෙස්ට් එක රන් වෙද්දී MySQL වෙනුවට SQLite පාවිච්චි කිරීමට ඩේටාබේස් සෙටින්ග්ස් ඕවර්රයිඩ් කිරීම
+    env:
+      DJANGO_SETTINGS_MODULE: canmee_dairies.settings
+      DATABASE_URL: sqlite:///db.sqlite3
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -34,7 +38,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Run Syntax Checks
-        run: python manage.py check
+        run: python manage.py check --settings=canmee_dairies.settings
 
   # 2. Build & Push Track
   build-and-push:
