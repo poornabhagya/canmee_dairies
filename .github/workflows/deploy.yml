@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.0
+        # මෙතන 8.0 වෙනුවට 8.4 ලෙස වෙනස් කරන්න 👇
+        image: mysql:8.4
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-          # කලින් canmee_db කියලා තිබුණේ, ඒක ඔයාගේ Django settings වල තියෙන විදියට 'canmee_dairies' කියලා දෙන්න.
           MYSQL_DATABASE: canmee_dairies
         ports:
           - 3306:3306
