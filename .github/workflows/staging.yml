@@ -1,0 +1,167 @@
+name: Canmee Dairies CI/CD - Staging Deployment & Automated Smoke Test
+
+# main branch එකට code push වූ සැණින් ක්‍රියාත්මක වේ
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: canmee-dairies-erp
+  ROLE_TO_ASSUME: arn:aws:iam::804372444724:role/canmee-github-actions-deploy-role
+  # Staging Instance ID එක (10.0.2.0/24)
+  STAGING_INSTANCE_ID: i-0ab7ab84b380e2210
+
+jobs:
+  # 1. Syntax & Pre-deploy Validation
+  test:
+    name: Code Validation & Quality Checks
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: canmee_dairies
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=3
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          sudo apt-get install -y libmysqlclient-dev
+
+      - name: Run Syntax Checks
+        run: python manage.py check
+
+  # 2. Build & Push Image to ECR (staging tag)
+  build-and-push:
+    name: Build AMD64 Image for Staging
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:staging
+            ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+
+  # 3. Deploy to Staging & Run Automated Smoke Test Harness
+  deploy-staging-and-test:
+    name: SSM Staging Deploy & Automated Smoke Test
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger SSM Deployment and Automated Smoke Test
+        id: run-smoke-test
+        run: |
+          echo "Deploying update to Staging Host and running automated scan_urls.py..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ env.STAGING_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Staging Auto-Deploy & Smoke Test: ${{ github.sha }}" \
+            --parameters 'commands=[
+              "set -e",
+              "cd /home/ubuntu/canmee_dairies",
+              "git pull origin main",
+              "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)",
+              "export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com",
+              "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
+              "docker compose pull web",
+              "docker compose run --rm web python manage.py migrate --noinput",
+              "docker compose run --rm web python manage.py collectstatic --noinput",
+              "docker compose up -d --remove-orphans web nginx",
+              "docker cp scan_urls.py canmee_web:/app/scan_urls.py",
+              "docker exec canmee_web python scan_urls.py"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command sent with ID: $COMMAND_ID"
+          echo "Waiting for command execution to complete..."
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.STAGING_INSTANCE_ID }}"
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.STAGING_INSTANCE_ID }}" \
+            --query "Status" \
+            --output text)
+
+          OUTPUT=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.STAGING_INSTANCE_ID }}" \
+            --query "StandardOutputContent" \
+            --output text)
+
+          echo "$OUTPUT"
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "::error title=Smoke Test Failed::Staging smoke test returned non-zero exit code or deployment failed!"
+            exit 1
+          fi
+
+      - name: Generate GitHub Actions Staging Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            STATUS_BADGE="✅ PASSED (Ready for Release Tag)"
+          else
+            STATUS_BADGE="❌ FAILED (Review SSM Logs)"
+          fi
+
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ### 🧪 Staging Automated Smoke Test Report
+
+          | Metric | Result | Status |
+          | :--- | :--- | :--- |
+          | **Target Environment** | Staging Node (\`10.0.2.0/24\`) | Active |
+          | **Commit SHA** | \`${{ github.sha }}\` | Tested |
+          | **Triggered By** | \`${{ github.actor }}\` | Automated |
+          | **Smoke Test Harness** | \`scan_urls.py\` (Static Routes Audit) | Complete |
+          | **Gatekeeping Verdict** | ${{ job.status }} \vert{}$STATUS_BADGE |
+          EOF
