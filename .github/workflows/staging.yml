@@ -1,6 +1,6 @@
 name: Canmee Dairies CI/CD - Staging Deployment & Automated Smoke Test
 
-# main branch එකට code push වූ සැණින් ක්‍රියාත්මක වේ
+# main branch එකට push වූ සැණින් ක්‍රියාත්මක වේ
 on:
   push:
     branches:
@@ -14,7 +14,7 @@ env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: canmee-dairies-erp
   ROLE_TO_ASSUME: arn:aws:iam::804372444724:role/canmee-github-actions-deploy-role
-  # Staging Instance ID එක (10.0.2.0/24)
+  # Staging Instance ID (10.0.2.0/24)
   STAGING_INSTANCE_ID: i-0ab7ab84b380e2210
 
 jobs:
@@ -105,7 +105,8 @@ jobs:
             --comment "Staging Auto-Deploy & Smoke Test: ${{ github.sha }}" \
             --parameters 'commands=[
               "set -e",
-              "git config --global --add safe.directory /home/ubuntu/canmee_dairies",
+              "export HOME=/root",
+              "git config --system --add safe.directory /home/ubuntu/canmee_dairies",
               "cd /home/ubuntu/canmee_dairies",
               "git fetch origin main",
               "git reset --hard origin/main",
