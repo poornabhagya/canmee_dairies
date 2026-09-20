@@ -35,8 +35,8 @@ SECRET_KEY = "django-insecure-t)*4(2&z8b0sj6jjfhxddowri3zhx(xt4x-*@bnuj)-32@4j1g
 # Browser deploy helper (/deploy/) — see canmee_dairies/deploy.py
 # Enable:  DJANGO_DEPLOY_ENABLED=1  +  DJANGO_DEPLOY_KEY=secret  → restart app
 # Disable: DJANGO_DEPLOY_ENABLED=0  (or remove) → restart app
-#           OR create empty file deploy.disabled in project root (works without restart)
-#https://admin.canmeedairies.lk/deploy/?key=CanmeeDeploy2026-xK9mP2vL8qR4nW7)
+#          OR create empty file deploy.disabled in project root (works without restart)
+# https://admin.canmeedairies.lk/deploy/?key=CanmeeDeploy2026-xK9mP2vL8qR4nW7)
 
 # Check if the parent folder name ends with "dev" or "prod"
 if PARENT_FOLDER_NAME.endswith("prod"):
@@ -152,42 +152,19 @@ ASGI_APPLICATION = "canmee_dairies.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-if PARENT_FOLDER_NAME.endswith("prod"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": "canmeeda_milk",
-            "USER": "canmeeda_milk",
-            "PASSWORD": "DCLsYrvrfXJhRJbjF3HR",
-            "HOST": "localhost",
-            "PORT": "3306",
-            "OPTIONS": {"charset": "utf8mb4"},
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.getenv("DB_NAME", "canmee_dairies"),
+        "USER": os.getenv("DB_USER", "root"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "mariadb"),
+        "PORT": os.getenv("DB_PORT", "3306"),
+        "OPTIONS": {
+            "charset": "utf8mb4",
+        },
     }
-elif PARENT_FOLDER_NAME.endswith("dev"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": "canmee_dairies",
-            "USER": "root",
-            "PASSWORD": "",
-            "HOST": "localhost",
-            "PORT": "3306",
-            "OPTIONS": {"charset": "utf8mb4"},
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": "canmee_dairies",
-            "USER": "root",
-            "PASSWORD": "",
-            "HOST": "localhost",
-            "PORT": "3306",
-            "OPTIONS": {"charset": "utf8mb4"},
-        }
-    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -302,4 +279,3 @@ else:
 
 # CEFT / SLIPS bank payment upload (collection point payment sheet).
 CEFT_DEBIT_ACCOUNT_NO = os.getenv("CEFT_DEBIT_ACCOUNT_NO", "230020113992")
-
