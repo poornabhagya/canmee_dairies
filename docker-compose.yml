@@ -43,6 +43,7 @@ services:
 
   # 3. Backend Web Service (Django + Gunicorn)
   web:
+    image: 804372444724.dkr.ecr.ap-south-1.amazonaws.com/canmee-dairies-erp:staging
     build:
       context: .
       dockerfile: Dockerfile
