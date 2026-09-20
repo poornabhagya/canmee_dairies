@@ -143,4 +143,4 @@ jobs:
       - name: Notify on Deployment Failure
         if: failure()
         run: |
-          echo "::error::Production Deployment failed for tag ${{ github.ref_name }}. Please check SSM Run Command history and container logs on Production EC2."
+          echo "::error title=Deployment Failed::Production Deployment failed for tag ${{ github.ref_name }}. Check SSM Run Command history and container logs."
