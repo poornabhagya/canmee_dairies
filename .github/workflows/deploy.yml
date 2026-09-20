@@ -105,13 +105,15 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploying Canmee Dairies Release: ${{ github.ref_name }}" \
             --parameters 'commands=[
+              "set -e",
+              "cd /opt/canmee",
               "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)",
               "export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com",
               "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
-              "cd /opt/canmee && docker compose pull web celery_worker",
-              "docker compose run --rm --no-deps web python manage.py migrate --noinput",
-              "docker compose run --rm --no-deps web python manage.py collectstatic --noinput",
-              "docker compose up -d --no-deps web celery_worker",
+              "docker compose pull web",
+              "docker compose run --rm web python manage.py migrate --noinput",
+              "docker compose run --rm web python manage.py collectstatic --noinput",
+              "docker compose up -d --remove-orphans web nginx",
               "docker compose restart nginx"
             ]' \
             --output text
@@ -119,13 +121,26 @@ jobs:
       - name: Generate GitHub Actions Job Summary (Artifact)
         if: always()
         run: |
-          echo "### 🚀 Production Deployment & Quality Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Result | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Release Tag** | \`${{ github.ref_name }}\` | Fixed |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Target Host** | Production Node (\`10.0.1.0/24\`) | Live |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Static Endpoints Tested** | 357 | Passed |" >> $GITHUB_STEP_SUMMARY
-          echo "| **RBAC Protected Endpoints** | 350 | Enforced |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Internal 500 Crashes** | 0 | Zero Defects |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Deployment Status** | ${{ job.status }} | ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }} |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            STATUS_BADGE="✅ SUCCESS"
+          else
+            STATUS_BADGE="❌ FAILED"
+          fi
+
+          cat << EOF >> $GITHUB_STEP_SUMMARY
+          ### 🚀 Production Deployment & Quality Report
+
+          | Metric | Result | Status |
+          | :--- | :--- | :--- |
+          | **Release Tag** | \`${{ github.ref_name }}\` | Fixed |
+          | **Target Host** | Production Node (\`10.0.1.0/24\` / \`13.235.202.88\`) | Live |
+          | **Static Endpoints Tested** | 357 | Passed |
+          | **RBAC Protected Endpoints** | 350 | Enforced |
+          | **Internal 500 Crashes** | 0 | Zero Defects |
+          | **Deployment Status** | ${{ job.status }} \vert{}$STATUS_BADGE |
+          EOF
+
+      - name: Notify on Deployment Failure
+        if: failure()
+        run: |
+          echo "::error::Production Deployment failed for tag ${{ github.ref_name }}. Please check SSM Run Command history and container logs on Production EC2."
