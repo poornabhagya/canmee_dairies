@@ -114,12 +114,12 @@ jobs:
               "export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com",
               "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
               "docker compose pull web",
-              "docker compose up -d --remove-orphans web nginx",
-              "sleep 10",
-              "docker exec -t canmee_web python manage.py migrate --noinput",
-              "docker exec -t canmee_web python manage.py collectstatic --noinput",
+              "docker compose up -d mariadb redis web nginx",
+              "for i in {1..30}; do if docker exec canmee_mariadb mariadb-admin ping -u root --silent; then echo DB is ready; break; fi; echo Waiting for DB...; sleep 2; done",
+              "docker exec -t -e DB_HOST=mariadb canmee_web python manage.py migrate --noinput",
+              "docker exec -t -e DB_HOST=mariadb canmee_web python manage.py collectstatic --noinput",
               "docker cp scan_urls.py canmee_web:/app/scan_urls.py",
-              "docker exec -t canmee_web python scan_urls.py"
+              "docker exec -t -e DB_HOST=mariadb canmee_web python scan_urls.py"
             ]' \
             --query "Command.CommandId" \
             --output text)
