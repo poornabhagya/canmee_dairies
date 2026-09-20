@@ -1,0 +1,64 @@
+import os
+import sys
+import django
+from django.urls import get_resolver
+from django.test import Client
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'canmee_dairies.settings')
+django.setup()
+
+def get_all_urls(urlpatterns, prefix=''):
+    routes = []
+    for pattern in urlpatterns:
+        if hasattr(pattern, 'url_patterns'):
+            routes.extend(get_all_urls(pattern.url_patterns, prefix + str(pattern.pattern)))
+        else:
+            routes.append(prefix + str(pattern.pattern))
+    return routes
+
+resolver = get_resolver()
+all_urls = get_all_urls(resolver.url_patterns)
+
+# Static routes (parameters නැති endpoints) තෝරා ගැනීම
+static_urls = []
+for u in all_urls:
+    if not any(char in u for char in ['<', '>', '(', ')', '^', '$', '?']):
+        clean_url = '/' + u.lstrip('/')
+        if clean_url not in static_urls:
+            static_urls.append(clean_url)
+
+print(f"\n[+] Total static routes identified: {len(static_urls)}")
+
+client = Client()
+errors = []
+success_count = 0
+protected_count = 0
+
+for url in static_urls:
+    try:
+        res = client.get(url)
+        if res.status_code == 500:
+            print(f"[-] CRASH 500: {url}")
+            errors.append(url)
+        elif res.status_code in [301, 302, 401, 403]:
+            protected_count += 1
+        else:
+            success_count += 1
+    except Exception as e:
+        print(f"[-] ERROR on {url}: {str(e)}")
+        errors.append((url, str(e)))
+
+print("\n" + "="*40)
+print(f"Total Routes Tested : {len(static_urls)}")
+print(f"Accessible (200/Other): {success_count}")
+print(f"RBAC Protected (Redirect/Forbidden): {protected_count}")
+print(f"Crashes / 500 Errors : {len(errors)}")
+print("="*40)
+
+# Pipeline Gatekeeping - Exit codes
+if len(errors) == 0:
+    print("[SUCCESS] All endpoints passed with 0 crashes!")
+    sys.exit(0)
+else:
+    print(f"[FAIL] {len(errors)} endpoints failed.")
+    sys.exit(1)
