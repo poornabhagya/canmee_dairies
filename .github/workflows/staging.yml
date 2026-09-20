@@ -110,7 +110,8 @@ jobs:
               "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
               "docker compose pull web",
               "docker compose up -d --force-recreate mariadb redis",
-              "for i in {1..30}; do if docker exec canmee_mariadb mariadb-admin ping -u root -p$(grep DB_ROOT_PASSWORD .env | cut -d= -f2) --silent 2>/dev/null; then echo DB is ready; break; fi; echo Waiting for DB...; sleep 2; done",
+              "echo Waiting for DB...",
+              "for i in {1..30}; do if docker exec canmee_mariadb mariadb-admin ping --silent 2>/dev/null; then echo DB ready; break; fi; sleep 2; done",
               "docker compose up -d --force-recreate web nginx",
               "sleep 5",
               "docker exec canmee_web python manage.py migrate --noinput",
@@ -175,3 +176,26 @@ jobs:
           | **Smoke Test Harness** | \`scan_urls.py\` (Static Routes Audit) | Complete |
           | **Gatekeeping Verdict** | ${{ job.status }} \vert{}$STATUS_BADGE |
           EOF
+
+      - name: Send Email Deployment & Smoke Test Alert
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "[CI/CD Staging Alert] Commit ${{ github.sha }} - Status: ${{ job.status }}"
+          to: ${{ secrets.ALERT_RECIPIENTS }}
+          from: "Canmee CI/CD System <${{ secrets.EMAIL_USERNAME }}>"
+          html_body: |
+            <h2>Canmee Dairies - Staging Smoke Test Report</h2>
+            <p><strong>Repository:</strong> ${{ github.repository }}</p>
+            <p><strong>Branch:</strong> main</p>
+            <p><strong>Commit:</strong> ${{ github.sha }}</p>
+            <p><strong>Author:</strong> ${{ github.actor }}</p>
+            <p><strong>Environment:</strong> AWS Staging (10.0.2.0/24)</p>
+            <p><strong>Execution Status:</strong> ${{ job.status }}</p>
+            <hr/>
+            <p><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">Click here to view full GitHub Actions Run</a></p>
