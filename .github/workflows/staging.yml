@@ -1,6 +1,5 @@
 name: Canmee Dairies CI/CD - Staging Deployment & Automated Smoke Test
 
-# main branch එකට code push වූ සැණින් ක්‍රියාත්මක වේ
 on:
   push:
     branches:
@@ -14,11 +13,9 @@ env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: canmee-dairies-erp
   ROLE_TO_ASSUME: arn:aws:iam::804372444724:role/canmee-github-actions-deploy-role
-  # Staging Instance ID (10.0.2.0/24)
   STAGING_INSTANCE_ID: i-0ab7ab84b380e2210
 
 jobs:
-  # 1. Syntax & Pre-deploy Validation
   test:
     name: Code Validation & Quality Checks
     runs-on: ubuntu-latest
@@ -49,7 +46,6 @@ jobs:
       - name: Run Syntax Checks
         run: python manage.py check
 
-  # 2. Build & Push Image to ECR (staging tag)
   build-and-push:
     name: Build AMD64 Image for Staging
     needs: test
@@ -83,7 +79,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:staging
             ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
 
-  # 3. Deploy to Staging & Run Automated Smoke Test Harness
   deploy-staging-and-test:
     name: SSM Staging Deploy & Automated Smoke Test
     needs: build-and-push
@@ -114,13 +109,14 @@ jobs:
               "export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com",
               "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
               "docker compose pull web",
-              "docker compose up -d --force-recreate mariadb redis web nginx",
-              "echo Waiting for MariaDB socket initialization...",
-              "sleep 15",
-              "docker exec -e DB_HOST=mariadb -e MYSQL_HOST=mariadb canmee_web python manage.py migrate --noinput",
-              "docker exec -e DB_HOST=mariadb -e MYSQL_HOST=mariadb canmee_web python manage.py collectstatic --noinput",
+              "docker compose up -d --force-recreate mariadb redis",
+              "for i in {1..30}; do if docker exec canmee_mariadb mariadb-admin ping -u root -p$(grep DB_ROOT_PASSWORD .env | cut -d= -f2) --silent 2>/dev/null; then echo DB is ready; break; fi; echo Waiting for DB...; sleep 2; done",
+              "docker compose up -d --force-recreate web nginx",
+              "sleep 5",
+              "docker exec canmee_web python manage.py migrate --noinput",
+              "docker exec canmee_web python manage.py collectstatic --noinput",
               "docker cp scan_urls.py canmee_web:/app/scan_urls.py",
-              "docker exec -e DB_HOST=mariadb -e MYSQL_HOST=mariadb canmee_web python scan_urls.py"
+              "docker exec canmee_web python scan_urls.py"
             ]' \
             --query "Command.CommandId" \
             --output text)
