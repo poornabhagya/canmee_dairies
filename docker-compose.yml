@@ -52,6 +52,8 @@ services:
       - mariadb
       - redis
     env_file: .env
+    environment:
+      - DB_HOST=mariadb
     command: gunicorn canmee_dairies.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --worker-class gthread --timeout 60 --max-requests 1000 --max-requests-jitter 100
     volumes:
       - static_data:/app/collected_static
