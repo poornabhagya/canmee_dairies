@@ -6,28 +6,23 @@ services:
     image: mariadb:10.11
     container_name: canmee_mariadb
     restart: unless-stopped
-    # Database එකේ ක්‍රියාකාරීත්වය සහ මතකය හැඩගැස්වීම (InnoDB 1024MB Buffer, 256MB Log, utf8mb4)
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
-      --innodb-buffer-pool-size=1024M
-      --innodb-log-file-size=256M
-      --innodb-file-per-table=1
-    # DB එකට ලොග් වෙන්න ඕන passwords .env ෆයිල් එකෙන් ලබා ගැනීම
+      --innodb-buffer-pool-size=256M
+      --innodb-log-file-size=64M
+      --max-connections=100
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    # කන්ටේනර් එක off වුණත් දත්ත මැකී නොයන ලෙස Host මැෂින් එකේ ඩේටා සේව් කර තැබීම
     volumes:
       - mariadb_data:/var/lib/mysql
-    # RAM එක 1500MB වලට දැඩිව සීමා කිරීම (OOM crashes වැළැක්වීමට)
     deploy:
       resources:
         limits:
-          memory: 1500M
-    # Canmee internal network එකට සම්බන්ධ කිරීම
+          memory: 500M
     networks:
       - canmee_net
 
@@ -36,32 +31,26 @@ services:
     image: redis:7.2-alpine
     container_name: canmee_redis
     restart: unless-stopped
-    # RAM එක 256MB පිරුණු විට පරණ දත්ත මකා දැමීමේ නීතිය (allkeys-lru) සහ appendonly හරහා දත්ත සුරැකීම
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --appendonly yes
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 200M
     networks:
       - canmee_net
 
   # 3. Backend Web Service (Django + Gunicorn)
   web:
-    # කලින් අපි හදපු Dockerfile එක පාවිච්චි කරලා image එක build කිරීම
     build:
       context: .
       dockerfile: Dockerfile
     container_name: canmee_web
     restart: unless-stopped
-    # DB සහ Redis ඔන් වූ පසු පමණක් Web එක රන් කිරීම
     depends_on:
       - mariadb
       - redis
-    # පරිසර විචල්‍යයන් (Passwords/Keys) ලබා ගැනීම
     env_file: .env
-    # Gunicorn WSGI සැකසුම් (Workers 3x2 Threads, Timeout 60s, Max Requests 1000)
     command: gunicorn canmee_dairies.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --worker-class gthread --timeout 60 --max-requests 1000 --max-requests-jitter 100
-    # Static සහ Media ෆයිල්ස් Nginx එකට දෙන්න volume එකක් සෑදීම
     volumes:
       - static_data:/app/collected_static
       - media_data:/app/media
@@ -83,7 +72,6 @@ services:
       - mariadb
       - redis
     env_file: .env
-    # Background එකේ PDF/Excel හදන tasks 2ක් (concurrency 2) එකවර ධාවනය කිරීම
     command: celery -A canmee_dairies worker -l INFO --concurrency=2 --max-memory-per-child=200000
     volumes:
       - media_data:/app/media
@@ -99,11 +87,9 @@ services:
     image: nginx:1.25-alpine
     container_name: canmee_nginx
     restart: unless-stopped
-    # පිටත ලෝකයට Port 80 (HTTP) සහ Port 443 (HTTPS) විවෘත කිරීම
     ports:
       - "80:80"
       - "443:443"
-    # Nginx config ෆයිල් එක සහ Static/Media ෆයිල්ස් read-only (:ro) ලෙස map කිරීම
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static_data:/var/www/static:ro
@@ -118,13 +104,11 @@ services:
     networks:
       - canmee_net
 
-# Host Machine එකේ හැදෙන Volumes (දත්ත ගබඩා)
 volumes:
   mariadb_data:
   static_data:
   media_data:
 
-# 172.28.0.0/16 Dedicated Bridge Network එක සෑදීම
 networks:
   canmee_net:
     driver: bridge
