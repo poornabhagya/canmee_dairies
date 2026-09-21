@@ -1,6 +1,6 @@
 name: Canmee Dairies CI/CD - Production Promotion
 
-# Release Tag එකක් (උදා: v1.0.3) push කළ විට පමණක් Production එකට promote වේ
+# Release Tag එකක් (උදා: v1.0.4) push කළ විට පමණක් Production එකට promote වේ
 on:
   push:
     tags:
@@ -53,12 +53,12 @@ jobs:
           aws ecr put-image \
             --repository-name ${{ env.ECR_REPOSITORY }} \
             --image-tag ${{ github.ref_name }} \
-            --image-manifest "$MANIFEST"
+            --image-manifest "$MANIFEST" || true
 
           aws ecr put-image \
             --repository-name ${{ env.ECR_REPOSITORY }} \
             --image-tag latest \
-            --image-manifest "$MANIFEST"
+            --image-manifest "$MANIFEST" || true
 
       - name: Trigger SSM Deployment and Live Verification on Production EC2
         id: run-prod-deploy
