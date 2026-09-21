@@ -36,3 +36,46 @@ module "ecr" {
 output "github_actions_role_arn" {
   value = module.oidc.github_actions_role_arn
 }
+
+# =======================================================
+# Phase 8: CloudFront Edge & Custom TLS (ACM in us-east-1)
+# =======================================================
+
+# CloudFront SSL සඳහා අනිවාර්ය us-east-1 provider එක
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
+# Staging Custom Domain එක සඳහා ACM Certificate එක
+resource "aws_acm_certificate" "staging_cert" {
+  provider          = aws.us_east_1
+  domain_name       = "staging.canmeedairies.lk"
+  validation_method = "DNS"
+
+  tags = {
+    Environment = "Staging"
+    Project     = "Canmee Dairies"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# 6. CloudFront Edge Module එක සම්බන්ධ කිරීම
+module "cloudfront" {
+  source             = "./modules/cloudfront"
+  origin_domain_name = "ec2-13-235-202-88.ap-south-1.compute.amazonaws.com"
+  certificate_arn    = aws_acm_certificate.staging_cert.arn
+  domain_aliases     = ["staging.canmeedairies.lk"]
+}
+
+# Root Outputs
+output "cloudfront_url" {
+  value = module.cloudfront.cloudfront_domain_name
+}
+
+output "staging_portal_url" {
+  value = "https://staging.canmeedairies.lk"
+}
