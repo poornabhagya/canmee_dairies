@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write
-  contents: write
+  contents: read
 
 env:
   AWS_REGION: ap-south-1
@@ -43,7 +43,7 @@ jobs:
           pip install -r requirements.txt
           sudo apt-get install -y libmysqlclient-dev
 
-      - name: Run Syntax Checks
+      - name: Run Django Configuration Check
         run: python manage.py check
 
   build-and-push:
@@ -101,7 +101,7 @@ jobs:
       - name: Trigger SSM Deployment and Automated Smoke Test
         id: run-smoke-test
         run: |
-          echo "Deploying update to Staging Host and running automated scan_urls.py..."
+          echo "Deploying update to Staging Host and executing dynamic smoke testing..."
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ env.STAGING_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
@@ -131,7 +131,7 @@ jobs:
             --query "Command.CommandId" \
             --output text)
 
-          echo "SSM Command sent with ID: $COMMAND_ID"
+          echo "SSM Command dispatched with ID: $COMMAND_ID"
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
             --instance-id "${{ env.STAGING_INSTANCE_ID }}" || true
@@ -148,7 +148,7 @@ jobs:
             --query "StandardOutputContent" \
             --output text)
 
-          echo "=== STAGING EXECUTION OUTPUT ==="
+          echo "=== STAGING SSM EXECUTION LOGS ==="
           echo "$OUTPUT"
 
           python3 -c "
@@ -164,11 +164,11 @@ jobs:
           "
 
           if [ "$STATUS" != "Success" ]; then
-            echo "::error title=Deployment Execution Failed::Staging execution returned $STATUS"
+            echo "::error title=Deployment Execution Failed::SSM Command returned $STATUS"
             exit 1
           fi
 
-      - name: Parse Metrics, Emit Annotations and Generate Summary
+      - name: Parse Verification Metrics and Publish Summary
         if: always()
         run: |
           python3 - << 'EOF'
@@ -187,15 +187,13 @@ jobs:
           failed = data.get('failed_routes', [])
           status = "PASSED" if crashes == 0 else "FAILED"
 
-          # 1. Emit GitHub Actions Workflow Annotations
           for item in failed:
               url = item.get('url', 'Unknown')
               err = item.get('error', 'Error 500')
-              print(f"::error title=Route Crash Detected on Staging::URL: {url} | Details: {err}")
+              print(f"::error title=Route Crash Detected on Staging::URL: {url} | Reason: {err}")
 
-          # 2. Build Markdown Table
           badge = "✅ ZERO DEFECTS" if crashes == 0 else f"❌ {crashes} CRASHES DETECTED"
-          verdict = "✅ READY FOR QA" if crashes == 0 else "❌ DEPLOYMENT FAILED"
+          verdict = "✅ READY FOR PROD PROMOTION" if crashes == 0 else "❌ DEPLOYMENT FAILED"
 
           error_section = ""
           if failed:
@@ -205,11 +203,11 @@ jobs:
 
           summary = f"""### 🧪 Staging Automated Smoke Test Report
 
-          | Metric | Real Output / Value | Status |
+          | Metric | Value / Output | Status |
           | :--- | :--- | :--- |
           | **Target Environment** | Staging Node (`10.0.2.0/24`) | Active |
-          | **Commit SHA** | `{os.environ.get('GITHUB_SHA')}` | Tested |
-          | **Total Static Routes** | `{total}` | Audited |
+          | **Commit SHA** | `{os.environ.get('GITHUB_SHA')}` | Audited |
+          | **Total Static Routes** | `{total}` | Tested |
           | **Accessible (200 OK)** | `{passed}` | Operational |
           | **RBAC Protected** | `{protected}` | Secured |
           | **Crash/500 Errors** | `{crashes}` | {badge} |
@@ -219,38 +217,4 @@ jobs:
 
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
               f.write(summary)
-
-          # Pass errors to environment for email notification
-          err_html = ""
-          if failed:
-              err_html = "<h3 style='color:red;'>⚠️ Failed Routes Identified:</h3><ul>"
-              for item in failed:
-                  err_html += f"<li><strong>{item.get('url')}</strong>: {item.get('error')}</li>"
-              err_html += "</ul>"
-
-          with open('error_summary.html', 'w') as ef:
-              ef.write(err_html)
           EOF
-
-      - name: Send Email Deployment & Smoke Test Alert
-        if: always()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "[CI/CD Staging Alert] Commit ${{ github.sha }} - Status:${{ job.status }}"
-          to: ${{ secrets.ALERT_RECIPIENTS }}
-          from: "Canmee CI/CD System <${{ secrets.EMAIL_USERNAME }}>"
-          html_body: |
-            <h2>Canmee Dairies - Staging Smoke Test Report</h2>
-            <p><strong>Repository:</strong> ${{ github.repository }}</p>
-            <p><strong>Commit:</strong> ${{ github.sha }}</p>
-            <p><strong>Author:</strong> ${{ github.actor }}</p>
-            <p><strong>Environment:</strong> AWS Staging (10.0.2.0/24)</p>
-            <p><strong>Execution Status:</strong> ${{ job.status }}</p>
-            <hr/>
-            ${{ hashFiles('error_summary.html') != '' && steps.run-smoke-test.outcome == 'success' && '' || '' }}
-            <p><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">Click here to view full GitHub Actions Run & Error Breakdown</a></p>
