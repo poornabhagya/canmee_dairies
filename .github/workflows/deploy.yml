@@ -1,6 +1,6 @@
 name: Canmee Dairies CI/CD - Production Promotion
 
-# Release Tag එකක් (උදා: v1.0.0) push කළ විට පමණක් Production එකට promote වේ
+# Release Tag එකක් (උදා: v1.0.3) push කළ විට පමණක් Production එකට promote වේ
 on:
   push:
     tags:
@@ -8,52 +8,17 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: canmee-dairies-erp
-  # OIDC Deploy Role ARN එක
   ROLE_TO_ASSUME: arn:aws:iam::804372444724:role/canmee-github-actions-deploy-role
-  # Production Instance ID එක (10.0.1.0/24)
-  INSTANCE_ID: i-0328a5a8e6e95e250
+  PROD_INSTANCE_ID: i-0328a5a8e6e95e250
 
 jobs:
-  # 1. Test Track (Syntax & Schema Checks)
-  test:
-    name: Code Validation & Pre-Release Checks
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-          MYSQL_DATABASE: canmee_dairies
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=3
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          sudo apt-get install -y libmysqlclient-dev
-
-      - name: Run Syntax Checks
-        run: python manage.py check
-
-  # 2. Build & Push Track (Tag-versioned & Latest Docker Image to ECR)
-  build-and-push:
-    name: Build AMD64 Image and Push to ECR
-    needs: test
+  promote-and-deploy:
+    name: Production Promotion, Verification & Release Alerts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -69,78 +34,164 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and Push Docker Image
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.RELEASE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
-
-  # 3. Deployment Track & Summary Generation (AWS SSM Bastionless Deploy)
-  deploy-production:
-    name: SSM Production Deployment (10.0.1.0/24)
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS Credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Trigger SSM Deployment on Production EC2
+      # Container Immutability: Rebuild නැත! Staging Verified Image එක Retag කිරීම පමණි
+      - name: Retag Staging Image to Production Release Tag in ECR
         run: |
-          echo "Promoting release ${{ github.ref_name }} to Production Host..."
-          aws ssm send-command \
-            --instance-ids "${{ env.INSTANCE_ID }}" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Deploying Canmee Dairies Release: ${{ github.ref_name }}" \
-            --parameters 'commands=[
-              "set -e",
-              "cd /opt/canmee",
-              "export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)",
-              "export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com",
-              "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_URL}",
-              "docker compose pull web",
-              "docker compose run --rm web python manage.py migrate --noinput",
-              "docker compose run --rm web python manage.py collectstatic --noinput",
-              "docker compose up -d --remove-orphans web nginx",
-              "docker compose restart nginx"
-            ]' \
-            --output text
+          echo "Fetching verified staging image manifest from ECR..."
+          MANIFEST=$(aws ecr batch-get-image \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --image-ids imageTag=staging \
+            --query 'images[].imageManifest' \
+            --output text)
 
-      - name: Generate GitHub Actions Job Summary (Artifact)
-        if: always()
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            STATUS_BADGE="✅ SUCCESS"
-          else
-            STATUS_BADGE="❌ FAILED"
+          if [ -z "$MANIFEST" ]; then
+            echo "::error title=Promotion Blocked::No verified staging image found in ECR!"
+            exit 1
           fi
 
-          cat << EOF >> $GITHUB_STEP_SUMMARY
-          ### 🚀 Production Deployment & Quality Report
+          echo "Retagging staging image to release tag: ${{ github.ref_name }} and latest..."
+          aws ecr put-image \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --image-tag ${{ github.ref_name }} \
+            --image-manifest "$MANIFEST"
 
-          | Metric | Result | Status |
+          aws ecr put-image \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --image-tag latest \
+            --image-manifest "$MANIFEST"
+
+      - name: Trigger SSM Deployment and Live Verification on Production EC2
+        id: run-prod-deploy
+        run: |
+          echo "Deploying release ${{ github.ref_name }} to Production Host..."
+
+          # scan_urls.py ගොනුව base64 ලෙස encode කර SSM script එක හරහා host එකට ලබා දීම
+          SCAN_SCRIPT_B64=$(base64 -w 0 scan_urls.py)
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ env.PROD_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Prod Release Deploy: ${{ github.ref_name }}" \
+            --parameters "commands=[
+              \"set -e\",
+              \"cd /opt/canmee\",
+              \"export AWS_ACCOUNT_ID=\$(aws sts get-caller-identity --query Account --output text)\",
+              \"export ECR_URL=\${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com\",
+              \"aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin \${ECR_URL}\",
+              \"docker compose pull web\",
+              \"docker compose run --rm web python manage.py migrate --noinput\",
+              \"docker compose run --rm web python manage.py collectstatic --noinput\",
+              \"docker compose up -d --remove-orphans web nginx\",
+              \"docker compose restart nginx\",
+              \"echo ${SCAN_SCRIPT_B64} | base64 -d > /opt/canmee/scan_urls.py\",
+              \"docker cp /opt/canmee/scan_urls.py canmee_web:/app/scan_urls.py || true\",
+              \"docker exec canmee_web python scan_urls.py || true\",
+              \"docker cp canmee_web:/app/smoke_test_summary.json /opt/canmee/smoke_test_summary.json || true\",
+              \"echo ===PROD_METRICS_START===\",
+              \"cat /opt/canmee/smoke_test_summary.json 2>/dev/null || echo '{\\\"status\\\":\\\"UNKNOWN\\\"}'\",
+              \"echo ===PROD_METRICS_END===\"
+            ]" \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command sent with ID: $COMMAND_ID"
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.PROD_INSTANCE_ID }}" || true
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.PROD_INSTANCE_ID }}" \
+            --query "Status" \
+            --output text)
+
+          OUTPUT=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.PROD_INSTANCE_ID }}" \
+            --query "StandardOutputContent" \
+            --output text)
+
+          ERROR_OUTPUT=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ env.PROD_INSTANCE_ID }}" \
+            --query "StandardErrorContent" \
+            --output text)
+
+          echo "=== PRODUCTION DEPLOY OUTPUT ==="
+          echo "$OUTPUT"
+          echo "=== PRODUCTION ERROR OUTPUT ==="
+          echo "$ERROR_OUTPUT"
+
+          # Extract Real Metrics JSON from SSM output
+          echo "$OUTPUT" | sed -n '/===PROD_METRICS_START===/,/===PROD_METRICS_END===/p' | grep -v "===PROD_METRICS" > prod_smoke_summary.json || echo '{"status":"UNKNOWN"}' > prod_smoke_summary.json
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "::error title=Deployment Failed::Production Deployment failed for tag ${{ github.ref_name }}."
+            exit 1
+          fi
+
+      - name: Parse Real Metrics and Generate Summary
+        if: always()
+        run: |
+          python - << 'EOF'
+          import json, os
+
+          try:
+              with open('prod_smoke_summary.json') as f:
+                  data = json.load(f)
+              total = data.get('total_tested', 'N/A')
+              passed = data.get('success_count', 'N/A')
+              protected = data.get('protected_count', 'N/A')
+              crashes = data.get('crashes', 'N/A')
+              status = data.get('status', 'PASSED' if crashes == 0 else 'FAILED')
+          except Exception:
+              total, passed, protected, crashes, status = 'Error', 'Error', 'Error', 'Error', 'FAILED'
+
+          badge = "✅ ZERO DEFECTS" if crashes == 0 else "❌ CRASHES DETECTED"
+          verdict = "🚀 DEPLOYED TO PROD" if status == "PASSED" else "❌ DEPLOYMENT FAILED"
+
+          summary = f"""### 🚀 Production Promotion & Automated Release Summary
+
+          | Metric | Real Output / Value | Status |
           | :--- | :--- | :--- |
-          | **Release Tag** | \`${{ github.ref_name }}\` | Fixed |
-          | **Target Host** | Production Node (\`10.0.1.0/24\` / \`13.235.202.88\`) | Live |
-          | **Static Endpoints Tested** | 357 | Passed |
-          | **RBAC Protected Endpoints** | 350 | Enforced |
-          | **Internal 500 Crashes** | 0 | Zero Defects |
-          | **Deployment Status** | ${{ job.status }} \vert{}$STATUS_BADGE |
+          | **Release Version** | `{os.environ.get('GITHUB_REF_NAME')}` | Published |
+          | **Target Node** | Production EC2 (`10.0.1.0/24` / `13.235.202.88`) | Online |
+          | **Total Static Routes** | `{total}` | Audited |
+          | **Accessible (200 OK)** | `{passed}` | Operational |
+          | **RBAC Protected** | `{protected}` | Secured |
+          | **Crash/500 Errors** | `{crashes}` | {badge} |
+          | **Final Promotion Verdict** | `{status}` | {verdict} |
+          """
+
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(summary)
           EOF
 
-      - name: Notify on Deployment Failure
-        if: failure()
-        run: |
-          echo "::error title=Deployment Failed::Production Deployment failed for tag ${{ github.ref_name }}. Check SSM Run Command history and container logs."
+      - name: Upload Production Smoke Test Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-test-summary-${{ github.ref_name }}
+          path: prod_smoke_summary.json
+
+      - name: Send Production Release Email Alert
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "[PROD RELEASE] Version ${{ github.ref_name }} - Status:${{ job.status }}"
+          to: ${{ secrets.ALERT_RECIPIENTS }}
+          from: "Canmee CI/CD System <${{ secrets.EMAIL_USERNAME }}>"
+          html_body: |
+            <h2>Canmee Dairies - Production Release Promotion Report</h2>
+            <p><strong>Release Tag:</strong> ${{ github.ref_name }}</p>
+            <p><strong>Target Environment:</strong> Production Host (10.0.1.0/24)</p>
+            <p><strong>Triggered By:</strong> ${{ github.actor }}</p>
+            <p><strong>Deployment Status:</strong> ${{ job.status }}</p>
+            <hr/>
+            <p>Production verification metrics have been dynamically captured and archived as an immutable release artifact.</p>
+            <p><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Full Release Pipeline & Artifacts</a></p>

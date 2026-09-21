@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import django
 from django.urls import get_resolver
 from django.test import Client
@@ -46,19 +47,34 @@ for url in static_urls:
             success_count += 1
     except Exception as e:
         print(f"[-] ERROR on {url}: {str(e)}")
-        errors.append((url, str(e)))
+        errors.append(f"{url}: {str(e)}")
 
-print("\n" + "="*40)
-print(f"Total Routes Tested : {len(static_urls)}")
+total_tested = len(static_urls)
+crash_count = len(errors)
+
+print("\n" + "=" * 40)
+print(f"Total Routes Tested : {total_tested}")
 print(f"Accessible (200/Other): {success_count}")
 print(f"RBAC Protected (Redirect/Forbidden): {protected_count}")
-print(f"Crashes / 500 Errors : {len(errors)}")
-print("="*40)
+print(f"Crashes / 500 Errors : {crash_count}")
+print("=" * 40)
 
-# Pipeline Gatekeeping - Exit codes
-if len(errors) == 0:
+# Phase 7.4 Dynamic Reporting සඳහා JSON ගොනුවක් සෑදීම
+summary_data = {
+    "total_tested": total_tested,
+    "success_count": success_count,
+    "protected_count": protected_count,
+    "crashes": crash_count,
+    "failed_routes": errors,
+    "status": "PASSED" if crash_count == 0 else "FAILED"
+}
+
+with open("smoke_test_summary.json", "w") as f:
+    json.dump(summary_data, f, indent=2)
+
+if crash_count == 0:
     print("[SUCCESS] All endpoints passed with 0 crashes!")
     sys.exit(0)
 else:
-    print(f"[FAIL] {len(errors)} endpoints failed.")
+    print(f"[FAIL] {crash_count} endpoints failed.")
     sys.exit(1)
