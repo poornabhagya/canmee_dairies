@@ -36,10 +36,10 @@ data "aws_iam_policy_document" "github_oidc_assume" {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:${var.github_repo}:*",
-        "repo:poornabhagya/canmee_dairies:*",
-        "repo:PoornaBhagya/canmee_dairies:*",
-        "repo:*:canmee_dairies:*"
+        "repo:*canmee_dairies*:*",
+        "repo:poornabhagya*/canmee_dairies*:*",
+        "repo:poornabhagya@87825044/canmee_dairies@1377019655:*",
+        "repo:poornabhagya/canmee_dairies:*"
       ]
     }
   }
