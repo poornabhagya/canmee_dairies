@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import traceback
 import django
 from django.urls import get_resolver
 from django.test import Client
@@ -40,14 +41,25 @@ for url in static_urls:
         res = client.get(url)
         if res.status_code == 500:
             print(f"[-] CRASH 500: {url}")
-            errors.append(url)
+            errors.append({
+                "url": url,
+                "status_code": 500,
+                "error": "Internal Server Error (HTTP 500)"
+            })
         elif res.status_code in [301, 302, 401, 403]:
             protected_count += 1
         else:
             success_count += 1
     except Exception as e:
-        print(f"[-] ERROR on {url}: {str(e)}")
-        errors.append(f"{url}: {str(e)}")
+        err_msg = str(e)
+        stack = traceback.format_exc().splitlines()[-3:] # short traceback
+        print(f"[-] ERROR on {url}: {err_msg}")
+        errors.append({
+            "url": url,
+            "status_code": "EXCEPTION",
+            "error": err_msg,
+            "trace": " | ".join(stack)
+        })
 
 total_tested = len(static_urls)
 crash_count = len(errors)
@@ -59,7 +71,7 @@ print(f"RBAC Protected (Redirect/Forbidden): {protected_count}")
 print(f"Crashes / 500 Errors : {crash_count}")
 print("=" * 40)
 
-# Phase 7.4 Dynamic Reporting සඳහා JSON ගොනුවක් සෑදීම
+# Pipeline Reporting සඳහා සවිස්තරාත්මක JSON ගොනුවක් සෑදීම
 summary_data = {
     "total_tested": total_tested,
     "success_count": success_count,
@@ -77,4 +89,6 @@ if crash_count == 0:
     sys.exit(0)
 else:
     print(f"[FAIL] {crash_count} endpoints failed.")
+    for err in errors:
+        print(f"  ::error title=Smoke Test Failure on {err['url']}::{err.get('error')} ({err.get('status_code')})")
     sys.exit(1)
