@@ -77,6 +77,9 @@ CSRF_TRUSTED_ORIGINS = [
     "https://canmeedairies.lk",
     "https://www.canmeedairies.lk",
     "https://admin.canmeedairies.lk",
+    "https://*.canmeedairies.lk",
+    "https://staging.canmeedairies.lk"
+
 ]
 
 INSTALLED_APPS = [

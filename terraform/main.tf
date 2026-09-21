@@ -94,4 +94,8 @@ output "central_backup_bucket_name" {
   value       = module.storage.bucket_name
 }
 
-
+module "monitoring" {
+  source                 = "./modules/monitoring"
+  production_instance_id = "i-0328a5a8e6e95e250"
+  alert_email            = "poornabhagy@gmail.com"
+}
