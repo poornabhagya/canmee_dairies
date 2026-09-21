@@ -1,6 +1,6 @@
 name: Canmee Dairies CI/CD - Production Promotion
 
-# Release Tag එකක් (උදා: v1.0.4) push කළ විට පමණක් Production එකට promote වේ
+# Release Tag එකක් (උදා: v1.0.5) push කළ විට පමණක් Production එකට promote වේ
 on:
   push:
     tags:
@@ -34,7 +34,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Container Immutability: Rebuild නැත! Staging Verified Image එක Retag කිරීම පමණි
+      # Container Immutability: Staging Verified Image එක Retag කිරීම පමණි
       - name: Retag Staging Image to Production Release Tag in ECR
         run: |
           echo "Fetching verified staging image manifest from ECR..."
@@ -79,13 +79,17 @@ jobs:
               \"export ECR_URL=\${AWS_ACCOUNT_ID}.dkr.ecr.ap-south-1.amazonaws.com\",
               \"aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin \${ECR_URL}\",
               \"docker compose pull web\",
-              \"docker compose run --rm web python manage.py migrate --noinput\",
-              \"docker compose run --rm web python manage.py collectstatic --noinput\",
+              \"docker compose up -d mariadb redis\",
+              \"echo Waiting for Production MariaDB socket...\",
+              \"for i in {1..30}; do if docker exec canmee_mariadb mariadb-admin ping --silent 2>/dev/null; then echo DB ready; break; fi; sleep 2; done\",
               \"docker compose up -d --remove-orphans web nginx\",
               \"docker compose restart nginx\",
+              \"sleep 5\",
+              \"docker exec -e DB_HOST=127.0.0.1 canmee_web python manage.py migrate --noinput\",
+              \"docker exec -e DB_HOST=127.0.0.1 canmee_web python manage.py collectstatic --noinput\",
               \"echo ${SCAN_SCRIPT_B64} | base64 -d > /opt/canmee/scan_urls.py\",
               \"docker cp /opt/canmee/scan_urls.py canmee_web:/app/scan_urls.py || true\",
-              \"docker exec canmee_web python scan_urls.py || true\",
+              \"docker exec -e DB_HOST=127.0.0.1 canmee_web python scan_urls.py || true\",
               \"docker cp canmee_web:/app/smoke_test_summary.json /opt/canmee/smoke_test_summary.json || true\",
               \"echo ===PROD_METRICS_START===\",
               \"cat /opt/canmee/smoke_test_summary.json 2>/dev/null || echo '{\\\"status\\\":\\\"UNKNOWN\\\"}'\",
