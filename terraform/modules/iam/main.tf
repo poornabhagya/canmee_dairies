@@ -46,3 +46,38 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 output "instance_profile_name" {
   value = aws_iam_instance_profile.ec2_profile.name
 }
+# S3 Central Backup Policy (Strict Tenant-A Prefix-Level Scoping)
+variable "backup_bucket_arn" {
+  description = "Central S3 Bucket ARN"
+  type        = string
+  default     = ""
+}
+
+resource "aws_iam_policy" "ec2_s3_backup_policy" {
+  name        = "canmee-ec2-s3-backup-policy"
+  description = "Strict least-privilege policy for Canmee database offsite backups"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowTenantAPrefixOnly"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.backup_bucket_arn,
+          "${var.backup_bucket_arn}/tenant-a-canmee/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_s3_backup_attach" {
+  role       = aws_iam_role.ec2_ssm_role.name
+  policy_arn = aws_iam_policy.ec2_s3_backup_policy.arn
+}

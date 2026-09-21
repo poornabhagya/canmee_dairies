@@ -11,7 +11,8 @@ module "security_groups" {
 
 # 3. IAM (OIDC සහ SSM) Roles හැදීම
 module "iam" {
-  source = "./modules/iam"
+  source            = "./modules/iam"
+  backup_bucket_arn = module.storage.bucket_arn
 }
 
 module "oidc" {
@@ -79,3 +80,18 @@ output "cloudfront_url" {
 output "staging_portal_url" {
   value = "https://staging.canmeedairies.lk"
 }
+
+# =======================================================
+# Phase 9: Centralized S3 Storage & Disaster Recovery
+# =======================================================
+
+module "storage" {
+  source = "./modules/storage"
+}
+
+output "central_backup_bucket_name" {
+  description = "Disaster Recovery S3 Bucket Name"
+  value       = module.storage.bucket_name
+}
+
+
