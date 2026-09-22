@@ -134,24 +134,6 @@ The platform uses a **Multi-Tenant Dedicated VPC Architecture (Silo Pattern)**. 
 
 ---
 
-##  Environment Configuration (.env)
-
-   Configure the production environment file at /opt/canmee/.env on the host:
-   DEBUG=0
-   SECRET_KEY=canmee-production-secret-key-change-this-complex-random-str
-   ALLOWED_HOSTS=127.0.0.1,localhost,13.235.202.88,staging.canmeedairies.lk
-
-   DJANGO_SETTINGS_MODULE=canmee_dairies.settings
-   DB_NAME=canmee_dairies
-   DB_USER=root
-   DB_PASSWORD=canmee_root_password_2026
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-
-   DATABASE_URL=mysql://root:canmee_root_password_2026@127.0.0.1:3306/canmee_dairies
-   REDIS_URL=redis://127.0.0.1:6379/1
-
----
 
 ## Operational Procedures & Maintenance
    1. Manual Backup Execution
