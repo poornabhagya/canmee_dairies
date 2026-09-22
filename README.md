@@ -132,6 +132,7 @@ The platform uses a **Multi-Tenant Dedicated VPC Architecture (Silo Pattern)**. 
 ├── docker-compose.yml           # Multi-container orchestration specification
 └── nginx.conf                   # Reverse proxy routing & TLS header configurations
 
+---
 
 ##  Environment Configuration (.env)
 
@@ -149,6 +150,8 @@ The platform uses a **Multi-Tenant Dedicated VPC Architecture (Silo Pattern)**. 
 
    DATABASE_URL=mysql://root:canmee_root_password_2026@127.0.0.1:3306/canmee_dairies
    REDIS_URL=redis://127.0.0.1:6379/1
+
+---
 
 ## Operational Procedures & Maintenance
    1. Manual Backup Execution
@@ -171,9 +174,12 @@ The platform uses a **Multi-Tenant Dedicated VPC Architecture (Silo Pattern)**. 
    docker exec -u 0 canmee_web chown -R 1000:1000 /app/media
    rm -rf /tmp/media
 
+---
+
 ## Security & Hardening Assurances
 
    Zero Attack Surface on SSH: No bastion hosts or open inbound SSH ports (Port 22); host management is handled via AWS SSM.
    Container Security: Containers run with unprivileged system users (canmee:1000) rather than root.
    Data Protection: Enforces non-blocking transactional consistency, client-side GPG AES-256 backup encryption, and strict TLS 1.3 transport security.
+
 ```
