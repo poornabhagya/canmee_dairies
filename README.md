@@ -1,167 +1,81 @@
-# Canmee Dairies ERP — Enterprise Cloud Platform & Operations Portal
+# Comprehensive DevOps, Cloud Infrastructure & CI/CD Architecture Report
 
-Production-grade, highly available, and automated Cloud ERP platform. This project re-engineers the legacy `2026.xlsm` workbook workflow into a normalized enterprise Django application, fully provisioned on AWS using modular Infrastructure as Code (Terraform) and deployed via a zero-trust, passwordless CI/CD pipeline.
+**Platform:** Construction Equipment Rental Management System (CERMS)  
+**Role:** Senior Cloud & DevOps Architect  
+**Scope:** Complete Codebase, Infrastructure as Code (Terraform), Docker Orchestration, Shell/Python Automation, Security Perimeter, and GitHub Actions CI/CD Pipelines.
+
+<img width="1643" height="2622" alt="cerms_enterprise_cloud_ _devops_architecture" src="https://github.com/user-attachments/assets/85a76993-8bd4-4e3f-94c4-979db7ebb9ca" />
+
 
 ---
 
-## System Architecture Overview
+## Executive Summary
 
-The platform uses a **Multi-Tenant Dedicated VPC Architecture (Silo Pattern)**. Each tenant operates within an isolated networking and compute boundary, while governance, CI/CD, and disaster recovery remain centralized.
+The CERMS infrastructure is built as an **enterprise-grade, zero-trust cloud platform on Amazon Web Services (AWS)** using **Infrastructure as Code (Terraform)**, **multi-stage Docker containerization**, **AWS Systems Manager (SSM) bastionless operations**, and **dual GitHub Actions CI/CD pipelines**. 
 
-[ End User / Browser ]
-│
-( HTTPS / TLS 1.3 )
-▼
-[ AWS CloudFront CDN (Global Edge) ]
-├── Static/Media Cache (/static/_, /media/_)
-└── Dynamic Origin Pass-Through
-│
-( AWS Internet Gateway )
-▼
-[ Production EC2 Node (Tenant VPC: 10.0.0.0/16) ]
-┌──────────────────────────────────────────────────────────┐
-│ Docker Host Networking Plane (127.0.0.1) │
-│ │
-│ [ Nginx Reverse Proxy (Port 80/443, Security Headers) ]│
-│ │ │
-│ ( proxy_pass: 127.0.0.1:8000 ) │
-│ ▼ │
-│ [ Django Web Service (Gunicorn WSGI) ] │
-│ │ │ │
-│ ( Localhost Loopback ) ( Cache / Broker ) │
-│ ▼ ▼ │
-│ [ MariaDB 10.11 (InnoDB) ] [ Redis 7.2 Engine ] │
-└──────────────────────────────────────────────────────────┘
-│
-( Daily Encrypted Nightly Cron )
-▼
-[ Central S3 Bucket ] ──( 30 Days )──> [ S3 Glacier Cold Vault ]
+The architecture strictly eliminates traditional single points of failure and security anti-patterns (such as static SSH keys and compile-in-production workflows) through **OIDC passwordless IAM authentication**, a **Zero-Rebuild immutable image promotion model**, **in-stream AES-256 encrypted offsite disaster recovery**, and an **automated post-deployment URL crawl smoke testing harness**.
 
 ---
 
-## Key Cloud Engineering Implementations
+## 1. CI/CD Pipelines & Release Engineering (`.github/workflows/`)
 
-### 1. Networking & Perimeter Security (VPC & Edge)
+<img width="2132" height="1633" alt="cerms_dual_ci-cd_pipeline_workflow" src="https://github.com/user-attachments/assets/e0a49431-aeb6-484b-a434-480da34bfccc" />
 
-- **Dedicated CIDR Isolation:** Provisioned an isolated tenant VPC (`10.0.0.0/16`) divided into Production (`10.0.1.0/24`) and Staging (`10.0.2.0/24`) subnets.
-- **Zero-Cost Routing:** Eliminated costly NAT Gateways by routing traffic directly through an AWS Internet Gateway (`0.0.0.0/0 -> IGW`).
-- **Strict Ingress Firewalls:** Security groups permit only Port 80 (HTTP) and Port 443 (HTTPS). Sensitive ports (Port 22 SSH, Port 3306 MariaDB, and Port 6379 Redis) are blocked from public ingress.
-- **Global Edge Acceleration:** Integrated AWS CloudFront with ACM TLS 1.2/1.3 certificates, caching static and media assets at edge locations while passing transactional requests directly to the origin.
 
-### 2. Passwordless CI/CD & Gatekeeping (GitHub Actions)
+The repository maintains two segregated, production-hardened workflows:
 
-- **OIDC STS Authentication:** Replaced long-lived AWS IAM access keys with GitHub Actions OpenID Connect (OIDC) using short-lived AWS STS temporary tokens.
-- **Immutable Container Promotion:** Re-tagging verified staging image digests directly in Amazon ECR for production releases (`v*`), eliminating production compile drift.
-- **Bastionless SSM Deployments:** Eliminated bastion hosts and open SSH ports; deployments execute over AWS Systems Manager (`ssm:SendCommand` / Run-ShellScript).
-- **Automated Smoke Test Gatekeeping:** Integrated `scan_urls.py` into workflows to scan 357 static endpoints, requiring 0 HTTP 500 errors and strict RBAC enforcement before code promotion.
+*   `staging.yml` - Continuous Integration, Staging Deploy & Automated Smoke Test (on push: main)
+*   `deploy.yml` - Zero-Rebuild Promotion & Production Deployment (on push: tags: 'v*')
 
-### 3. Database Resilience & Sanitization
+### 1.1 Staging Pipeline
+*   **Test:** Spawns a real **MySQL 8.4** ephemeral service container within GitHub Actions runner to execute unit/syntax checks.
+*   **Build & Push:** Uses **OIDC passwordless authentication** to push multi-arch Docker builds to Amazon ECR.
+*   **Bastionless Deploy:** Connects to Staging EC2 via **AWS Systems Manager (SSM)**. Implements self-healing host memory checks (dynamic 4GB swapfile provisioning) and sequential microservice startups.
+*   **Automated Smoke Testing:** Injects `scan_urls.py` into the live container to test all 357 registered routes, outputting `staging_smoke_summary.json` and dispatching HTML reports via Gmail SMTP.
 
-- **Engine & Charset Sanitization:** Migrated all legacy MyISAM tables to `InnoDB` (`ROW_FORMAT=DYNAMIC`) with `utf8mb4` / `utf8mb4_unicode_ci` collation to support Sinhala/Tamil Unicode.
-- **Host Loopback Connectivity:** Configured containers under `network_mode: host` communicating over local loopback (`127.0.0.1:3306`), resolving internal Docker container name resolution collisions.
-- **Race Condition Prevention:** Secured sequence generators (`Farmer`, `Route`) against Time-of-Check to Time-of-Use (TOCTOU) concurrency bugs using `select_for_update()` and `transaction.atomic()`.
-
-### 4. Automated Offsite Disaster Recovery (DR)
-
-- **Non-Blocking Atomic Dumps:** Automated hot database backups via `mariadb-dump --single-transaction --quick`.
-- **Client-Side Symmetric Encryption:** Stream-compressed with Gzip and encrypted on the fly with GPG AES-256 before leaving the server.
-- **Prefix-Scoped Cold Archival:** Encrypted artifacts stream to a centralized multi-tenant S3 bucket (`tenant-a-canmee/db/...`) and automatically transition to AWS Glacier Flexible Retrieval after 30 days (expiring after 365 days).
-
-### 5. Telemetry, Observability & Healthchecks
-
-- **CloudWatch Infrastructure Alarms:** Automated alarms track EC2 CPU Utilization ($\ge$ 85%) and Hardware Status Check failures.
-- **SNS Alerting Relay:** Dispatches infrastructure incident notifications to the engineering team via Amazon SNS.
-- **Headless Healthcheck Harness:** An automated bash harness (`healthcheck_harness.sh`) validates container runtimes, Redis PING responses, MariaDB utf8mb4 collation, and web endpoint HTTP status codes (200/302).
+### 1.2 Production Promotion Pipeline
+*   **Zero-Rebuild Immutable Promotion:** Extracts the exact container image manifest verified in staging and re-tags it to the release tag (`v*`) directly in Amazon ECR to guarantee 100% environment parity.
+*   **Production Deployment:** Executes bastionless deployment via SSM to the Production node, runs migration/static collections, and executes the test harness across all endpoints. Dispatches telemetry to AWS SNS (`cerms-devops-alerts`).
 
 ---
 
-## Technology Stack
+## 2. Cloud Architecture & Infrastructure as Code (`terraform/`)
 
-| Domain                       | Technology / Service                                         |
-| :--------------------------- | :----------------------------------------------------------- |
-| **Backend Framework**        | Django 5+ (Python 3.12) running under Gunicorn WSGI          |
-| **Relational Database**      | MariaDB 10.11 LTS (InnoDB, `utf8mb4_unicode_ci`)             |
-| **In-Memory Cache / Broker** | Redis 7.2 Alpine (`appendonly yes`, `allkeys-lru`)           |
-| **Reverse Proxy**            | Nginx 1.25 Alpine (TLS 1.3, Rate Limiting, Security Headers) |
-| **Infrastructure as Code**   | Terraform (Modular Architecture, Remote S3 Backend)          |
-| **Container Registry**       | Amazon ECR (Immutable Tags, Lifecycle Prune Policies)        |
-| **Edge CDN & SSL**           | AWS CloudFront + AWS Certificate Manager (ACM)               |
-| **Compute Plane**            | AWS EC2 (Ubuntu 22.04 LTS, NVMe Swap, Optimized Sysctl)      |
-| **Systems Management**       | AWS Systems Manager (SSM Session Manager & Run Command)      |
+Infrastructure is fully codified in **Terraform (~> 5.0)** with modular, multi-tier isolation in region **Mumbai (`ap-south-1`)**.
+
+*   **Remote State Backend:** Centralized S3 bucket with DynamoDB native state locking.
+*   **Network Topology:** Dedicated VPC (`10.10.0.0/16`) with Multi-AZ subnets.
+*   **Compute & Bootstrapping:** Ubuntu 22.04 LTS `t3.micro` instances. Automated `user_data.sh.tpl` performs kernel memory tuning (`vm.swappiness=10`), provisions swap, and hardens UFW firewall.
+*   **Zero-Trust Security Perimeter:** Strict ingress policy (80/443 only). **Zero-SSH Policy (Port 22 completely omitted).** All interactive access brokered via IAM-authenticated AWS SSM sessions.
+*   **IAM & Least-Privilege:** Granular roles for EC2 SSM, S3 Scoped Backups, and GitHub Actions OIDC Trust.
+*   **Storage & DR:** Automated Amazon ECR lifecycle policies. Multi-Tenant S3 Disaster Recovery bucket with automated S3 Glacier transitions.
+*   **Observability:** CloudWatch Alarms for CPU ($\ge 85\%$) and StatusCheck failures, routed to SNS.
 
 ---
 
-## Repository & Infrastructure Layout
+## 3. Containerization & Orchestration
 
-```plaintext
-.
-├── .github/
-│   └── workflows/
-│       ├── staging.yml          # Staging deployment, smoke test, and notification workflow
-│       └── deploy.yml           # Production promotion, ECR retag, and release verification
-├── canmee_dairies/              # Django application core
-│   ├── settings.py              # Decoupled 12-factor configuration (os.getenv)
-│   ├── urls.py                  # Root route configurations
-│   └── wsgi.py                  # WSGI entry point
-├── authentication/              # RBAC and employee credential management
-├── masters/                     # Farmers, routes, and collection points masters
-├── milk_collections/            # Real-time milk collection transactions
-├── dispatch/                    # Buyer distribution and dispatch logging
-├── reports/                     # Pandas aggregation & ReportLab PDF generators
-├── scripts/
-│   ├── healthcheck_harness.sh   # Live production telemetry verification script
-│   ├── nightly_db_backup.sh     # Encrypted GPG AES-256 S3 backup automation
-│   └── scan_urls.py             # Automated route auditing QA test harness
-├── terraform/                   # Modular Infrastructure as Code (IaC)
-│   ├── backend.tf               # S3 state configuration
-│   ├── provider.tf              # AWS provider initialization
-│   ├── main.tf                  # Root orchestration layer
-│   ├── variables.tf             # Input variables
-│   ├── outputs.tf               # Infrastructure outputs
-│   └── modules/
-│       ├── vpc/                 # Dedicated tenant VPC & subnets
-│       ├── security_groups/     # Port 80/443 firewall policies
-│       ├── compute/             # EC2 nodes & Elastic IPs
-│       ├── iam/                 # SSM roles & prefix-scoped S3 IAM policies
-│       ├── oidc/                # GitHub Actions passwordless STS role
-│       ├── ecr/                 # Private container registry & prune rules
-│       ├── cloudfront/          # Edge CDN distribution & caching
-│       ├── storage/             # Disaster recovery S3 bucket & Glacier lifecycle
-│       └── monitoring/          # CloudWatch alarms & SNS notification topics
-├── Dockerfile                   # Hardened multi-stage non-root container builder
-├── docker-compose.yml           # Multi-container orchestration specification
-└── nginx.conf                   # Reverse proxy routing & TLS header configurations
+The application uses Docker with multi-stage builds and isolated bridge networking (`172.28.0.0/16`).
+
+*   **Multi-Stage Dockerfile:** Separates Python compilation toolchains (Builder Stage) from the hardened runtime image, enforcing unprivileged non-root execution (`cerms_user:1000`).
+*   **Resource Governance (FinOps):** Strict hard caps set for all containers to comfortably fit inside a `t3.micro` instance backed by NVMe swap:
+    *   `cerms_mariadb`: 500MB Limit, tuned InnoDB buffer pool.
+    *   `cerms_redis`: 200MB Limit, LRU eviction.
+    *   `cerms_web` (Django/Gunicorn): 1200MB Limit, configured with 3 workers and 2 threads.
+    *   `cerms_celery`: 600MB Limit.
+    *   `cerms_nginx`: 150MB Limit.
 
 ---
 
+## 4. Automation Runbooks & Reliability Engineering
 
-## Operational Procedures & Maintenance
-   1. Manual Backup Execution
-   Run on-demand atomic dumps and stream them directly to S3:
-   /opt/canmee/scripts/nightly_db_backup.sh
-
-   2. Comprehensive System Health Check
-   Verify overall runtime state and connectivity:
-   /opt/canmee/scripts/healthcheck_harness.sh
-
-   3. Media Assets Synchronization
-   Sync user avatars and media uploads between local storage, S3, and the active container volume:
-
-   Upload from local machine to central S3
-   aws s3 sync media/ s3://canmee-central-enterprise-backups-4cbcc7c3/media/
-
-   Sync from S3 to web container on EC2
-   aws s3 sync s3://canmee-central-enterprise-backups-4cbcc7c3/media/ /tmp/media/
-   docker cp /tmp/media/. canmee_web:/app/media/
-   docker exec -u 0 canmee_web chown -R 1000:1000 /app/media
-   rm -rf /tmp/media
+*   **Production Hot Disaster Recovery (`nightly_db_backup.sh`):** Daily atomic dumps via `mariadb-dump` streamed directly through Gzip and **AES-256 Symmetric Encryption (GPG)** before uploading to S3. Zero plaintext data is written to disk. Achieves RPO < 24 Hours and RTO < 30 Minutes.
+*   **Automated Route Crawl Smoke Tester (`scan_urls.py`):** Dynamically discovers Django routes and executes headless HTTP calls to categorize responses and fail pipelines on HTTP 500 crashes.
 
 ---
 
-## Security & Hardening Assurances
+## 5. Security Architecture & Nginx Reverse Proxy
 
-   Zero Attack Surface on SSH: No bastion hosts or open inbound SSH ports (Port 22); host management is handled via AWS SSM.
-   Container Security: Containers run with unprivileged system users (canmee:1000) rather than root.
-   Data Protection: Enforces non-blocking transactional consistency, client-side GPG AES-256 backup encryption, and strict TLS 1.3 transport security.
-
-```
+*   **Nginx Ingress Proxy:** Enforces HTTP to HTTPS redirection, TLS 1.2/1.3 protocols, and OWASP hardened security headers (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`). Handles static/media offloading with edge caching.
+*   **Global Edge CDN (CloudFront):** AWS CloudFront terminating SSL/TLS via modern ciphers with SNI. Edge caching for static and media assets.
+*   **Application Security:** 12-factor environment decoupling via `.env`, Host Header whitelisting, and strict CSRF Origin Hardening (`CSRF_TRUSTED_ORIGINS`).
